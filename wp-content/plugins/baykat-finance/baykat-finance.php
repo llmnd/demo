@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Baykat Finance
  * Description: Module de gestion financière pour Baykat.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Lamine
  */
 
