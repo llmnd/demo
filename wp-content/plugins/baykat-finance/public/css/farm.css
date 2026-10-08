@@ -1,0 +1,770 @@
+.baykat-farm-app {
+    box-sizing: border-box;
+    width: min(100% - 40px, 1160px);
+    margin: 48px auto 64px;
+    color: #302b25;
+    font-family: inherit;
+    line-height: 1.55;
+}
+
+.baykat-farm-app *,
+.baykat-farm-app *::before,
+.baykat-farm-app *::after {
+    box-sizing: border-box;
+}
+
+.baykat-farm-header {
+    margin-bottom: 28px;
+}
+
+.baykat-farm-header h1 {
+    margin: 0 0 8px;
+    color: #302b25;
+    font-size: clamp(30px, 4vw, 42px);
+    font-weight: 700;
+    letter-spacing: -0.035em;
+    line-height: 1.15;
+}
+
+.baykat-farm-header p {
+    margin: 0;
+    color: #777168;
+    font-size: 16px;
+}
+
+.baykat-farm-header .baykat-farm-header-actions {
+    margin-top: 16px;
+}
+
+.baykat-farm-eyebrow {
+    display: block;
+    margin-bottom: 7px;
+    color: #947747;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+}
+
+.baykat-farm-navigation {
+    display: flex;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    gap: 8px;
+    margin-bottom: 24px;
+    padding: 10px 0;
+    overflow-x: auto;
+    background: rgba(255, 255, 255, 0.96);
+    border-bottom: 1px solid #e9e4dc;
+    scrollbar-width: thin;
+    backdrop-filter: blur(12px);
+}
+
+.baykat-farm-navigation-link {
+    flex: 0 0 auto;
+    padding: 10px 14px;
+    border-radius: 8px;
+    color: #625b51;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background-color 150ms ease, color 150ms ease;
+}
+
+.baykat-farm-navigation-link:hover,
+.baykat-farm-navigation-link:focus-visible {
+    background: #f7f4ee;
+    color: #302b25;
+}
+
+.baykat-farm-navigation-link.is-active {
+    background: #f2ecdf;
+    color: #725b31;
+}
+
+body.admin-bar .baykat-farm-navigation {
+    top: 32px;
+}
+
+.baykat-farm-finance-navigation {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 22px;
+}
+
+.baykat-farm-finance-link {
+    padding: 8px 12px;
+    border: 1px solid #e9e4dc;
+    border-radius: 8px;
+    color: #625b51;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.baykat-farm-finance-link:hover,
+.baykat-farm-finance-link:focus-visible {
+    border-color: #d9c9a8;
+    background: #f7f4ee;
+    color: #302b25;
+}
+
+.baykat-farm-finance-link.is-active {
+    border-color: #d9c9a8;
+    background: #f2ecdf;
+    color: #725b31;
+}
+
+.baykat-farm-placeholder {
+    min-height: 220px;
+    padding: 30px;
+    border: 1px solid #e9e4dc;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 5px 22px rgba(48, 43, 37, 0.04);
+}
+
+.baykat-farm-placeholder h2 {
+    margin: 0 0 8px;
+    color: #302b25;
+    font-size: 24px;
+    letter-spacing: -0.02em;
+}
+
+.baykat-farm-placeholder p,
+.baykat-farm-login p {
+    margin: 0;
+    color: #777168;
+}
+
+.baykat-farm-content {
+    display: grid;
+    gap: 22px;
+    animation: baykat-farm-enter 220ms ease-out both;
+}
+
+@keyframes baykat-farm-enter {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.baykat-farm-app[aria-busy="true"] .baykat-farm-module {
+    opacity: 0.68;
+    transition: opacity 120ms ease;
+}
+
+.baykat-farm-section-heading {
+    margin-bottom: 2px;
+}
+
+.baykat-farm-section-heading h2 {
+    margin: 0 0 7px;
+    color: #302b25;
+    font-size: clamp(24px, 3vw, 30px);
+    letter-spacing: -0.025em;
+    line-height: 1.2;
+}
+
+.baykat-farm-section-heading p {
+    margin: 0;
+    color: #777168;
+}
+
+.baykat-farm-panel {
+    min-width: 0;
+    padding: 26px;
+    border: 1px solid #e9e4dc;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 5px 22px rgba(48, 43, 37, 0.04);
+}
+
+.baykat-farm-panel-heading {
+    margin-bottom: 20px;
+}
+
+.baykat-farm-panel-heading h3 {
+    margin: 0;
+    color: #302b25;
+    font-size: 20px;
+    letter-spacing: -0.015em;
+}
+
+.baykat-farm-panel-heading .baykat-farm-eyebrow {
+    margin-bottom: 5px;
+}
+
+.baykat-farm-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 17px 20px;
+}
+
+.baykat-farm-field {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.baykat-farm-field-wide {
+    grid-column: 1 / -1;
+}
+
+.baykat-farm-field label {
+    color: #302b25;
+    font-size: 13px;
+    font-weight: 650;
+}
+
+.baykat-farm-field input,
+.baykat-farm-field select,
+.baykat-farm-field textarea {
+    width: 100%;
+    min-height: 46px;
+    padding: 10px 13px;
+    border: 1px solid #ded8ce;
+    border-radius: 9px;
+    background: #fff;
+    color: #302b25;
+    font: inherit;
+    font-size: 15px;
+}
+
+.baykat-farm-field textarea {
+    min-height: 96px;
+    resize: vertical;
+}
+
+.baykat-farm-field input:focus,
+.baykat-farm-field select:focus,
+.baykat-farm-field textarea:focus {
+    border-color: #b99a64;
+    outline: 0;
+    box-shadow: 0 0 0 3px rgba(185, 154, 100, 0.18);
+}
+
+.baykat-farm-form > .baykat-finance-button {
+    grid-column: 1 / -1;
+}
+
+.baykat-farm-app button.baykat-finance-button,
+.baykat-farm-app a.baykat-finance-button {
+    display: inline-flex !important;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    padding: 11px 18px;
+    border: 1px solid #80643b !important;
+    border-radius: 9px;
+    background-color: #80643b !important;
+    color: #fff !important;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.3;
+    text-align: center;
+    text-decoration: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    cursor: pointer;
+    transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+
+.baykat-farm-app button.baykat-finance-button:hover,
+.baykat-farm-app a.baykat-finance-button:hover {
+    border-color: #5f4a2d !important;
+    background-color: #5f4a2d !important;
+    color: #fff !important;
+}
+
+.baykat-farm-app button.baykat-finance-button:focus-visible,
+.baykat-farm-app a.baykat-finance-button:focus-visible {
+    outline: 3px solid rgba(185, 154, 100, 0.4);
+    outline-offset: 3px;
+}
+
+.baykat-farm-app button.baykat-finance-button:disabled {
+    border-color: #c7c1b7 !important;
+    background-color: #c7c1b7 !important;
+    color: #fff !important;
+    cursor: wait;
+}
+
+.baykat-farm-notice {
+    padding: 13px 16px;
+    border: 1px solid #d5e9dd;
+    border-radius: 10px;
+    background: #f0f8f3;
+    color: #245d3d;
+}
+
+.baykat-farm-notice-error {
+    border-color: #efd7d4;
+    background: #fff5f3;
+    color: #8f3832;
+}
+
+.baykat-farm-notice p {
+    margin: 0 0 12px;
+}
+
+.baykat-farm-notice .baykat-finance-button {
+    margin-top: 2px;
+}
+
+.baykat-farm-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+}
+
+.baykat-farm-stat-card {
+    display: flex;
+    min-width: 0;
+    min-height: 112px;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 19px 20px;
+    border: 1px solid #e9e4dc;
+    border-radius: 13px;
+    background: #fff;
+}
+
+.baykat-farm-stat-card span {
+    color: #777168;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.baykat-farm-stat-card strong {
+    overflow-wrap: anywhere;
+    color: #302b25;
+    font-size: clamp(20px, 2.2vw, 27px);
+    line-height: 1.15;
+}
+
+.baykat-farm-record-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.baykat-farm-record-card {
+    min-width: 0;
+    overflow: hidden;
+    padding: 19px;
+    border: 1px solid #eee9e1;
+    border-radius: 12px;
+    background: #faf8f4;
+    transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.baykat-farm-record-card:hover {
+    transform: translateY(-2px);
+    border-color: #ded2bd;
+    box-shadow: 0 10px 26px rgba(48, 43, 37, 0.08);
+}
+
+.baykat-farm-record-card h4 {
+    margin: 0 0 6px;
+    color: #302b25;
+    font-size: 16px;
+}
+
+.baykat-farm-record-card p {
+    margin: 0 0 9px;
+    color: #777168;
+    font-size: 14px;
+}
+
+.baykat-farm-record-card > span {
+    color: #725b31;
+    font-size: 13px;
+    font-weight: 650;
+}
+
+.baykat-farm-visual-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+}
+
+.baykat-farm-visual-card {
+    padding: 0;
+}
+
+.baykat-farm-card-image {
+    display: block;
+    width: 100%;
+    height: 178px;
+    object-fit: cover;
+    background: #f2ecdf;
+}
+
+.baykat-farm-card-image-placeholder {
+    display: grid;
+    place-items: center;
+    background:
+        radial-gradient(ellipse at 18% 95%, rgba(79, 116, 67, 0.25), transparent 42%),
+        linear-gradient(135deg, #f3ead8, #e9efdf);
+    color: #947747;
+}
+
+.baykat-farm-card-image-placeholder span {
+    font-size: 12px;
+    font-weight: 750;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+
+.baykat-farm-visual-card-body {
+    display: grid;
+    gap: 8px;
+    padding: 18px;
+}
+
+.baykat-farm-visual-card-body .baykat-farm-eyebrow {
+    margin: 0;
+}
+
+.baykat-farm-visual-card-body h4 {
+    margin: 0;
+    color: #302b25;
+    font-size: 18px;
+    line-height: 1.3;
+}
+
+.baykat-farm-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    color: #777168;
+    font-size: 13px;
+}
+
+.baykat-farm-card-dates {
+    margin: 0;
+    color: #777168;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.baykat-farm-image-update {
+    margin-top: 4px;
+    border-top: 1px solid #eee9e1;
+}
+
+.baykat-farm-image-update summary {
+    padding: 11px 0 2px;
+    color: #725b31;
+    font-size: 13px;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+.baykat-farm-image-update-form {
+    display: grid;
+    gap: 12px;
+    padding-top: 10px;
+}
+
+.baykat-farm-record-actions {
+    margin-top: 4px;
+    border-top: 1px solid #eee9e1;
+}
+
+.baykat-farm-record-actions > summary {
+    padding: 11px 0 2px;
+    color: #725b31;
+    font-size: 13px;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+.baykat-farm-record-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding-top: 12px;
+}
+
+.baykat-farm-record-form > .baykat-finance-button,
+.baykat-farm-delete-form > .baykat-finance-button {
+    grid-column: 1 / -1;
+    width: 100%;
+}
+
+.baykat-farm-delete-form {
+    display: grid;
+    margin-top: 12px;
+}
+
+.baykat-farm-app button.baykat-farm-delete-button {
+    border-color: #a94e47 !important;
+    background-color: #a94e47 !important;
+}
+
+.baykat-farm-app button.baykat-farm-delete-button:hover {
+    border-color: #873c36 !important;
+    background-color: #873c36 !important;
+}
+
+.baykat-farm-image-update-form .baykat-finance-button {
+    min-height: 42px;
+    padding: 9px 14px;
+}
+
+.baykat-farm-image-field {
+    gap: 9px;
+}
+
+.baykat-farm-image-picker {
+    position: relative;
+    display: flex;
+    min-height: 92px;
+    align-items: center;
+    gap: 15px;
+    padding: 12px;
+    overflow: hidden;
+    border: 1px dashed #cfc4b2;
+    border-radius: 12px;
+    background: #faf8f4;
+    cursor: pointer;
+    transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.baykat-farm-image-picker:hover,
+.baykat-farm-image-picker:focus-within {
+    border-color: #a98a56;
+    background: #f7f3ea;
+}
+
+.baykat-farm-image-picker input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    clip-path: inset(50%);
+}
+
+.baykat-farm-image-preview {
+    display: grid;
+    width: 68px;
+    height: 64px;
+    flex: 0 0 auto;
+    place-items: center;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #eee7d9;
+    color: #725b31;
+}
+
+.baykat-farm-image-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.baykat-farm-image-placeholder {
+    font-size: 28px;
+    font-weight: 300;
+    line-height: 1;
+}
+
+.baykat-farm-image-picker-copy {
+    display: grid;
+    gap: 3px;
+}
+
+.baykat-farm-image-picker-copy strong {
+    color: #302b25;
+    font-size: 14px;
+}
+
+.baykat-farm-image-picker-copy > span {
+    color: #777168;
+    font-size: 12px;
+}
+
+.baykat-farm-image-error {
+    margin: 0;
+    color: #8f3832;
+    font-size: 13px;
+}
+
+.baykat-farm-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid #e9e4dc;
+    border-radius: 10px;
+    overscroll-behavior-x: contain;
+}
+
+.baykat-farm-table {
+    width: 100%;
+    min-width: 650px;
+    border-collapse: collapse;
+    background: #fff;
+}
+
+.baykat-farm-table th,
+.baykat-farm-table td {
+    padding: 13px 15px;
+    border-bottom: 1px solid #efede9;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.baykat-farm-table th {
+    background: #faf8f4;
+    color: #777168;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.baykat-farm-table td {
+    color: #302b25;
+    font-size: 14px;
+}
+
+.baykat-farm-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.baykat-farm-status {
+    display: inline-flex;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: #f2ecdf;
+    color: #725b31;
+    font-size: 12px;
+    font-weight: 650;
+    white-space: nowrap;
+}
+
+.baykat-farm-empty-state {
+    margin: 0;
+    color: #777168;
+    line-height: 1.55;
+}
+
+.baykat-farm-empty-state a {
+    color: #725b31;
+    font-weight: 650;
+}
+
+.baykat-farm-module .baykat-finance-page {
+    width: 100%;
+    margin: 30px 0 0;
+}
+
+.baykat-farm-login {
+    padding: 28px;
+    border: 1px solid #e9e4dc;
+    border-radius: 16px;
+    background: #fff;
+}
+
+.baykat-farm-login h1 {
+    margin: 0 0 8px;
+    color: #302b25;
+}
+
+.baykat-farm-login .baykat-finance-button {
+    display: inline-flex;
+    margin-top: 18px;
+}
+
+@media (max-width: 640px) {
+    .baykat-farm-app {
+        width: min(100% - 28px, 1160px);
+        margin: 30px auto 44px;
+    }
+
+    .baykat-farm-navigation {
+        margin-right: -14px;
+        padding-right: 14px;
+    }
+
+    body.admin-bar .baykat-farm-navigation {
+        top: 46px;
+    }
+
+    .baykat-farm-placeholder {
+        min-height: 180px;
+        padding: 22px;
+    }
+
+    .baykat-farm-stat-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .baykat-farm-panel {
+        padding: 20px;
+    }
+
+    .baykat-farm-record-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .baykat-farm-visual-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .baykat-farm-module .baykat-finance-page {
+        margin-top: 24px;
+    }
+
+}
+
+@media (max-width: 540px) {
+    .baykat-farm-form {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .baykat-farm-record-form {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .baykat-farm-field-wide,
+    .baykat-farm-form > .baykat-finance-button,
+    .baykat-farm-record-form > .baykat-finance-button {
+        grid-column: auto;
+    }
+
+    .baykat-farm-form > .baykat-finance-button {
+        width: 100%;
+        justify-self: stretch;
+    }
+
+    .baykat-farm-stat-card {
+        min-height: 98px;
+        padding: 15px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .baykat-farm-content {
+        animation: none;
+    }
+
+    .baykat-farm-record-card,
+    .baykat-farm-image-picker {
+        transition: none;
+    }
+}
