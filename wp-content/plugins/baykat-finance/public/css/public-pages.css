@@ -1,0 +1,570 @@
+:root {
+    --baykat-ink: #35495a;
+    --baykat-muted: #718091;
+    --baykat-brand: #d1b184;
+    --baykat-brand-hover: #c4a273;
+    --baykat-gold: #d1b184;
+    --baykat-paper: #f6f8fb;
+    --baykat-leaf: #5d7954;
+}
+
+body.baykat-public-page {
+    margin: 0;
+    background: var(--baykat-paper);
+    color: var(--baykat-ink);
+    font-family: "DM Sans", sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+.baykat-public-site,
+.baykat-public-site * { box-sizing: border-box; }
+.baykat-public-site a { color: inherit; }
+.baykat-public-header,
+.baykat-public-footer,
+.baykat-public-hero,
+.baykat-public-services,
+.baykat-public-cta { width: min(1160px, calc(100% - 64px)); margin-inline: auto; }
+
+.baykat-public-header {
+    display: flex;
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    min-height: 92px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 28px;
+    padding-inline: max(32px, calc((100% - 1160px) / 2));
+    border-bottom: 1px solid rgba(53, 73, 90, .1);
+    background: #fff;
+}
+.baykat-public-brand { display: inline-flex; flex: 0 0 auto; align-items: center; }
+.baykat-public-brand img { display: block; width: 136px; height: 62px; object-fit: contain; }
+.baykat-public-nav { display: flex; align-items: center; gap: 36px; }
+.baykat-public-nav a,
+.baykat-public-footer > a:last-child {
+    color: #536578;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+}
+.baykat-public-nav a:hover,
+.baykat-public-footer > a:last-child:hover { color: var(--baykat-brand-hover); }
+.baykat-public-login-link {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    gap: 14px;
+    padding: 0 19px;
+    border: 1px solid rgba(209, 177, 132, .68);
+    border-radius: 999px;
+    color: #80643b !important;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background-color .18s ease, color .18s ease;
+}
+.baykat-public-login-link:hover { background: var(--baykat-brand); color: #fff !important; }
+
+.baykat-public-hero {
+    display: grid;
+    min-height: 570px;
+    grid-template-columns: 1fr 1.03fr;
+    align-items: center;
+    gap: clamp(35px, 7vw, 90px);
+    padding-block: 55px 72px;
+}
+.baykat-public-hero-copy { position: relative; z-index: 1; padding: 14px 0; }
+.baykat-public-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    color: #947747;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+}
+.baykat-public-eyebrow > span,
+.baykat-public-live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #7c9b67;
+    box-shadow: 0 0 0 4px rgba(124, 155, 103, .13);
+}
+.baykat-public-hero h1,
+.baykat-public-section-heading h2,
+.baykat-public-cta h2 {
+    margin: 21px 0 0;
+    color: var(--baykat-ink);
+    font-family: "Manrope", sans-serif;
+    font-size: clamp(43px, 5.7vw, 68px);
+    font-weight: 700;
+    letter-spacing: -.055em;
+    line-height: 1.07;
+}
+.baykat-public-hero h1 em { color: #b58d59; font-style: normal; }
+.baykat-public-hero-copy > p {
+    max-width: 455px;
+    margin: 23px 0 0;
+    color: var(--baykat-muted);
+    font-size: 16px;
+    line-height: 1.8;
+}
+.baykat-public-hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; margin-top: 31px; }
+.baykat-public-button {
+    display: inline-flex;
+    min-height: 54px;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    padding: 0 22px;
+    border: 1px solid var(--baykat-brand);
+    border-radius: 8px;
+    background: var(--baykat-brand);
+    color: #fff !important;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 8px 20px rgba(145, 112, 65, .16);
+    transition: transform .18s ease, background-color .18s ease, box-shadow .18s ease;
+}
+.baykat-public-button:hover { transform: translateY(-2px); background: var(--baykat-brand-hover); border-color: var(--baykat-brand-hover); box-shadow: 0 12px 25px rgba(145, 112, 65, .2); }
+.baykat-public-text-link {
+    color: #536578 !important;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+}
+.baykat-public-text-link span { margin-left: 5px; color: #b58d59; }
+.baykat-public-proof { display: flex; align-items: center; gap: 12px; margin-top: 45px; }
+.baykat-public-proof-icon,
+.baykat-public-note-icon,
+.baykat-public-service-icon { display: grid; flex: 0 0 auto; place-items: center; }
+.baykat-public-proof-icon { width: 42px; height: 42px; border: 1px solid #e5dfd1; border-radius: 50%; background: #fff; }
+.baykat-public-proof-icon svg { width: 22px; height: 22px; stroke: var(--baykat-leaf); stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.5; }
+.baykat-public-proof > span:last-child,
+.baykat-public-art-note > span:last-child { display: grid; gap: 3px; }
+.baykat-public-proof strong,
+.baykat-public-art-note strong { color: #35495a; font-size: 11px; }
+.baykat-public-proof small,
+.baykat-public-art-note small { color: #718091; font-size: 10px; }
+
+.baykat-public-hero-art {
+    position: relative;
+    min-width: 0;
+    aspect-ratio: 1.1;
+    isolation: isolate;
+}
+.baykat-public-hero-art::before {
+    position: absolute;
+    z-index: -1;
+    inset: 8% 1% 5% 8%;
+    border-radius: 44% 56% 56% 44% / 42% 44% 56% 58%;
+    background: #e8e5d7;
+    content: "";
+    transform: rotate(-7deg);
+}
+.baykat-public-art-sun {
+    position: absolute;
+    top: 8%;
+    right: 13%;
+    width: 35%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: #ede2c7;
+}
+.baykat-public-fields {
+    position: absolute;
+    inset: 8% 0 0;
+    width: 100%;
+    height: 88%;
+    overflow: visible;
+    filter: drop-shadow(0 22px 32px rgba(41, 59, 41, .17));
+}
+.baykat-public-art-tag {
+    position: absolute;
+    z-index: 2;
+    top: 15%;
+    left: -2%;
+    display: flex;
+    min-height: 42px;
+    align-items: center;
+    gap: 10px;
+    padding: 0 15px;
+    border: 1px solid rgba(255,255,255,.8);
+    border-radius: 999px;
+    background: rgba(255,255,255,.91);
+    color: #4b564b;
+    font-size: 11px;
+    font-weight: 700;
+    box-shadow: 0 12px 35px rgba(41, 59, 41, .1);
+}
+.baykat-public-art-note {
+    position: absolute;
+    z-index: 2;
+    right: 0;
+    bottom: 9%;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 13px 17px 13px 13px;
+    border: 1px solid rgba(255,255,255,.8);
+    border-radius: 13px;
+    background: rgba(255,255,255,.94);
+    box-shadow: 0 14px 38px rgba(41, 59, 41, .14);
+}
+.baykat-public-note-icon { width: 36px; height: 36px; border-radius: 10px; background: #f3eddf; color: #977448; font-size: 18px; }
+
+.baykat-public-services { padding: 57px 0 78px; border-top: 1px solid rgba(45, 62, 48, .1); }
+.baykat-public-section-heading { text-align: center; }
+.baykat-public-section-heading h2 { margin-top: 12px; font-size: clamp(30px, 4vw, 43px); letter-spacing: -.045em; }
+.baykat-public-service-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 36px; }
+.baykat-public-service-card {
+    min-height: 190px;
+    padding: 23px;
+    border: 1px solid #e8e5dc;
+    border-radius: 13px;
+    background: rgba(255,255,255,.62);
+}
+.baykat-public-service-icon { width: 42px; height: 42px; border-radius: 12px; }
+.baykat-public-service-icon svg { width: 22px; height: 22px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.6; }
+.baykat-public-service-icon.is-green { background: #f4eee3; color: #947747; }
+.baykat-public-service-icon.is-gold { background: #f4eee3; color: #947747; }
+.baykat-public-service-icon.is-sage { background: #edf1f5; color: #536578; }
+.baykat-public-service-card h3 { margin: 20px 0 7px; color: #35495a; font-family: "Manrope", sans-serif; font-size: 15px; letter-spacing: -.02em; }
+.baykat-public-service-card p { max-width: 290px; margin: 0; color: var(--baykat-muted); font-size: 12px; line-height: 1.7; }
+
+.baykat-public-cta {
+    display: flex;
+    min-height: 190px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 30px;
+    padding: 32px clamp(25px, 6vw, 70px);
+    border-radius: 16px;
+    background: #e9edf2;
+    color: var(--baykat-ink);
+}
+.baykat-public-cta .baykat-public-eyebrow { color: #947747; }
+.baykat-public-cta h2 { margin-top: 12px; color: var(--baykat-ink); font-size: clamp(25px, 3.5vw, 38px); letter-spacing: -.04em; }
+.baykat-public-button.is-light { border-color: var(--baykat-brand); background: var(--baykat-brand); color: #fff !important; box-shadow: none; }
+.baykat-public-button.is-light:hover { background: #fff; }
+.baykat-public-footer { display: flex; min-height: 100px; align-items: center; justify-content: space-between; gap: 18px; }
+.baykat-public-footer .baykat-public-brand img { width: 108px; height: 54px; }
+.baykat-public-footer > span { color: #83877f; font-size: 11px; }
+
+@media (max-width: 760px) {
+    .baykat-public-footer,
+    .baykat-public-hero,
+    .baykat-public-services,
+    .baykat-public-cta { width: min(100% - 36px, 560px); }
+    .baykat-public-header { min-height: 74px; gap: 12px; padding-inline: 18px; }
+    .baykat-public-brand img { width: 112px; height: 54px; }
+    .baykat-public-nav { display: none; }
+    .baykat-public-login-link { min-height: 40px; padding-inline: 15px; font-size: 12px; }
+    .baykat-public-hero { grid-template-columns: minmax(0, 1fr); gap: 5px; padding-block: 55px 43px; }
+    .baykat-public-hero-copy { padding: 0; }
+    .baykat-public-hero h1 { margin-top: 17px; font-size: clamp(43px, 12vw, 61px); }
+    .baykat-public-hero-copy > p { max-width: 430px; margin-top: 16px; font-size: 14px; line-height: 1.7; }
+    .baykat-public-hero-actions { gap: 16px; margin-top: 24px; }
+    .baykat-public-button { min-height: 50px; gap: 14px; padding-inline: 17px; font-size: 12px; }
+    .baykat-public-proof { margin-top: 26px; }
+    .baykat-public-hero-art { width: min(100%, 470px); justify-self: center; margin-top: 16px; }
+    .baykat-public-art-tag { left: 0; }
+    .baykat-public-services { padding: 39px 0 48px; }
+    .baykat-public-section-heading h2 { font-size: 31px; }
+    .baykat-public-service-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; margin-top: 24px; }
+    .baykat-public-service-card { display: grid; min-height: 0; grid-template-columns: 45px 1fr; gap: 2px 14px; padding: 16px; }
+    .baykat-public-service-icon { grid-row: span 2; }
+    .baykat-public-service-card h3 { align-self: end; margin: 0; font-size: 14px; }
+    .baykat-public-service-card p { font-size: 11px; }
+    .baykat-public-cta { min-height: 0; flex-direction: column; align-items: flex-start; padding: 27px 22px; }
+    .baykat-public-cta h2 { font-size: 29px; }
+    .baykat-public-footer { min-height: 84px; flex-wrap: wrap; }
+}
+
+@media (max-width: 420px) {
+    .baykat-public-footer,
+    .baykat-public-hero,
+    .baykat-public-services,
+    .baykat-public-cta { width: calc(100% - 28px); }
+    .baykat-public-header { padding-inline: 14px; }
+    .baykat-public-hero { padding-top: 43px; }
+    .baykat-public-hero h1 { font-size: 42px; }
+    .baykat-public-hero-actions { align-items: flex-start; flex-direction: column; gap: 16px; }
+    .baykat-public-art-note { right: -2px; bottom: 6%; padding: 10px; }
+    .baykat-public-art-note small { max-width: 135px; }
+    .baykat-public-footer > span { order: 1; width: 100%; }
+    .baykat-public-footer { padding-block: 12px; }
+}
+
+/* WordPress login screen */
+body.login {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    padding: 0;
+    background-color: #e8edf4;
+    background-image: linear-gradient(rgba(242, 244, 249, .48), rgba(242, 244, 249, .34)), url("https://baykat.sn/wp-content/uploads/2022/12/Sans-titre-21.png");
+    background-position: center;
+    background-size: cover;
+    color: var(--baykat-ink);
+    font-family: "DM Sans", sans-serif;
+}
+body.login #login { position: relative; width: min(500px, calc(100% - 32px)); margin: auto; padding: 26px 0 34px; }
+body.login #login h1 { display: none; }
+body.login #login h1 a {
+    width: 200px;
+    height: 88px;
+    margin: 0 auto;
+    background-image: var(--baykat-public-logo);
+    background-position: center;
+    background-size: contain;
+}
+body.login .baykat-login-intro { display: none; }
+body.login #loginform,
+body.login #lostpasswordform,
+body.login #registerform,
+body.login #resetpassform,
+body.login #login_error,
+body.login .message,
+body.login .success {
+    padding: 34px 59px 59px;
+    border: 1px solid #e3e6e9;
+    border-radius: 0 0 10px 10px;
+    background: #fff;
+    box-shadow: 0 18px 55px rgba(53, 73, 90, .1);
+}
+body.login #loginform,
+body.login #lostpasswordform,
+body.login #registerform,
+body.login #resetpassform { position: relative; margin-top: 51px; }
+body.login #loginform { overflow: visible; border-top-color: transparent; }
+body.login .baykat-login-tabs {
+    position: absolute;
+    top: -51px;
+    right: -1px;
+    left: -1px;
+    display: grid;
+    height: 51px;
+    grid-template-columns: 1fr 1fr;
+}
+body.login .baykat-login-tabs > span {
+    display: grid;
+    place-items: center;
+    border: 1px solid #e3e6e9;
+    border-radius: 6px 6px 0 0;
+    background: linear-gradient(180deg, #fff 0%, #f3f4f6 100%);
+    color: #536578;
+    font-size: 15px;
+    font-weight: 500;
+}
+body.login .baykat-login-tabs > .is-active {
+    position: relative;
+    z-index: 1;
+    border-bottom-color: #fff;
+    background: #fff;
+}
+body.login #loginform > p:first-of-type,
+body.login #loginform > .user-pass-wrap {
+    position: relative;
+    height: 61px;
+    margin: 0 0 13px;
+    box-sizing: border-box;
+}
+body.login #loginform > p:first-of-type label,
+body.login #loginform > .user-pass-wrap label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+body.login form .input,
+body.login input[type="text"],
+body.login input[type="password"] {
+    width: 100%;
+    min-height: 61px;
+    padding: 10px 14px 10px 60px;
+    border: 1px solid #e5d1b4;
+    border-radius: 6px;
+    background: #fff;
+    color: var(--baykat-ink);
+    font-family: inherit;
+    font-size: 14px;
+    box-shadow: none;
+}
+body.login #loginform > p:first-of-type::before,
+body.login #loginform > .user-pass-wrap::before {
+    position: absolute;
+    z-index: 1;
+    top: 50%;
+    left: 15px;
+    display: grid;
+    width: 30px;
+    height: 30px;
+    place-items: center;
+    border-radius: 5px;
+    background: var(--baykat-brand);
+    color: #35495a;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+    transform: translateY(-50%);
+}
+body.login #loginform > p:first-of-type::before { content: "@"; }
+body.login #loginform > .user-pass-wrap::before { content: "▣"; font-size: 16px; }
+body.login #loginform .wp-pwd { margin-top: 0; }
+body.login #loginform .wp-pwd { height: 61px; }
+body.login #loginform .wp-pwd input { height: 61px; padding-right: 50px; }
+body.login form .input:focus,
+body.login input[type="text"]:focus,
+body.login input[type="password"]:focus {
+    border-color: #c4a273;
+    outline: 3px solid rgba(209, 177, 132, .2);
+    box-shadow: none;
+}
+body.login label { color: #35495a; font-size: 14px; font-weight: 500; }
+body.login .forgetmenot label { font-size: 14px; font-weight: 400; }
+body.login input[type="checkbox"] { accent-color: var(--baykat-brand-hover); }
+body.login .button.wp-hide-pw { min-height: 44px; color: #80643b; }
+body.login #loginform .forgetmenot {
+    display: flex;
+    min-height: 26px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 4px 0 0;
+}
+body.login #loginform .forgetmenot label { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+body.login #loginform .forgetmenot input[type="checkbox"] { width: 20px; height: 20px; margin: 0; border: 1px solid #e5d1b4; border-radius: 4px; }
+body.login #loginform .forgetmenot a { flex: 0 0 auto; color: var(--baykat-brand-hover); text-decoration: none; }
+body.login #loginform .forgetmenot a:hover { color: #947747; }
+body.login #loginform .forgetmenot button { display: none; }
+body.login #loginform .submit { float: none; margin: 23px 0 0; padding: 0; line-height: 0; }
+body.login #loginform .submit::after { display: table; clear: both; content: ""; }
+body.login #loginform .submit input.button-primary {
+    float: none;
+    height: 60px;
+    min-height: 60px;
+    margin: 0;
+    line-height: normal;
+}
+body.login .button-primary,
+body.login .button-primary:hover,
+body.login .button-primary:focus {
+    display: block;
+    width: 100%;
+    min-height: 60px;
+    padding: 0 20px;
+    border: 0;
+    border-radius: 5px;
+    background: var(--baykat-brand);
+    color: #fff;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    text-shadow: none;
+    box-shadow: none;
+}
+body.login .button-primary:hover { background: var(--baykat-brand-hover); }
+body.login #nav[hidden] { display: none !important; }
+body.login #backtoblog { padding: 0 6px; text-align: center; }
+body.login #nav a,
+body.login #backtoblog a { color: #536578; font-size: 12px; text-decoration: none; }
+body.login #nav a:hover,
+body.login #backtoblog a:hover { color: #947747; }
+body.login .privacy-policy-page-link { margin: 22px 0 0; }
+body.login .privacy-policy-link { color: #718091; font-size: 11px; }
+body.login #login_error,
+body.login .message,
+body.login .success { margin: 0 0 16px; border-left: 4px solid #d1b184; border-radius: 5px; background: #fff; font-size: 13px; }
+body.login #login_error { border-left-color: #b85347; }
+body.login .admin-email-confirm-form { padding: 24px; border-radius: 14px; background: #fff; }
+body.login .admin-email-confirm-form input[type="email"] { max-width: 100%; }
+body.login .baykat-login-site-header {
+    display: grid;
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 94px;
+    grid-template-columns: 58px minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: clamp(12px, 1.6vw, 22px);
+    padding: 10px max(20px, calc((100% - 1160px) / 2));
+    background: #fff;
+    box-shadow: 0 1px 0 rgba(53, 73, 90, .08);
+}
+body.login .baykat-login-brand { display: flex; width: 58px; height: 68px; align-items: center; justify-content: center; }
+body.login .baykat-login-brand img { display: block; width: 68px; height: 64px; object-fit: contain; }
+body.login .baykat-login-site-nav { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: clamp(8px, 1.3vw, 18px); }
+body.login .baykat-login-site-nav > a,
+body.login .baykat-login-site-nav > span {
+    flex: 0 0 auto;
+    color: #303b40;
+    font-size: 12px;
+    font-weight: 450;
+    text-decoration: none;
+}
+body.login .baykat-login-site-nav > a span { margin-left: 5px; color: var(--baykat-brand-hover); }
+body.login .baykat-login-account { display: flex; align-items: center; gap: 10px; color: #536578; font-size: 12px; white-space: nowrap; }
+body.login .baykat-login-account-icon {
+    display: grid;
+    width: 50px;
+    height: 50px;
+    place-items: center;
+    border: 1px solid #e5d1b4;
+    border-radius: 50%;
+}
+body.login .baykat-login-account-icon svg { width: 23px; height: 23px; stroke: #3b4141; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+body.login .baykat-login-account .is-current { color: #536578; }
+body.login .baykat-login-header-signup { padding-left: 14px; border-left: 1px solid #e6e0d5; color: #536578; }
+body.login .baykat-login-sell-action {
+    display: inline-flex;
+    min-height: 50px;
+    align-items: stretch;
+    overflow: hidden;
+    border-radius: 5px;
+    background: var(--baykat-brand);
+    color: #fff;
+    font-size: 14px;
+    white-space: nowrap;
+}
+body.login .baykat-login-sell-action > span:first-child { display: flex; align-items: center; justify-content: center; padding: 0 22px; }
+body.login .baykat-login-sell-plus { display: grid; width: 54px; place-items: center; background: var(--baykat-brand-hover); clip-path: polygon(15% 0, 100% 0, 100% 100%, 0 100%); font-size: 20px; }
+@media (max-width: 420px) {
+    body.login { background-position: center; }
+    body.login #login { width: calc(100% - 20px); padding: 22px 0 20px; }
+    body.login #loginform,
+    body.login #lostpasswordform,
+    body.login #registerform,
+    body.login #resetpassform { padding: 28px 18px 25px; }
+    body.login .baykat-login-site-header { min-height: 66px; grid-template-columns: 1fr auto; padding: 5px 12px; }
+    body.login .baykat-login-brand { width: 52px; height: 54px; }
+    body.login .baykat-login-brand img { width: 58px; height: 52px; }
+    body.login .baykat-login-site-nav,
+    body.login .baykat-login-sell-action,
+    body.login .baykat-login-account-icon,
+    body.login .baykat-login-header-signup { display: none; }
+    body.login .baykat-login-account { justify-self: end; }
+    body.login #loginform .forgetmenot { flex-wrap: wrap; }
+    body.login #loginform .forgetmenot label,
+    body.login #loginform .forgetmenot a { font-size: 12px; }
+    body.login form .input,
+    body.login input[type="text"],
+    body.login input[type="password"] { font-size: 16px; }
+}
+
+@media (min-width: 421px) and (max-width: 900px) {
+    body.login .baykat-login-site-header { grid-template-columns: 58px minmax(0, 1fr) auto; }
+    body.login .baykat-login-site-nav > span:last-child,
+    body.login .baykat-login-sell-action { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .baykat-public-site *,
+    body.login * { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
