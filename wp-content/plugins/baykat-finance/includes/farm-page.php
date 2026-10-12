@@ -63,10 +63,24 @@ function baykat_farm_shortcode() {
     ?>
     <main class="baykat-farm-app">
         <header class="baykat-farm-site-header">
+            <button
+                class="baykat-farm-mobile-menu-toggle"
+                type="button"
+                aria-label="Ouvrir le menu de navigation"
+                aria-expanded="false"
+                aria-controls="baykat-farm-site-navigation baykat-farm-account-navigation baykat-farm-module-navigation"
+                data-mobile-menu-toggle
+            >
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M4 7h16"></path>
+                    <path d="M4 12h16"></path>
+                    <path d="M4 17h16"></path>
+                </svg>
+            </button>
             <a class="baykat-farm-site-logo" href="<?php echo esc_url( home_url( '/' ) ); ?>" aria-label="Baykat — Accueil">
                 <img src="<?php echo esc_url( BAYKAT_FINANCE_URL . 'image.png' ); ?>" alt="Baykat">
             </a>
-            <nav class="baykat-farm-site-navigation" aria-label="Navigation principale">
+            <nav class="baykat-farm-site-navigation" id="baykat-farm-site-navigation" aria-label="Navigation principale">
                 <a class="baykat-farm-home-link" href="<?php echo esc_url( home_url( '/' ) ); ?>">Accueil <span aria-hidden="true">⌄</span></a>
                 <span aria-disabled="true">Infos du marché</span>
                 <span aria-disabled="true">A propos de BAYKAT</span>
@@ -87,7 +101,7 @@ function baykat_farm_shortcode() {
             </div>
         </header>
 
-        <nav class="baykat-farm-account-navigation" aria-label="Navigation du compte">
+        <nav class="baykat-farm-account-navigation" id="baykat-farm-account-navigation" aria-label="Navigation du compte">
             <span aria-disabled="true">Ajouter nouveau</span>
             <span aria-disabled="true">Mes annonces</span>
             <span aria-disabled="true">Favoris</span>

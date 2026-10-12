@@ -163,18 +163,21 @@ function baykat_farm_render_dashboard() {
 
                 <div class="baykat-farm-hero-actions">
                     <!-- Bouton style "Vendre sur BAYKAT" -->
-                    <a class="baykat-farm-sell-button" href="#baykat-farm-add-title">
+                    <a class="baykat-farm-sell-button" href="#baykat-farm-add-title" data-open-management-target="baykat-farm-add-title">
                         <span class="baykat-farm-sell-button-label">＋ Ajouter une ferme</span>
                         <span class="baykat-farm-sell-button-plus" aria-hidden="true">+</span>
                     </a>
-                    <a class="baykat-farm-cta-ghost" href="#baykat-workspace-parcels">
+                    <button class="baykat-farm-stats-button" type="button" data-open-stats-modal>
+                        <span aria-hidden="true">▦</span> Statistiques &amp; gestion
+                    </button>
+                    <a class="baykat-farm-cta-ghost" href="#baykat-workspace-parcels" data-open-management-target="baykat-workspace-parcels">
                         Gérer mes parcelles
                         <span aria-hidden="true">→</span>
                     </a>
                 </div>
             </div>
 
-            <a class="baykat-farm-scroll-hint" href="#baykat-farm-kpi" aria-label="Voir les indicateurs">
+            <a class="baykat-farm-scroll-hint" href="#baykat-farm-daily" aria-label="Voir le quotidien de vos exploitations">
                 <span></span>
             </a>
         </header>
@@ -186,75 +189,13 @@ function baykat_farm_render_dashboard() {
             </div>
         <?php endif; ?>
 
-        <!-- ============================= KPI BAND ============================= -->
-        <section class="baykat-farm-kpi-band" id="baykat-farm-kpi" aria-label="Indicateurs clés">
-            <div class="baykat-farm-kpi-band-inner">
-
-                <a class="baykat-farm-kpi-tile" href="#baykat-workspace-farms">
-                    <span class="baykat-farm-kpi-tile-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M3 21h18"/><path d="M5 21V9l7-5 7 5v12"/><path d="M9 21v-6h6v6"/>
-                        </svg>
-                    </span>
-                    <span class="baykat-farm-kpi-tile-label">Fermes</span>
-                    <strong class="baykat-farm-kpi-tile-value"><?php echo esc_html( number_format_i18n( count( $farms ) ) ); ?></strong>
-                </a>
-
-                <a class="baykat-farm-kpi-tile" href="#baykat-workspace-farms">
-                    <span class="baykat-farm-kpi-tile-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16"/><path d="M9 4v16"/>
-                        </svg>
-                    </span>
-                    <span class="baykat-farm-kpi-tile-label">Surface</span>
-                    <strong class="baykat-farm-kpi-tile-value"><?php echo esc_html( number_format( $total_area, 0, ',', ' ' ) ); ?><small>ha</small></strong>
-                </a>
-
-                <a class="baykat-farm-kpi-tile" href="#baykat-workspace-parcels">
-                    <span class="baykat-farm-kpi-tile-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M3 6l3-3 3 3"/><path d="M6 3v18"/><path d="M21 18l-3 3-3-3"/><path d="M18 21V3"/>
-                        </svg>
-                    </span>
-                    <span class="baykat-farm-kpi-tile-label">Parcelles</span>
-                    <strong class="baykat-farm-kpi-tile-value"><?php echo esc_html( number_format_i18n( count( $parcels ) ) ); ?></strong>
-                </a>
-
-                <a class="baykat-farm-kpi-tile is-accent" href="#baykat-workspace-crops">
-                    <span class="baykat-farm-kpi-tile-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 22V12"/><path d="M12 12c0-4 3-7 8-7 0 5-3 8-8 8z"/><path d="M12 12c0-4-3-7-8-7 0 5 3 8 8 8z"/>
-                        </svg>
-                    </span>
-                    <span class="baykat-farm-kpi-tile-label">En culture</span>
-                    <strong class="baykat-farm-kpi-tile-value"><?php echo esc_html( number_format_i18n( count( $growing_crops ) ) ); ?></strong>
-                </a>
-
-                <a class="baykat-farm-kpi-tile" href="#baykat-workspace-crops">
-                    <span class="baykat-farm-kpi-tile-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/>
-                        </svg>
-                    </span>
-                    <span class="baykat-farm-kpi-tile-label">Récoltes</span>
-                    <strong class="baykat-farm-kpi-tile-value"><?php echo esc_html( number_format_i18n( count( $upcoming_harvests ) ) ); ?></strong>
-                </a>
-
-                <a class="baykat-farm-kpi-tile is-finance" href="#baykat-workspace-finances">
-                    <span class="baykat-farm-kpi-tile-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                        </svg>
-                    </span>
-                    <span class="baykat-farm-kpi-tile-label">Solde</span>
-                    <strong class="baykat-farm-kpi-tile-value"><?php echo esc_html( number_format( $balance_value, 0, ',', ' ' ) ); ?><small>F</small></strong>
-                </a>
-
-            </div>
-        </section>
-
-        <!-- ============================= 3 TIMELINES ÉGALISÉES ============================= -->
-        <div class="baykat-farm-dashboard-overview">
+        <button class="baykat-farm-daily-button" id="baykat-farm-daily" type="button" data-open-daily-modal>
+            <span class="baykat-farm-daily-button-icon" aria-hidden="true">◷</span>
+            <span><strong>Le quotidien de vos exploitations</strong><small>Récoltes, journal et finances</small></span>
+            <span class="baykat-farm-daily-button-arrow" aria-hidden="true">→</span>
+        </button>
+        <template data-dashboard-daily-template>
+            <div class="baykat-farm-dashboard-overview">
 
             <section class="baykat-farm-panel baykat-farm-dashboard-list" aria-labelledby="baykat-farm-upcoming-title">
                 <header class="baykat-farm-panel-heading">
@@ -293,7 +234,7 @@ function baykat_farm_render_dashboard() {
                         <p class="baykat-farm-empty-state">Aucune récolte planifiée pour le moment.</p>
                     <?php endif; ?>
                 </div>
-                <a class="baykat-farm-dashboard-more" href="#baykat-workspace-crops">Voir toutes les cultures <span aria-hidden="true">→</span></a>
+                <a class="baykat-farm-dashboard-more" href="#baykat-workspace-crops" data-open-management-target="baykat-workspace-crops">Voir toutes les cultures <span aria-hidden="true">→</span></a>
             </section>
 
             <section class="baykat-farm-panel baykat-farm-dashboard-list" aria-labelledby="baykat-farm-recent-activities-title">
@@ -323,7 +264,7 @@ function baykat_farm_render_dashboard() {
                         <p class="baykat-farm-empty-state">Les activités de votre ferme apparaîtront ici.</p>
                     <?php endif; ?>
                 </div>
-                <a class="baykat-farm-dashboard-more" href="#baykat-workspace-activities">Voir le journal <span aria-hidden="true">→</span></a>
+                <a class="baykat-farm-dashboard-more" href="#baykat-workspace-activities" data-open-management-target="baykat-workspace-activities">Voir le journal <span aria-hidden="true">→</span></a>
             </section>
 
             <section class="baykat-farm-panel baykat-farm-dashboard-list" aria-labelledby="baykat-farm-recent-finances-title">
@@ -356,9 +297,10 @@ function baykat_farm_render_dashboard() {
                         <p class="baykat-farm-empty-state">Aucune transaction n'a encore été enregistrée.</p>
                     <?php endif; ?>
                 </div>
-                <a class="baykat-farm-dashboard-more" href="#baykat-workspace-finances">Voir les finances <span aria-hidden="true">→</span></a>
+                <a class="baykat-farm-dashboard-more" href="#baykat-workspace-finances" data-open-management-target="baykat-workspace-finances">Voir les finances <span aria-hidden="true">→</span></a>
             </section>
-        </div>
+            </div>
+        </template>
 
         <!-- ============================= SHOWCASE FERMES ============================= -->
         <?php if ( $farms ) : ?>
@@ -368,7 +310,7 @@ function baykat_farm_render_dashboard() {
                     <span class="baykat-farm-eyebrow">Mes exploitations</span>
                     <h3 id="baykat-farm-showcase-title">Vos fermes</h3>
                 </div>
-                <a class="baykat-farm-dashboard-more" href="#baykat-workspace-farms">Tout gérer <span aria-hidden="true">→</span></a>
+                <a class="baykat-farm-dashboard-more" href="#baykat-workspace-farms" data-open-management-target="baykat-workspace-farms">Tout gérer <span aria-hidden="true">→</span></a>
             </header>
             <div class="baykat-farm-showcase-grid">
                 <?php foreach ( array_slice( $farms, 0, 3 ) as $farm ) :
@@ -378,7 +320,7 @@ function baykat_farm_render_dashboard() {
                     $growing      = count( array_filter( $farm_crops, function ( $c ) { return 'growing' === $c->status; } ) );
                 ?>
                     <article class="baykat-farm-showcase-card">
-                        <a class="baykat-farm-showcase-link" href="#baykat-workspace-farms" aria-label="<?php echo esc_attr( 'Voir ' . $farm->name ); ?>">
+                        <a class="baykat-farm-showcase-link" href="#baykat-workspace-farms" data-open-farm-modal="<?php echo esc_attr( $farm->id ); ?>" aria-label="<?php echo esc_attr( 'Voir les informations de ' . $farm->name ); ?>">
                             <div class="baykat-farm-showcase-media">
                                 <?php if ( $image ) : ?>
                                     <img src="<?php echo esc_url( $image ); ?>" alt="<?php echo esc_attr( $farm->name ); ?>" loading="lazy">
@@ -412,13 +354,7 @@ function baykat_farm_render_dashboard() {
         </section>
         <?php endif; ?>
 
-        <!-- ============================= WORKSPACE ============================= -->
-        <header class="baykat-farm-workspace-heading">
-            <span class="baykat-farm-eyebrow">Gestion complète</span>
-            <h3>Tout votre espace agricole</h3>
-            <p>Consultez, ajoutez ou modifiez vos données sans quitter cette page.</p>
-        </header>
-
+        <template data-dashboard-workspace-template>
         <details class="baykat-farm-workspace-section" id="baykat-workspace-parcels">
             <summary>
                 <span class="baykat-farm-workspace-summary">
@@ -534,8 +470,10 @@ function baykat_farm_render_dashboard() {
                     <div class="baykat-farm-record-grid baykat-farm-visual-grid" id="baykat-farm-farm-list">
                         <?php foreach ( $farms as $farm ) : ?>
                             <article
+                                id="baykat-farm-record-<?php echo esc_attr( $farm->id ); ?>"
                                 class="baykat-farm-record-card baykat-farm-visual-card"
                                 data-farm-record-card
+                                data-farm-id="<?php echo esc_attr( $farm->id ); ?>"
                                 data-search-text="<?php echo esc_attr( $farm->name . ' ' . $farm->location . ' ' . $farm->area_ha ); ?>"
                             >
                                 <?php echo baykat_farm_render_image( $farm->image_id, 'medium_large' ); // phpcs:ignore ?>
@@ -545,6 +483,7 @@ function baykat_farm_render_dashboard() {
                                     <?php if ( null !== $farm->area_ha ) : ?>
                                         <span><?php echo esc_html( number_format( (float) $farm->area_ha, 3, ',', ' ' ) ); ?> ha</span>
                                     <?php endif; ?>
+                                    <button class="baykat-farm-open-record" type="button" data-open-farm-modal="<?php echo esc_attr( $farm->id ); ?>">Voir la ferme</button>
                                     <?php baykat_farm_render_image_update_form( 'farm', $farm->id, $farm->image_id ? 'Changer la photo' : 'Ajouter une photo' ); ?>
                                     <details class="baykat-farm-record-actions">
                                         <summary>Modifier la ferme</summary>
@@ -580,6 +519,56 @@ function baykat_farm_render_dashboard() {
                 <?php endif; ?>
             </section>
         </details>
+        </template>
+
+        <dialog class="baykat-farm-dashboard-modal" data-farm-dashboard-dialog aria-labelledby="baykat-farm-modal-title">
+            <div class="baykat-farm-dashboard-modal-shell">
+                <header class="baykat-farm-dashboard-modal-header">
+                    <div>
+                        <span class="baykat-farm-eyebrow">Ferme BAYKAT</span>
+                        <h2 id="baykat-farm-modal-title" data-dashboard-modal-title>Statistiques &amp; gestion</h2>
+                    </div>
+                    <button class="baykat-farm-modal-close" type="button" data-close-dashboard-modal aria-label="Fermer la fenêtre">×</button>
+                </header>
+                <div class="baykat-farm-dashboard-modal-body" data-dashboard-modal-body></div>
+                <template data-dashboard-stats-template>
+                    <div class="baykat-farm-stats-grid">
+                        <article><span>Fermes</span><strong><?php echo esc_html( number_format_i18n( count( $farms ) ) ); ?></strong></article>
+                        <article><span>Surface totale</span><strong><?php echo esc_html( number_format( $total_area, 2, ',', ' ' ) ); ?><small> ha</small></strong></article>
+                        <article><span>Parcelles</span><strong><?php echo esc_html( number_format_i18n( count( $parcels ) ) ); ?></strong></article>
+                        <article><span>Cultures en cours</span><strong><?php echo esc_html( number_format_i18n( count( $growing_crops ) ) ); ?></strong></article>
+                        <article><span>Récoltes à venir</span><strong><?php echo esc_html( number_format_i18n( count( $upcoming_harvests ) ) ); ?></strong></article>
+                        <article><span>Activités au journal</span><strong><?php echo esc_html( number_format_i18n( count( $activities ) ) ); ?></strong></article>
+                        <article><span>Transactions</span><strong><?php echo esc_html( number_format_i18n( $all_tx_count ) ); ?></strong></article>
+                        <article class="is-finance"><span>Solde actuel</span><strong><?php echo esc_html( number_format( $balance_value, 0, ',', ' ' ) ); ?><small> F</small></strong></article>
+                    </div>
+                    <?php if ( $farms ) : ?>
+                        <section class="baykat-farm-stats-farms" aria-labelledby="baykat-farm-stats-farms-title">
+                            <h3 id="baykat-farm-stats-farms-title">Détail par ferme</h3>
+                            <ul>
+                                <?php foreach ( $farms as $farm ) :
+                                    $farm_parcels = isset( $parcels_by_farm[ $farm->id ] ) ? $parcels_by_farm[ $farm->id ] : array();
+                                    $farm_crops   = isset( $crops_by_farm[ $farm->id ] ) ? $crops_by_farm[ $farm->id ] : array();
+                                    $farm_growing = count( array_filter( $farm_crops, function ( $crop ) { return 'growing' === $crop->status; } ) );
+                                ?>
+                                    <li><strong><?php echo esc_html( $farm->name ); ?></strong><span><?php echo esc_html( number_format( (float) $farm->area_ha, 2, ',', ' ' ) ); ?> ha · <?php echo esc_html( number_format_i18n( count( $farm_parcels ) ) ); ?> parcelles · <?php echo esc_html( number_format_i18n( $farm_growing ) ); ?> cultures en cours</span></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </section>
+                    <?php endif; ?>
+                </template>
+                <template data-dashboard-workspace-template-modal>
+                    <section class="baykat-farm-modal-workspace" aria-label="Gestion de l’exploitation">
+                        <header class="baykat-farm-modal-workspace-heading">
+                            <span class="baykat-farm-eyebrow">Gestion de l’exploitation</span>
+                            <h3>Gérer les données de votre ferme</h3>
+                            <p>Ajoutez et retrouvez ici vos parcelles, cultures, activités, finances et stocks.</p>
+                        </header>
+                        <div data-dashboard-workspace-target></div>
+                    </section>
+                </template>
+            </div>
+        </dialog>
     </div>
     <?php
 }

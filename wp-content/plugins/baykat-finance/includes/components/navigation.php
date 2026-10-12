@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 function baykat_farm_render_navigation( $modules, $active, $base_url ) {
     ?>
-    <nav class="baykat-farm-navigation" aria-label="Navigation de Gérer ma ferme">
+    <nav class="baykat-farm-navigation" id="baykat-farm-module-navigation" aria-label="Navigation de Gérer ma ferme">
         <?php foreach ( $modules as $slug => $module ) : ?>
             <?php
             $is_active = $slug === $active;

@@ -141,6 +141,389 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
+        function initializeMobileNavigation() {
+            const toggle = app.querySelector('[data-mobile-menu-toggle]');
+
+            if (!toggle || toggle.dataset.mobileMenuReady) {
+                return;
+            }
+
+            toggle.dataset.mobileMenuReady = 'true';
+
+            function setMenuOpen(isOpen) {
+                app.classList.toggle('is-mobile-nav-open', isOpen);
+                toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                toggle.setAttribute('aria-label', isOpen ? 'Fermer le menu de navigation' : 'Ouvrir le menu de navigation');
+            }
+
+            toggle.addEventListener('click', function () {
+                setMenuOpen(toggle.getAttribute('aria-expanded') !== 'true');
+            });
+
+            app.addEventListener('click', function (event) {
+                if (event.target.closest('.baykat-farm-site-navigation a, .baykat-farm-account-navigation a, .baykat-farm-navigation a')) {
+                    setMenuOpen(false);
+                }
+            });
+
+            app.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape' && app.classList.contains('is-mobile-nav-open')) {
+                    setMenuOpen(false);
+                    toggle.focus();
+                }
+            });
+
+            window.addEventListener('resize', function () {
+                if (window.matchMedia('(min-width: 641px)').matches) {
+                    setMenuOpen(false);
+                }
+            });
+        }
+
+        function initializeDashboardModals() {
+            if (app.dataset.dashboardModalsReady) {
+                return;
+            }
+
+            app.dataset.dashboardModalsReady = 'true';
+            const modalHistory = [];
+
+            function findDashboardRecord(attribute, value) {
+                const liveRecord = Array.from(app.querySelectorAll('[' + attribute + ']')).find(function (record) {
+                    return record.getAttribute(attribute) === String(value);
+                });
+
+                if (liveRecord) {
+                    return liveRecord;
+                }
+
+                const workspace = app.querySelector('[data-dashboard-workspace-template]');
+                if (!workspace) {
+                    return null;
+                }
+
+                return Array.from(workspace.content.querySelectorAll('[' + attribute + ']')).find(function (record) {
+                    return record.getAttribute(attribute) === String(value);
+                }) || null;
+            }
+
+            function showModal(dialog, title, content) {
+                const modalTitle = dialog.querySelector('[data-dashboard-modal-title]');
+                const modalBody = dialog.querySelector('[data-dashboard-modal-body]');
+                modalTitle.textContent = title;
+                modalBody.replaceChildren(content);
+
+                if (!dialog.open) {
+                    dialog.showModal();
+                }
+            }
+
+            function cloneRecord(record) {
+                const clone = record.cloneNode(true);
+                const idMap = new Map();
+
+                clone.hidden = false;
+                clone.classList.add('baykat-farm-modal-record');
+                clone.removeAttribute('data-farm-record-card');
+                clone.removeAttribute('id');
+                clone.querySelectorAll('[data-open-farm-modal], [data-open-parcel-modal]').forEach(function (trigger) {
+                    trigger.remove();
+                });
+
+                clone.querySelectorAll('[id]').forEach(function (element) {
+                    const oldId = element.id;
+                    const newId = oldId + '-modal';
+                    idMap.set(oldId, newId);
+                    element.id = newId;
+                });
+                clone.querySelectorAll('[for]').forEach(function (element) {
+                    if (idMap.has(element.htmlFor)) {
+                        element.htmlFor = idMap.get(element.htmlFor);
+                    }
+                });
+                clone.querySelectorAll('[aria-labelledby], [aria-describedby]').forEach(function (element) {
+                    ['aria-labelledby', 'aria-describedby'].forEach(function (attribute) {
+                        const value = element.getAttribute(attribute);
+
+                        if (value) {
+                            element.setAttribute(attribute, value.split(/\s+/).map(function (id) {
+                                return idMap.get(id) || id;
+                            }).join(' '));
+                        }
+                    });
+                });
+
+                return clone;
+            }
+
+            function openParcelModal(dialog, parcelId, addBackButton) {
+                const record = findDashboardRecord('data-parcel-id', parcelId);
+
+                if (!record) {
+                    console.error('Baykat Farm could not find parcel details for modal:', parcelId);
+                    return;
+                }
+
+                if (addBackButton) {
+                    const modalTitle = dialog.querySelector('[data-dashboard-modal-title]');
+                    const modalBody = dialog.querySelector('[data-dashboard-modal-body]');
+                    modalHistory.push({
+                        title: modalTitle.textContent,
+                        nodes: Array.from(modalBody.childNodes)
+                    });
+                }
+
+                const content = document.createElement('div');
+                const clonedRecord = cloneRecord(record);
+                const name = record.querySelector('h4');
+                content.className = 'baykat-farm-modal-detail';
+
+                if (modalHistory.length) {
+                    const backButton = document.createElement('button');
+                    backButton.className = 'baykat-farm-modal-back';
+                    backButton.type = 'button';
+                    backButton.dataset.modalBack = 'true';
+                    backButton.textContent = '← Retour';
+                    content.appendChild(backButton);
+                }
+
+                content.appendChild(clonedRecord);
+                showModal(dialog, name ? name.textContent : 'Détail de la parcelle', content);
+                initializeImagePreviews(content);
+            }
+
+            function openFarmModal(dialog, farmId) {
+                const record = findDashboardRecord('data-farm-id', farmId);
+
+                if (!record) {
+                    console.error('Baykat Farm could not find farm details for modal:', farmId);
+                    return;
+                }
+
+                modalHistory.length = 0;
+                const content = document.createElement('div');
+                const farmDetail = document.createElement('div');
+                const clonedFarm = cloneRecord(record);
+                const farmName = record.querySelector('h4');
+                const gallery = document.createElement('section');
+                const galleryTitle = document.createElement('h3');
+                const galleryGrid = document.createElement('div');
+                const workspace = app.querySelector('[data-dashboard-workspace-template]');
+                const modalWorkspaceTemplate = dialog.querySelector('[data-dashboard-workspace-template-modal]');
+                const parcelRoot = workspace ? workspace.content : app;
+                const parcels = Array.from(parcelRoot.querySelectorAll('[data-parcel-farm-id]'))
+                    .filter(function (parcel) {
+                        return parcel.dataset.parcelFarmId === String(farmId);
+                    });
+
+                content.className = 'baykat-farm-modal-detail';
+                farmDetail.className = 'baykat-farm-modal-farm-detail';
+                farmDetail.appendChild(clonedFarm);
+                content.appendChild(farmDetail);
+                gallery.className = 'baykat-farm-modal-parcels';
+                galleryTitle.textContent = 'Aperçu des parcelles';
+                galleryGrid.className = 'baykat-farm-modal-parcel-grid';
+                gallery.appendChild(galleryTitle);
+
+                if (parcels.length) {
+                    parcels.forEach(function (parcel) {
+                        const button = document.createElement('button');
+                        const image = parcel.querySelector('.baykat-farm-card-image');
+                        const parcelName = parcel.querySelector('h4');
+                        const meta = parcel.querySelector('.baykat-farm-card-meta');
+                        const copy = document.createElement('span');
+
+                        button.className = 'baykat-farm-modal-parcel';
+                        button.type = 'button';
+                        button.dataset.openParcelModal = parcel.dataset.parcelId;
+
+                        if (image) {
+                            button.appendChild(image.cloneNode(true));
+                        }
+
+                        const name = document.createElement('strong');
+                        name.textContent = parcelName ? parcelName.textContent : 'Parcelle';
+                        copy.appendChild(name);
+
+                        if (meta) {
+                            const detail = document.createElement('small');
+                            detail.textContent = meta.textContent.trim().replace(/\s+/g, ' · ');
+                            copy.appendChild(detail);
+                        }
+
+                        button.appendChild(copy);
+                        galleryGrid.appendChild(button);
+                    });
+                    gallery.appendChild(galleryGrid);
+                } else {
+                    const empty = document.createElement('p');
+                    empty.className = 'baykat-farm-empty-state';
+                    empty.textContent = 'Aucune parcelle n’est encore rattachée à cette ferme.';
+                    gallery.appendChild(empty);
+                }
+
+                content.appendChild(gallery);
+
+                if (workspace && modalWorkspaceTemplate) {
+                    const management = modalWorkspaceTemplate.content.firstElementChild.cloneNode(true);
+                    const managementTarget = management.querySelector('[data-dashboard-workspace-target]');
+                    managementTarget.appendChild(workspace.content.cloneNode(true));
+                    content.appendChild(management);
+                }
+
+                showModal(dialog, farmName ? farmName.textContent : 'Détail de la ferme', content);
+                initializeImagePreviews(content);
+                initializeRecordFilters(content);
+            }
+
+            function openManagementModal(dialog, targetId) {
+                const statsTemplate = dialog.querySelector('[data-dashboard-stats-template]');
+                const workspaceTemplate = app.querySelector('[data-dashboard-workspace-template]');
+                const modalWorkspaceTemplate = dialog.querySelector('[data-dashboard-workspace-template-modal]');
+                const statsContent = statsTemplate && statsTemplate.content.firstElementChild;
+                const workspaceContent = modalWorkspaceTemplate && modalWorkspaceTemplate.content.firstElementChild;
+
+                if (!statsContent || !workspaceContent || !workspaceTemplate) {
+                    console.error('Baykat Farm could not find dashboard statistics or management content.');
+                    return;
+                }
+
+                modalHistory.length = 0;
+                const content = document.createElement('div');
+                const stats = statsContent.cloneNode(true);
+                const workspaceView = workspaceContent.cloneNode(true);
+                const workspaceTarget = workspaceView.querySelector('[data-dashboard-workspace-target]');
+                content.className = 'baykat-farm-dashboard-content';
+                content.appendChild(stats);
+                content.appendChild(workspaceView);
+                workspaceTarget.appendChild(workspaceTemplate.content.cloneNode(true));
+                showModal(dialog, 'Statistiques & gestion', content);
+                initializeImagePreviews(content);
+                initializeRecordFilters(content);
+
+                if (targetId) {
+                    const target = content.querySelector('#' + targetId);
+
+                    if (target) {
+                        let disclosure = target.closest('details');
+
+                        while (disclosure) {
+                            disclosure.open = true;
+                            disclosure = disclosure.parentElement.closest('details');
+                        }
+
+                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+            }
+
+            function openDailyModal(dialog) {
+                const dailyTemplate = app.querySelector('[data-dashboard-daily-template]');
+                const dailyContent = dailyTemplate && dailyTemplate.content.firstElementChild;
+
+                if (!dailyContent) {
+                    console.error('Baykat Farm could not find daily dashboard content.');
+                    return;
+                }
+
+                modalHistory.length = 0;
+                showModal(dialog, 'Le quotidien de vos exploitations', dailyContent.cloneNode(true));
+            }
+
+            app.addEventListener('click', function (event) {
+                const trigger = event.target.closest('[data-open-daily-modal], [data-open-stats-modal], [data-open-management-target], [data-open-farm-modal], [data-open-parcel-modal], [data-modal-back], [data-close-dashboard-modal]');
+
+                if (trigger && trigger.matches('a[data-open-farm-modal], a[data-open-management-target]')) {
+                    if (
+                        event.button !== 0
+                        || event.metaKey
+                        || event.ctrlKey
+                        || event.shiftKey
+                        || event.altKey
+                        || trigger.target === '_blank'
+                    ) {
+                        return;
+                    }
+                    event.preventDefault();
+                }
+
+                if (!trigger) {
+                    const dialog = app.querySelector('[data-farm-dashboard-dialog]');
+                    const parcelCard = event.target.closest('[data-parcel-record-card]');
+                    const clickedControl = event.target.closest('a, button, input, select, textarea, summary, form');
+
+                    if (dialog && parcelCard && !clickedControl) {
+                        openParcelModal(dialog, parcelCard.dataset.parcelId, false);
+                    }
+                    return;
+                }
+
+                const dialog = app.querySelector('[data-farm-dashboard-dialog]');
+
+                if (!dialog) {
+                    const card = trigger.closest('.baykat-farm-record-card');
+                    const actions = card && card.querySelector('.baykat-farm-record-actions');
+
+                    if (actions) {
+                        actions.open = true;
+                        actions.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    return;
+                }
+
+                const modalTitle = dialog.querySelector('[data-dashboard-modal-title]');
+                const modalBody = dialog.querySelector('[data-dashboard-modal-body]');
+
+                if (trigger.matches('[data-close-dashboard-modal]')) {
+                    dialog.close();
+                    modalHistory.length = 0;
+                    return;
+                }
+
+                if (trigger.matches('[data-modal-back]')) {
+                    const previous = modalHistory.pop();
+
+                    if (previous) {
+                        modalTitle.textContent = previous.title;
+                        modalBody.replaceChildren.apply(modalBody, previous.nodes);
+                        initializeImagePreviews(modalBody);
+                    }
+                    return;
+                }
+
+                if (trigger.matches('[data-open-daily-modal]')) {
+                    openDailyModal(dialog);
+                } else if (trigger.matches('[data-open-stats-modal]')) {
+                    openManagementModal(dialog, '');
+                } else if (trigger.matches('[data-open-management-target]')) {
+                    openManagementModal(dialog, trigger.dataset.openManagementTarget);
+                } else if (trigger.matches('[data-open-farm-modal]')) {
+                    openFarmModal(dialog, trigger.dataset.openFarmModal);
+                } else if (trigger.matches('[data-open-parcel-modal]')) {
+                    openParcelModal(dialog, trigger.dataset.openParcelModal, dialog.open);
+                }
+            });
+
+            app.addEventListener('click', function (event) {
+                const dialog = app.querySelector('[data-farm-dashboard-dialog]');
+
+                if (dialog && event.target === dialog) {
+                    dialog.close();
+                    modalHistory.length = 0;
+                }
+            });
+            app.addEventListener('cancel', function (event) {
+                if (event.target.matches('[data-farm-dashboard-dialog]')) {
+                    modalHistory.length = 0;
+                }
+            }, true);
+            app.addEventListener('close', function (event) {
+                if (event.target.matches('[data-farm-dashboard-dialog]')) {
+                    modalHistory.length = 0;
+                }
+            });
+        }
+
         async function loadApplication(url, options) {
             const requestOptions = options || {};
             const targetUrl = new URL(url, window.location.href);
@@ -264,6 +647,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (
                 !link
+                || link.hasAttribute('data-open-farm-modal')
+                || link.hasAttribute('data-open-management-target')
                 || event.button !== 0
                 || event.metaKey
                 || event.ctrlKey
@@ -361,5 +746,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         initializeImagePreviews(app);
         initializeRecordFilters(app);
+        initializeDashboardModals();
+        initializeMobileNavigation();
     });
 });

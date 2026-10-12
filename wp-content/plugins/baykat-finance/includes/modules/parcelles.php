@@ -85,8 +85,12 @@ function baykat_farm_render_parcelles( $process_actions = true ) {
                 <div class="baykat-farm-record-grid baykat-farm-visual-grid" id="baykat-farm-parcel-list">
                     <?php foreach ( $parcels as $parcel ) : ?>
                         <article
+                            id="baykat-parcel-record-<?php echo esc_attr( $parcel->id ); ?>"
                             class="baykat-farm-record-card baykat-farm-visual-card"
                             data-farm-record-card
+                            data-parcel-record-card
+                            data-parcel-farm-id="<?php echo esc_attr( $parcel->farm_id ); ?>"
+                            data-parcel-id="<?php echo esc_attr( $parcel->id ); ?>"
                             data-search-text="<?php echo esc_attr( $parcel->farm_name . ' ' . $parcel->name . ' ' . ( isset( $statuses[ $parcel->status ] ) ? $statuses[ $parcel->status ] : $parcel->status ) . ' ' . ( null === $parcel->area_m2 ? '' : $parcel->area_m2 ) ); ?>"
                             data-farm-record-filter-value="<?php echo esc_attr( $parcel->status ); ?>"
                         >
@@ -98,6 +102,7 @@ function baykat_farm_render_parcelles( $process_actions = true ) {
                                     <span><?php echo null === $parcel->area_m2 ? 'Superficie non renseignée' : esc_html( number_format( (float) $parcel->area_m2, 2, ',', ' ' ) . ' m²' ); ?></span>
                                     <span class="baykat-farm-status"><?php echo esc_html( isset( $statuses[ $parcel->status ] ) ? $statuses[ $parcel->status ] : $parcel->status ); ?></span>
                                 </div>
+                                <button class="baykat-farm-open-record" type="button" data-open-parcel-modal="<?php echo esc_attr( $parcel->id ); ?>">Voir la parcelle</button>
                                 <?php baykat_farm_render_image_update_form( 'parcel', $parcel->id, $parcel->image_id ? 'Changer la photo' : 'Ajouter une photo' ); ?>
                                 <details class="baykat-farm-record-actions">
                                     <summary>Modifier la parcelle</summary>
