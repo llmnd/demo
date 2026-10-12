@@ -397,9 +397,9 @@ function baykat_farm_render_dashboard() {
                 <span class="baykat-farm-workspace-count"><?php echo esc_html( number_format_i18n( $all_tx_count ) ); ?></span>
             </summary>
             <div class="baykat-farm-workspace-content baykat-farm-workspace-finances">
-                <details class="baykat-farm-workspace-subsection" id="baykat-workspace-finance-general">
-                    <summary>Revenus, dépenses et transactions générales</summary>
-                    <?php echo baykat_finance_render_frontend_page( 'all', false ); // phpcs:ignore ?>
+                <details class="baykat-farm-workspace-subsection" id="baykat-workspace-finance-general" open>
+                    <summary>Autres revenus et dépenses <span>hors intrants et ventes</span></summary>
+                    <?php echo baykat_finance_render_frontend_page( 'all', false, true, 'general' ); // phpcs:ignore ?>
                 </details>
                 <details class="baykat-farm-workspace-subsection" id="baykat-workspace-finance-input">
                     <summary>Achats et intrants <span><?php echo esc_html( number_format_i18n( count( baykat_finance_get_user_transactions( $user_id, 'input' )['transactions'] ) ) ); ?></span></summary>

@@ -329,6 +329,7 @@ function baykat_farm_process_record_action( $user_id, $entity ) {
 
     if ( $is_delete ) {
         $dependency_count = 0;
+        $preserved_finance_count = 0;
 
         if ( 'farm' === $entity ) {
             $parcels_table = baykat_farm_table_name( 'parcels' );
@@ -362,12 +363,35 @@ function baykat_farm_process_record_action( $user_id, $entity ) {
                     $user_id
                 )
             );
+        } elseif ( 'activity' === $entity ) {
+            $transactions_table = baykat_finance_get_table_name();
+            $preserved_finance_count = (int) $wpdb->get_var(
+                $wpdb->prepare(
+                    "SELECT COUNT(*) FROM $transactions_table WHERE activity_id = %d AND user_id = %d",
+                    $record_id,
+                    $user_id
+                )
+            );
         }
 
         if ( $dependency_count > 0 ) {
             $message = 'Suppression impossible : des données sont encore liées. Supprimez ou réaffectez-les avant de réessayer.';
 
             return array( 'type' => 'error', 'message' => $message );
+        }
+
+        if ( $preserved_finance_count > 0 ) {
+            $transactions_table = baykat_finance_get_table_name();
+            $unlinked = $wpdb->query(
+                $wpdb->prepare(
+                    "UPDATE $transactions_table SET activity_id = NULL WHERE activity_id = %d AND user_id = %d",
+                    $record_id,
+                    $user_id
+                )
+            );
+            if ( false === $unlinked ) {
+                return array( 'type' => 'error', 'message' => 'Les opérations financières liées n’ont pas pu être conservées. L’activité n’a pas été supprimée.' );
+            }
         }
 
         $deleted = $wpdb->delete(
@@ -383,7 +407,12 @@ function baykat_farm_process_record_action( $user_id, $entity ) {
             return array( 'type' => 'error', 'message' => 'La suppression a échoué. Veuillez réessayer.' );
         }
 
-        return array( 'type' => 'success', 'message' => 'Enregistrement supprimé.' );
+        return array(
+            'type'    => 'success',
+            'message' => $preserved_finance_count > 0
+                ? 'Activité supprimée. Les opérations financières ont été conservées sur la parcelle.'
+                : 'Enregistrement supprimé.',
+        );
     }
 
     $data = array();
@@ -491,6 +520,18 @@ function baykat_farm_process_record_action( $user_id, $entity ) {
 
         if ( ! $parcel || '' === $title || strlen( $title ) > 190 || ! in_array( $activity_type, array( 'sowing', 'watering', 'fertilizing', 'treatment', 'harvest', 'other' ), true ) || ! baykat_farm_valid_date( $activity_date ) ) {
             return array( 'type' => 'error', 'message' => 'Veuillez vérifier la parcelle, le titre, le type et la date de l’activité.' );
+        }
+
+        $activity_finances_table = baykat_finance_get_table_name();
+        $has_finances = (int) $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COUNT(*) FROM $activity_finances_table WHERE activity_id = %d AND user_id = %d",
+                $record_id,
+                $user_id
+            )
+        );
+        if ( $has_finances > 0 && (int) $record->parcel_id !== $parcel_id ) {
+            return array( 'type' => 'error', 'message' => 'Cette activité possède des opérations financières. Pour préserver leur rattachement, elles ne peuvent pas être déplacées vers une autre parcelle.' );
         }
 
         $data = array(
@@ -730,7 +771,24 @@ function baykat_farm_process_activity_submission( $user_id ) {
     $notes = isset( $_POST['activity_notes'] ) && is_string( $_POST['activity_notes'] )
         ? sanitize_textarea_field( wp_unslash( $_POST['activity_notes'] ) )
         : '';
+    $finance_amount_value = isset( $_POST['activity_finance_amount'] ) && is_scalar( $_POST['activity_finance_amount'] )
+        ? trim( (string) wp_unslash( $_POST['activity_finance_amount'] ) )
+        : '';
+    $finance_amount = '' === $finance_amount_value
+        ? null
+        : ( is_numeric( $finance_amount_value ) ? (float) $finance_amount_value : 0 );
+    $finance_type = isset( $_POST['activity_finance_type'] ) && is_string( $_POST['activity_finance_type'] )
+        ? sanitize_key( wp_unslash( $_POST['activity_finance_type'] ) )
+        : 'expense';
+    $finance_category = isset( $_POST['activity_finance_category'] ) && is_string( $_POST['activity_finance_category'] )
+        ? sanitize_key( wp_unslash( $_POST['activity_finance_category'] ) )
+        : 'labor';
+    $finance_note = isset( $_POST['activity_finance_note'] ) && is_string( $_POST['activity_finance_note'] )
+        ? sanitize_text_field( wp_unslash( $_POST['activity_finance_note'] ) )
+        : '';
     $allowed_types = array( 'sowing', 'watering', 'fertilizing', 'treatment', 'harvest', 'other' );
+    $allowed_finance_types = array( 'income', 'expense' );
+    $allowed_expense_categories = array_keys( baykat_finance_expense_categories() );
 
     if (
         ! $parcel
@@ -738,8 +796,16 @@ function baykat_farm_process_activity_submission( $user_id ) {
         || strlen( $title ) > 190
         || ! in_array( $activity_type, $allowed_types, true )
         || ! baykat_farm_valid_date( $activity_date )
+        || ( isset( $_POST['activity_finance_amount'] ) && ! is_scalar( $_POST['activity_finance_amount'] ) )
+        || ( isset( $_POST['activity_finance_type'] ) && ! is_scalar( $_POST['activity_finance_type'] ) )
+        || ( isset( $_POST['activity_finance_category'] ) && ! is_scalar( $_POST['activity_finance_category'] ) )
+        || ( isset( $_POST['activity_finance_note'] ) && ! is_scalar( $_POST['activity_finance_note'] ) )
+        || ( null !== $finance_amount && ( $finance_amount < 0.01 || $finance_amount > 9999999999999.99 ) )
+        || ( null !== $finance_amount && ! in_array( $finance_type, $allowed_finance_types, true ) )
+        || ( null !== $finance_amount && 'expense' === $finance_type && ! in_array( $finance_category, $allowed_expense_categories, true ) )
+        || strlen( $finance_note ) > 190
     ) {
-        return array( 'type' => 'error', 'message' => 'Veuillez vérifier la parcelle, le titre, le type et la date de l’activité.' );
+        return array( 'type' => 'error', 'message' => 'Vérifiez les informations de l’activité et, si renseigné, le montant et la nature de son opération financière.' );
     }
 
     $image_id = baykat_farm_handle_image_upload( 'activity_image', $user_id );
@@ -771,7 +837,51 @@ function baykat_farm_process_activity_submission( $user_id ) {
         return array( 'type' => 'error', 'message' => 'L’activité n’a pas pu être enregistrée.' );
     }
 
-    return array( 'type' => 'success', 'message' => 'Activité enregistrée.' );
+    $activity_id = (int) $wpdb->insert_id;
+
+    if ( null !== $finance_amount ) {
+        $finance_inserted = $wpdb->insert(
+            baykat_finance_get_table_name(),
+            array(
+                'user_id'          => $user_id,
+                'type'             => $finance_type,
+                'category'         => 'general',
+                'amount'           => $finance_amount,
+                'description'      => $finance_note,
+                'item_name'        => '' !== $finance_note ? $finance_note : $title,
+                'expense_category' => 'expense' === $finance_type ? $finance_category : 'general',
+                'farm_id'          => (int) $parcel->farm_id,
+                'parcel_id'        => $parcel_id,
+                'activity_id'      => $activity_id,
+            ),
+            array( '%d', '%s', '%s', '%f', '%s', '%s', '%s', '%d', '%d', '%d' )
+        );
+
+        if ( false === $finance_inserted ) {
+            $activity_deleted = $wpdb->delete(
+                baykat_farm_table_name( 'activities' ),
+                array( 'id' => $activity_id, 'user_id' => $user_id ),
+                array( '%d', '%d' )
+            );
+            if ( $image_id ) {
+                wp_delete_attachment( $image_id, true );
+            }
+
+            return array(
+                'type'    => 'error',
+                'message' => false === $activity_deleted || 0 === $activity_deleted
+                    ? 'La finance n’a pas pu être enregistrée et l’activité n’a pas pu être annulée. Vérifiez votre journal avant de réessayer.'
+                    : 'L’opération financière n’a pas pu être enregistrée; l’activité a été annulée. Réessayez.',
+            );
+        }
+    }
+
+    return array(
+        'type'    => 'success',
+        'message' => null !== $finance_amount
+            ? 'Activité et opération financière enregistrées.'
+            : 'Activité enregistrée.',
+    );
 }
 
 function baykat_farm_get_stock_totals( $user_id ) {

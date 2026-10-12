@@ -16,9 +16,13 @@ function baykat_farm_render_activites( $process_actions = true ) {
         if ( ! $message ) {
             $message = baykat_farm_process_image_update( $user_id, 'activity' );
         }
+        if ( ! $message ) {
+            $message = baykat_finance_process_transaction_submission( $user_id );
+        }
     }
     $parcels = baykat_farm_get_user_parcels( $user_id );
     $activities = baykat_farm_get_user_activities( $user_id );
+    $activity_finances = baykat_finance_get_activity_transactions( $user_id );
     $activity_types = array(
         'sowing'      => 'Semis',
         'watering'    => 'Arrosage',
@@ -42,7 +46,7 @@ function baykat_farm_render_activites( $process_actions = true ) {
             <section class="baykat-farm-panel baykat-farm-add-panel" aria-labelledby="baykat-farm-activity-form-title">
                 <details class="baykat-farm-add-form">
                     <summary id="baykat-farm-activity-form-title"><span class="baykat-farm-eyebrow">Nouvelle opération</span><strong>Ajouter une activité</strong><span class="baykat-farm-add-form-icon" aria-hidden="true">+</span></summary>
-                    <form class="baykat-farm-form" method="post" enctype="multipart/form-data">
+                    <form class="baykat-farm-form baykat-farm-activity-form" method="post" enctype="multipart/form-data">
                     <?php wp_nonce_field( 'baykat_add_activity', '_wpnonce' ); ?>
                     <div class="baykat-farm-field baykat-farm-field-wide">
                         <label for="baykat_activity_parcel">Parcelle</label>
@@ -73,6 +77,35 @@ function baykat_farm_render_activites( $process_actions = true ) {
                         <label for="baykat_activity_notes">Notes (facultatif)</label>
                         <textarea name="activity_notes" id="baykat_activity_notes" rows="3"></textarea>
                     </div>
+                    <div class="baykat-farm-activity-finance-entry baykat-farm-field-wide">
+                        <div>
+                            <strong>Finance de l’activité</strong>
+                            <p>Ajoutez un revenu ou une dépense maintenant pour suivre la rentabilité de cette activité. Le montant est facultatif.</p>
+                        </div>
+                        <div class="baykat-farm-field">
+                            <label for="baykat_activity_finance_amount">Montant (FCFA)</label>
+                            <input type="number" name="activity_finance_amount" id="baykat_activity_finance_amount" min="0.01" step="0.01" inputmode="decimal" placeholder="Laisser vide si aucune opération">
+                        </div>
+                        <div class="baykat-farm-field">
+                            <label for="baykat_activity_finance_type">Mouvement</label>
+                            <select name="activity_finance_type" id="baykat_activity_finance_type">
+                                <option value="expense">Dépense</option>
+                                <option value="income">Revenu</option>
+                            </select>
+                        </div>
+                        <div class="baykat-farm-field" data-activity-finance-category-field>
+                            <label for="baykat_activity_finance_category">Nature de la dépense</label>
+                            <select name="activity_finance_category" id="baykat_activity_finance_category">
+                                <?php foreach ( baykat_finance_expense_categories() as $slug => $label ) : ?>
+                                    <option value="<?php echo esc_attr( $slug ); ?>" <?php selected( 'labor', $slug ); ?>><?php echo esc_html( $label ); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="baykat-farm-field baykat-farm-field-wide">
+                            <label for="baykat_activity_finance_note">Détail financier (facultatif)</label>
+                            <input type="text" name="activity_finance_note" id="baykat_activity_finance_note" maxlength="190" placeholder="Ex. : Paiement de la main-d’œuvre">
+                        </div>
+                    </div>
                     <?php baykat_farm_render_image_field( 'activity_image', 'Photo de l’activité' ); ?>
                     <button class="baykat-finance-button" type="submit" name="baykat_add_activity" value="1">Enregistrer l’activité</button>
                     </form>
@@ -91,6 +124,7 @@ function baykat_farm_render_activites( $process_actions = true ) {
                         <article
                             class="baykat-farm-record-card baykat-farm-visual-card baykat-farm-activity-card"
                             data-farm-record-card
+                            data-activity-id="<?php echo esc_attr( $activity->id ); ?>"
                             data-farm-id="<?php echo esc_attr( $activity->farm_id ); ?>"
                             data-parcel-id="<?php echo esc_attr( $activity->parcel_id ); ?>"
                             data-search-text="<?php echo esc_attr( $activity->title . ' ' . $activity->activity_date . ' ' . $activity->farm_name . ' ' . $activity->parcel_name . ' ' . ( isset( $activity_types[ $activity->activity_type ] ) ? $activity_types[ $activity->activity_type ] : $activity->activity_type ) . ' ' . $activity->notes ); ?>"
@@ -107,6 +141,89 @@ function baykat_farm_render_activites( $process_actions = true ) {
                                 <?php if ( $activity->notes ) : ?>
                                     <p class="baykat-farm-card-dates"><?php echo esc_html( $activity->notes ); ?></p>
                                 <?php endif; ?>
+                                <?php
+                                $activity_finance = isset( $activity_finances[ (int) $activity->id ] )
+                                    ? $activity_finances[ (int) $activity->id ]
+                                    : array( 'transactions' => array(), 'income' => 0, 'expense' => 0 );
+                                $activity_profit = $activity_finance['income'] - $activity_finance['expense'];
+                                ?>
+                                <details class="baykat-farm-activity-finances">
+                                    <summary>
+                                        <span>Finances et rentabilité</span>
+                                        <strong class="<?php echo $activity_profit < 0 ? 'is-negative' : ( $activity_profit > 0 ? 'is-positive' : '' ); ?>">
+                                            <?php echo esc_html( number_format( $activity_profit, 0, ',', ' ' ) ); ?> FCFA
+                                        </strong>
+                                    </summary>
+                                    <div class="baykat-farm-activity-finances-content">
+                                        <div class="baykat-farm-activity-finance-totals">
+                                            <span><?php echo esc_html( number_format_i18n( count( $activity_finance['transactions'] ) ) ); ?> opérations</span>
+                                            <span>Revenus : <?php echo esc_html( number_format( $activity_finance['income'], 0, ',', ' ' ) ); ?> FCFA</span>
+                                            <span>Dépenses : <?php echo esc_html( number_format( $activity_finance['expense'], 0, ',', ' ' ) ); ?> FCFA</span>
+                                        </div>
+                                        <?php if ( $activity_finance['transactions'] ) : ?>
+                                            <ul class="baykat-farm-activity-finance-list">
+                                                <?php foreach ( $activity_finance['transactions'] as $finance ) : ?>
+                                                    <li>
+                                                        <span class="baykat-farm-activity-finance-indicator <?php echo 'income' === $finance->type ? 'is-income' : 'is-expense'; ?>" aria-hidden="true"></span>
+                                                        <span class="baykat-farm-activity-finance-copy">
+                                                            <strong><?php echo esc_html( $finance->item_name ? $finance->item_name : ( $finance->description ? $finance->description : ( 'income' === $finance->type ? 'Revenu' : 'Dépense' ) ) ); ?></strong>
+                                                            <small>
+                                                                <?php
+                                                                echo esc_html(
+                                                                    'income' === $finance->type
+                                                                        ? 'Revenu'
+                                                                        : baykat_finance_expense_category_label( $finance->expense_category )
+                                                                );
+                                                                ?>
+                                                                · <?php echo esc_html( mysql2date( 'j M Y · H:i', $finance->created_at ) ); ?>
+                                                            </small>
+                                                            <?php if ( $finance->description && $finance->item_name ) : ?>
+                                                                <small class="baykat-farm-activity-finance-note"><?php echo esc_html( $finance->description ); ?></small>
+                                                            <?php endif; ?>
+                                                        </span>
+                                                        <strong class="baykat-farm-activity-finance-amount <?php echo 'income' === $finance->type ? 'is-income' : 'is-expense'; ?>">
+                                                            <?php echo 'income' === $finance->type ? '+' : '−'; ?><?php echo esc_html( number_format( (float) $finance->amount, 0, ',', ' ' ) ); ?> FCFA
+                                                        </strong>
+                                                    </li>
+                                                <?php endforeach; ?>
+                                            </ul>
+                                        <?php else : ?>
+                                            <p class="baykat-farm-empty-state">Aucune opération financière n’est encore liée à cette activité.</p>
+                                        <?php endif; ?>
+                                        <form class="baykat-farm-activity-finance-form" method="post">
+                                            <?php wp_nonce_field( 'baykat_add_activity_finance', '_wpnonce' ); ?>
+                                            <input type="hidden" name="activity_id" value="<?php echo esc_attr( $activity->id ); ?>">
+                                            <div class="baykat-farm-field">
+                                                <label for="baykat_activity_finance_type_<?php echo esc_attr( $activity->id ); ?>">Mouvement</label>
+                                                <select name="type" id="baykat_activity_finance_type_<?php echo esc_attr( $activity->id ); ?>" required>
+                                                    <option value="expense">Dépense</option>
+                                                    <option value="income">Revenu</option>
+                                                </select>
+                                            </div>
+                                            <div class="baykat-farm-field">
+                                                <label for="baykat_activity_finance_category_<?php echo esc_attr( $activity->id ); ?>">Nature</label>
+                                                <select name="expense_category" id="baykat_activity_finance_category_<?php echo esc_attr( $activity->id ); ?>">
+                                                    <?php foreach ( baykat_finance_expense_categories() as $slug => $label ) : ?>
+                                                        <option value="<?php echo esc_attr( $slug ); ?>"><?php echo esc_html( $label ); ?></option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                            <div class="baykat-farm-field">
+                                                <label for="baykat_activity_finance_name_<?php echo esc_attr( $activity->id ); ?>">Opération</label>
+                                                <input type="text" name="item_name" id="baykat_activity_finance_name_<?php echo esc_attr( $activity->id ); ?>" maxlength="190" placeholder="Ex. : Paiement des ouvriers" required>
+                                            </div>
+                                            <div class="baykat-farm-field">
+                                                <label for="baykat_activity_finance_amount_<?php echo esc_attr( $activity->id ); ?>">Montant (FCFA)</label>
+                                                <input type="number" name="amount" id="baykat_activity_finance_amount_<?php echo esc_attr( $activity->id ); ?>" min="0.01" step="0.01" inputmode="decimal" required>
+                                            </div>
+                                            <div class="baykat-farm-field baykat-farm-field-wide">
+                                                <label for="baykat_activity_finance_note_<?php echo esc_attr( $activity->id ); ?>">Note (facultatif)</label>
+                                                <textarea name="description" id="baykat_activity_finance_note_<?php echo esc_attr( $activity->id ); ?>" rows="2" placeholder="Détail ou justificatif à retrouver plus tard"></textarea>
+                                            </div>
+                                            <button class="baykat-finance-button" type="submit" name="baykat_add_activity_finance" value="1">Ajouter à cette activité</button>
+                                        </form>
+                                    </div>
+                                </details>
                                 <?php baykat_farm_render_image_update_form( 'activity', $activity->id, $activity->image_id ? 'Changer la photo' : 'Ajouter une photo' ); ?>
                                 <details class="baykat-farm-record-actions">
                                     <summary>Modifier l’activité</summary>

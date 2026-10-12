@@ -9,6 +9,11 @@ function initializeBaykatFinancePages(root) {
         const form = financePage.querySelector('.baykat-finance-form-content');
         const amountInput = financePage.querySelector('[data-finance-amount]');
         const quantityInput = financePage.querySelector('[data-finance-quantity]');
+        const transactionType = form ? form.querySelector('#baykat_type') : null;
+        const expenseCategoryField = form ? form.querySelector('[data-expense-category-field]') : null;
+        const expenseCategorySelect = expenseCategoryField ? expenseCategoryField.querySelector('select') : null;
+        const parcelSelect = form ? form.querySelector('[data-finance-parcel-select]') : null;
+        const activitySelect = form ? form.querySelector('[data-finance-activity-select]') : null;
         const submitButton = form ? form.querySelector('button[type="submit"]') : null;
         const searchInput = financePage.querySelector('[data-finance-search]');
         const typeFilter = financePage.querySelector('#baykat-finance-filter');
@@ -18,6 +23,46 @@ function initializeBaykatFinancePages(root) {
         const noResultsRow = financePage.querySelector('.baykat-finance-no-results');
 
         if (form && amountInput && submitButton) {
+            function updateExpenseCategoryVisibility() {
+                const isExpense = !transactionType || transactionType.value === 'expense';
+                if (expenseCategoryField) {
+                    expenseCategoryField.hidden = !isExpense;
+                }
+                if (expenseCategorySelect) {
+                    expenseCategorySelect.disabled = !isExpense;
+                    if (!isExpense) {
+                        expenseCategorySelect.value = 'general';
+                    }
+                }
+            }
+
+            function filterActivityOptions() {
+                if (!parcelSelect || !activitySelect) {
+                    return;
+                }
+
+                const parcelId = parcelSelect.value;
+                Array.from(activitySelect.options).forEach(function (option) {
+                    if (!option.value) {
+                        option.hidden = false;
+                        return;
+                    }
+                    option.hidden = !parcelId || option.dataset.parcelId !== parcelId;
+                });
+                if (activitySelect.selectedOptions.length && activitySelect.selectedOptions[0].hidden) {
+                    activitySelect.value = '';
+                }
+            }
+
+            if (transactionType) {
+                transactionType.addEventListener('change', updateExpenseCategoryVisibility);
+                updateExpenseCategoryVisibility();
+            }
+            if (parcelSelect && activitySelect) {
+                parcelSelect.addEventListener('change', filterActivityOptions);
+                filterActivityOptions();
+            }
+
             amountInput.addEventListener('input', function () {
                 const amount = Number(amountInput.value);
                 const isInvalid = amountInput.value !== '' && (!Number.isFinite(amount) || amount < 0.01);

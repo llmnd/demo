@@ -1347,6 +1347,62 @@ body.admin-bar .baykat-farm-navigation { top: 32px; }
 .baykat-farm-modal-workspace { display: grid; gap: 14px; padding-top: 22px; border-top: 1px solid #eee9e1; }
 .baykat-farm-modal-workspace-heading h3 { margin: 0 0 4px; color: #302b25; font-size: 19px; }
 .baykat-farm-modal-workspace-heading p { margin: 0; color: #777168; font-size: 13px; }
+.baykat-farm-workspace-tabs {
+    display: flex;
+    gap: 6px;
+    max-width: 100%;
+    padding: 5px;
+    overflow-x: auto;
+    border: 1px solid #eee9e1;
+    border-radius: 13px;
+    background: #f8f6f1;
+    scrollbar-width: thin;
+    scrollbar-color: #cbb894 transparent;
+    -webkit-overflow-scrolling: touch;
+}
+.baykat-farm-workspace-tab {
+    display: inline-flex;
+    min-height: 42px;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 13px;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    background: transparent;
+    color: #6f685e;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 650;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+.baykat-farm-workspace-tab:hover { background: #fff; color: #302b25; }
+.baykat-farm-workspace-tab[aria-selected="true"] {
+    border-color: #e7dcc7;
+    background: #fff;
+    color: #725b31;
+    box-shadow: 0 2px 6px rgba(48,43,37,0.07);
+}
+.baykat-farm-workspace-tab:focus-visible { outline: 3px solid rgba(185,154,100,0.42); outline-offset: 2px; }
+.baykat-farm-workspace-tab-count {
+    display: inline-grid;
+    min-width: 21px;
+    height: 21px;
+    place-items: center;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #f1ede5;
+    color: #777168;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+}
+.baykat-farm-workspace-tab[aria-selected="true"] .baykat-farm-workspace-tab-count { background: #f2ecdf; color: #725b31; }
+.baykat-farm-workspace-section[hidden] { display: none !important; }
+.baykat-farm-workspace-section[role="tabpanel"] > summary { display: none; }
 .baykat-farm-modal-workspace .baykat-farm-workspace-section { scroll-margin-top: 10px; }
 .baykat-farm-modal-workspace .baykat-farm-workspace-section > .baykat-farm-panel,
 .baykat-farm-modal-workspace .baykat-farm-workspace-content { margin-right: 12px; margin-left: 12px; }
@@ -1405,6 +1461,8 @@ body.admin-bar .baykat-farm-navigation { top: 32px; }
 .baykat-farm-modal-parcel strong { overflow: hidden; color: #302b25; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .baykat-farm-modal-parcel small { color: #898277; font-size: 11px; }
 .baykat-farm-modal-back { width: fit-content; padding: 7px 0; border: 0; background: transparent; color: #725b31; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.baykat-farm-modal-back:hover { color: #302b25; text-decoration: underline; text-underline-offset: 3px; }
+.baykat-farm-modal-back:focus-visible { border-radius: 4px; outline: 3px solid rgba(185,154,100,0.42); outline-offset: 3px; }
 
 .baykat-farm-mobile-menu-toggle { display: none; }
 
@@ -1579,6 +1637,9 @@ body.admin-bar .baykat-farm-navigation { top: 32px; }
     .baykat-farm-modal-workspace .baykat-farm-workspace-section > summary { gap: 8px; padding: 12px; }
     .baykat-farm-workspace-summary small { font-size: 11px; }
     .baykat-farm-workspace-count { min-width: 28px; height: 28px; }
+    .baykat-farm-workspace-tabs { gap: 4px; margin: 0 -2px; padding: 4px; }
+    .baykat-farm-workspace-tab { min-height: 40px; gap: 6px; padding: 0 10px; font-size: 12px; }
+    .baykat-farm-workspace-tab-count { min-width: 19px; height: 19px; font-size: 10px; }
     .baykat-farm-workspace-subsection { margin-right: 8px; margin-left: 8px; }
     .baykat-farm-workspace-subsection > .baykat-finance-page { padding-right: 8px; padding-left: 8px; }
     .baykat-farm-modal-parcel-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
@@ -1594,6 +1655,24 @@ body.admin-bar .baykat-farm-navigation { top: 32px; }
     .baykat-farm-record-form > .baykat-finance-button { grid-column: 1; }
     .baykat-farm-table-wrap,
     .baykat-finance-table-wrap { max-width: 100%; overflow-x: auto; }
+}
+
+.baykat-farm-activity-finance-entry {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding: 16px;
+    border: 1px solid #e9e4dc;
+    border-radius: 12px;
+    background: #fbfaf6;
+}
+.baykat-farm-activity-finance-entry > div:first-child { grid-column: 1 / -1; }
+.baykat-farm-activity-finance-entry > div:first-child strong { color: #302b25; font-size: 14px; }
+.baykat-farm-activity-finance-entry > div:first-child p { margin: 4px 0 0; color: #777168; font-size: 12px; line-height: 1.5; }
+.baykat-farm-activity-finance-entry .baykat-farm-field { min-width: 0; }
+@media (max-width: 640px) {
+    .baykat-farm-activity-finance-entry { grid-template-columns: minmax(0, 1fr); padding: 13px; }
+    .baykat-farm-activity-finance-entry > div:first-child { grid-column: 1; }
 }
 
 @media (max-width: 380px) {
@@ -1799,4 +1878,102 @@ body.admin-bar .baykat-farm-navigation { top: 32px; }
     .baykat-farm-dashboard-modal .baykat-farm-stats-grid { gap: 5px; }
     .baykat-farm-dashboard-modal .baykat-farm-stats-grid article { padding: 8px; }
     .baykat-farm-dashboard-modal .baykat-farm-stats-grid strong { font-size: 16px; }
+}
+
+.baykat-farm-stats-disclosure {
+    overflow: hidden;
+    border: 1px solid #e9e4dc;
+    border-radius: 13px;
+    background: #fff;
+}
+.baykat-farm-stats-disclosure > summary {
+    display: flex;
+    min-height: 48px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 11px 15px;
+    color: #725b31;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    list-style: none;
+}
+.baykat-farm-stats-disclosure > summary::-webkit-details-marker { display: none; }
+.baykat-farm-stats-disclosure > summary::after { content: "+"; color: #947747; font-size: 20px; font-weight: 500; }
+.baykat-farm-stats-disclosure[open] > summary::after { content: "−"; }
+.baykat-farm-stats-disclosure > .baykat-farm-stats-grid { padding: 0 12px 12px; }
+.baykat-farm-stats-disclosure > summary:focus-visible { outline: 3px solid rgba(185,154,100,0.42); outline-offset: -3px; }
+
+.baykat-farm-activity-finances {
+    margin-top: 14px;
+    overflow: hidden;
+    border: 1px solid #e9e4dc;
+    border-radius: 12px;
+    background: #fbfaf7;
+}
+.baykat-farm-activity-finances > summary {
+    display: flex;
+    min-height: 48px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 13px;
+    color: #302b25;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    list-style: none;
+}
+.baykat-farm-activity-finances > summary::-webkit-details-marker { display: none; }
+.baykat-farm-activity-finances > summary::after { flex: 0 0 auto; color: #947747; content: "+"; font-size: 19px; font-weight: 500; }
+.baykat-farm-activity-finances[open] > summary::after { content: "−"; }
+.baykat-farm-activity-finances > summary strong { margin-left: auto; color: #777168; font-size: 12px; white-space: nowrap; }
+.baykat-farm-activity-finances > summary strong.is-negative { color: #a94e47; }
+.baykat-farm-activity-finances > summary strong.is-positive { color: #327153; }
+.baykat-farm-activity-finances-content { display: grid; gap: 14px; padding: 0 13px 13px; }
+.baykat-farm-activity-finance-totals { display: flex; flex-wrap: wrap; gap: 6px 14px; color: #777168; font-size: 11px; }
+.baykat-farm-activity-finance-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.baykat-farm-activity-finance-list li {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border: 1px solid #ebe7df;
+    border-radius: 9px;
+    background: #fff;
+}
+.baykat-farm-activity-finance-indicator { width: 3px; min-height: 30px; flex: 0 0 auto; border-radius: 4px; background: #a94e47; }
+.baykat-farm-activity-finance-indicator.is-income { background: #327153; }
+.baykat-farm-activity-finance-copy { display: grid; min-width: 0; flex: 1 1 auto; gap: 3px; }
+.baykat-farm-activity-finance-copy strong { overflow: hidden; color: #302b25; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.baykat-farm-activity-finance-copy small { color: #898277; font-size: 10px; }
+.baykat-farm-activity-finance-copy .baykat-farm-activity-finance-note { overflow-wrap: anywhere; color: #625b51; }
+.baykat-farm-activity-finance-amount { flex: 0 0 auto; font-size: 12px; white-space: nowrap; }
+.baykat-farm-activity-finance-amount.is-income { color: #327153; }
+.baykat-farm-activity-finance-amount.is-expense { color: #a94e47; }
+.baykat-farm-activity-finance-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding: 13px;
+    border: 1px solid #e9e4dc;
+    border-radius: 10px;
+    background: #fff;
+}
+.baykat-farm-activity-finance-form > .baykat-finance-button { grid-column: 1 / -1; justify-self: start; }
+.baykat-farm-activity-finance-form .baykat-farm-field { margin: 0; }
+.baykat-farm-activity-finance-form input,
+.baykat-farm-activity-finance-form select,
+.baykat-farm-activity-finance-form textarea { min-height: 42px; }
+.baykat-farm-activity-finance-form textarea { min-height: 68px; }
+
+@media (max-width: 540px) {
+    .baykat-farm-activity-finances > summary { gap: 7px; padding-right: 10px; padding-left: 10px; font-size: 12px; }
+    .baykat-farm-activity-finances-content { gap: 10px; padding-right: 9px; padding-left: 9px; }
+    .baykat-farm-activity-finance-form { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 10px; }
+    .baykat-farm-activity-finance-form > .baykat-finance-button { grid-column: 1; width: 100%; }
+    .baykat-farm-activity-finance-list li { gap: 7px; padding: 8px; }
+    .baykat-farm-activity-finance-amount { font-size: 11px; }
 }

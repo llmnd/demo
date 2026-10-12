@@ -121,7 +121,7 @@ $form_title_id = 'baykat-finance-item-form-title-' . $field_suffix;
 
             <div class="baykat-finance-field">
                 <label for="baykat_parcel_id_<?php echo esc_attr( $field_suffix ); ?>">Parcelle de la ferme</label>
-                <select name="parcel_id" id="baykat_parcel_id_<?php echo esc_attr( $field_suffix ); ?>" required>
+                <select name="parcel_id" id="baykat_parcel_id_<?php echo esc_attr( $field_suffix ); ?>" data-finance-parcel-select required>
                     <option value="">Choisir une parcelle</option>
                     <?php foreach ( $parcels as $parcel ) : ?>
                         <option value="<?php echo esc_attr( $parcel->id ); ?>">
@@ -129,6 +129,19 @@ $form_title_id = 'baykat-finance-item-form-title-' . $field_suffix;
                         </option>
                     <?php endforeach; ?>
                 </select>
+            </div>
+
+            <div class="baykat-finance-field">
+                <label for="baykat_activity_id_<?php echo esc_attr( $field_suffix ); ?>">Activité associée <span>(facultatif)</span></label>
+                <select name="activity_id" id="baykat_activity_id_<?php echo esc_attr( $field_suffix ); ?>" data-finance-activity-select>
+                    <option value="">Aucune activité — lier seulement à la parcelle</option>
+                    <?php foreach ( $activities as $activity ) : ?>
+                        <option value="<?php echo esc_attr( $activity->id ); ?>" data-parcel-id="<?php echo esc_attr( $activity->parcel_id ); ?>">
+                            <?php echo esc_html( $activity->title . ' — ' . $activity->farm_name . ' / ' . $activity->parcel_name ); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <span class="baykat-finance-field-help">Reliez cet achat ou cette vente à une activité pour calculer son résultat.</span>
             </div>
 
             <div class="baykat-finance-field">
@@ -220,6 +233,7 @@ $form_title_id = 'baykat-finance-item-form-title-' . $field_suffix;
                                     $transaction->amount,
                                     $transaction->farm_name,
                                     $transaction->parcel_name,
+                                    isset( $transaction->activity_title ) ? $transaction->activity_title : '',
                                     $transaction->description,
                                     $transaction->created_at,
                                 )
@@ -232,6 +246,7 @@ $form_title_id = 'baykat-finance-item-form-title-' . $field_suffix;
                                 data-transaction-id="<?php echo esc_attr( $transaction->id ); ?>"
                                 data-amount="<?php echo esc_attr( $transaction->amount ); ?>"
                                 data-transaction-type="<?php echo esc_attr( $transaction->type ); ?>"
+                                data-activity-id="<?php echo esc_attr( $transaction->activity_id ); ?>"
                                 data-search-text="<?php echo esc_attr( $search_text ); ?>"
                             >
                                 <td data-label="<?php echo esc_attr( $item_label ); ?>">
@@ -242,6 +257,9 @@ $form_title_id = 'baykat-finance-item-form-title-' . $field_suffix;
                                 </td>
                                 <td data-label="Parcelle">
                                     <?php echo esc_html( $transaction->parcel_name ? $transaction->farm_name . ' — ' . $transaction->parcel_name : 'Sans parcelle' ); ?>
+                                    <?php if ( ! empty( $transaction->activity_title ) ) : ?>
+                                        <small class="baykat-finance-transaction-meta">Activité : <?php echo esc_html( $transaction->activity_title ); ?></small>
+                                    <?php endif; ?>
                                 </td>
                                 <td data-label="<?php echo esc_attr( $is_sale ? 'Montant encaissé' : 'Coût' ); ?>" class="baykat-finance-amount-cell">
                                     <?php echo esc_html( number_format( (float) $transaction->amount, 0, ',', ' ' ) ); ?> FCFA

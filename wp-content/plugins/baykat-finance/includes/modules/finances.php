@@ -16,6 +16,7 @@ function baykat_farm_render_finance_item_section( $category, $process_actions = 
     $finance_data = baykat_finance_get_user_transactions( $user_id, $category );
     $parcels = baykat_farm_get_user_parcels( $user_id );
     $farms = baykat_farm_get_user_farms( $user_id );
+    $activities = baykat_farm_get_user_activities( $user_id );
     $page_title = 'sale' === $category ? 'Suivi des ventes' : 'Suivi des intrants';
 
     ob_start();

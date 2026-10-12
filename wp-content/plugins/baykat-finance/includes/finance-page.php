@@ -64,7 +64,7 @@ add_action(
 /**
  * Affiche la page de gestion financière côté utilisateur.
  */
-function baykat_finance_render_frontend_page( $initial_type = 'all', $process_submission = true ) {
+function baykat_finance_render_frontend_page( $initial_type = 'all', $process_submission = true, $open_add_form = false, $transaction_category = null ) {
 
     if ( ! in_array( $initial_type, array( 'all', 'income', 'expense' ), true ) ) {
         $initial_type = 'all';
@@ -91,9 +91,10 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
         : null;
 
     // Récupérer les données financières.
-    $finance_data = baykat_finance_get_user_transactions( $user_id );
+    $finance_data = baykat_finance_get_user_transactions( $user_id, $transaction_category );
     $parcels = baykat_farm_get_user_parcels( $user_id );
     $farms = baykat_farm_get_user_farms( $user_id );
+    $activities = baykat_farm_get_user_activities( $user_id );
 
     ob_start();
     ?>
@@ -202,7 +203,7 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
                     </a>
                 </div>
             <?php else : ?>
-            <details class="baykat-farm-add-form baykat-farm-finance-add-form">
+            <details class="baykat-farm-add-form baykat-farm-finance-add-form"<?php echo $open_add_form ? ' open' : ''; ?>>
                 <summary id="baykat-finance-add-transaction-title"><span class="baykat-farm-eyebrow">Votre activité</span><strong>Ajouter une transaction</strong><span class="baykat-farm-add-form-icon" aria-hidden="true">+</span></summary>
                 <p class="baykat-farm-add-form-description">Enregistrez un revenu ou une dépense pour garder vos comptes à jour.</p>
                 <form class="baykat-finance-form-content" method="post">
@@ -258,9 +259,18 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
 
                 </div>
 
+                <div class="baykat-finance-field" data-expense-category-field>
+                    <label for="baykat_expense_category">Nature de la dépense</label>
+                    <select name="expense_category" id="baykat_expense_category">
+                        <?php foreach ( baykat_finance_expense_categories() as $slug => $label ) : ?>
+                            <option value="<?php echo esc_attr( $slug ); ?>"><?php echo esc_html( $label ); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
                 <div class="baykat-finance-field">
                     <label for="baykat_parcel_id">Parcelle de la ferme</label>
-                    <select name="parcel_id" id="baykat_parcel_id" required>
+                    <select name="parcel_id" id="baykat_parcel_id" data-finance-parcel-select required>
                         <option value="">Choisir une parcelle</option>
                         <?php foreach ( $parcels as $parcel ) : ?>
                             <option value="<?php echo esc_attr( $parcel->id ); ?>">
@@ -270,17 +280,30 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
                     </select>
                 </div>
 
+                <div class="baykat-finance-field">
+                    <label for="baykat_activity_id">Activité associée <span>(facultatif)</span></label>
+                    <select name="activity_id" id="baykat_activity_id" data-finance-activity-select>
+                        <option value="">Aucune activité — lier seulement à la parcelle</option>
+                        <?php foreach ( $activities as $activity ) : ?>
+                            <option value="<?php echo esc_attr( $activity->id ); ?>" data-parcel-id="<?php echo esc_attr( $activity->parcel_id ); ?>">
+                                <?php echo esc_html( $activity->title . ' — ' . $activity->farm_name . ' / ' . $activity->parcel_name ); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <span class="baykat-finance-field-help">Associez une opération pour suivre son coût et sa rentabilité.</span>
+                </div>
+
                 <div class="baykat-finance-field baykat-finance-field-description">
 
                     <label for="baykat_description">
-                        Description
+                        Objet de l’opération
                     </label>
 
                     <textarea
                         name="description"
                         id="baykat_description"
                         rows="3"
-                        placeholder="Description de la transaction"
+                        placeholder="Ex. : Paiement de la main-d’œuvre"
                     ></textarea>
 
                 </div>
@@ -365,6 +388,9 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
                                     ' ',
                                     array(
                                         $transaction_type_label,
+                                        $transaction->item_name,
+                                        isset( $transaction->expense_category ) ? baykat_finance_expense_category_label( $transaction->expense_category ) : '',
+                                        isset( $transaction->activity_title ) ? $transaction->activity_title : '',
                                         $transaction->amount,
                                         $transaction_amount_label,
                                         $transaction->description,
@@ -381,6 +407,8 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
                                     data-transaction-id="<?php echo esc_attr( $transaction->id ); ?>"
                                     data-amount="<?php echo esc_attr( $transaction->amount ); ?>"
                                     data-transaction-type="<?php echo esc_attr( $transaction->type ); ?>"
+                                    data-activity-id="<?php echo esc_attr( $transaction->activity_id ); ?>"
+                                    data-expense-category="<?php echo esc_attr( $transaction->expense_category ); ?>"
                                     data-search-text="<?php echo esc_attr( $transaction_search_text ); ?>"
                                 >
 
@@ -397,10 +425,17 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
 
                                 <td data-label="Description" class="baykat-finance-description-cell">
                                     <?php
-                                    echo esc_html(
-                                        $transaction->description
-                                    );
+                                    echo esc_html( $transaction->item_name ? $transaction->item_name : $transaction->description );
+                                    if ( 'expense' === $transaction->type && 'general' !== $transaction->expense_category ) :
                                     ?>
+                                        <small class="baykat-finance-transaction-meta"><?php echo esc_html( baykat_finance_expense_category_label( $transaction->expense_category ) ); ?></small>
+                                    <?php endif; ?>
+                                    <?php if ( ! empty( $transaction->activity_title ) ) : ?>
+                                        <small class="baykat-finance-transaction-meta">Activité : <?php echo esc_html( $transaction->activity_title ); ?></small>
+                                    <?php endif; ?>
+                                    <?php if ( $transaction->item_name && $transaction->description ) : ?>
+                                        <small class="baykat-finance-transaction-meta"><?php echo esc_html( $transaction->description ); ?></small>
+                                    <?php endif; ?>
                                 </td>
 
                                 <td data-label="Parcelle">

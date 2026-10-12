@@ -270,15 +270,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 sections.forEach(function (section, index) {
                     const summary = section.querySelector(':scope > summary strong');
+                    const count = section.querySelector(':scope > summary .baykat-farm-workspace-count');
                     const tab = document.createElement('button');
                     const tabId = 'baykat-workspace-tab-' + section.id;
+                    const label = document.createElement('span');
+                    const countBadge = document.createElement('span');
+                    const sectionLabel = summary ? summary.textContent.trim() : 'Section ' + (index + 1);
+                    const itemCount = count ? count.textContent.trim() : '';
 
                     tab.className = 'baykat-farm-workspace-tab';
                     tab.type = 'button';
                     tab.id = tabId;
                     tab.setAttribute('role', 'tab');
                     tab.setAttribute('aria-controls', section.id);
-                    tab.textContent = summary ? summary.textContent : 'Section ' + (index + 1);
+                    tab.setAttribute('aria-label', itemCount ? sectionLabel + ', ' + itemCount + ' éléments' : sectionLabel);
+                    label.textContent = sectionLabel;
+                    tab.appendChild(label);
+                    if (itemCount) {
+                        countBadge.className = 'baykat-farm-workspace-tab-count';
+                        countBadge.setAttribute('aria-hidden', 'true');
+                        countBadge.textContent = itemCount;
+                        tab.appendChild(countBadge);
+                    }
                     section.setAttribute('role', 'tabpanel');
                     section.setAttribute('aria-labelledby', tabId);
                     section.tabIndex = 0;
@@ -531,7 +544,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return clone;
             }
 
-            function openParcelModal(dialog, parcelId, addBackButton, selectedSectionId) {
+            function openParcelModal(dialog, parcelId, addBackButton, selectedSectionId, revealActivityId, notice) {
                 const record = findDashboardRecord('data-parcel-id', parcelId);
 
                 if (!record) {
@@ -558,7 +571,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     backButton.className = 'baykat-farm-modal-back';
                     backButton.type = 'button';
                     backButton.dataset.modalBack = 'true';
-                    backButton.textContent = '← Retour';
+                    backButton.textContent = '← Retour à ' + modalHistory[modalHistory.length - 1].title;
                     content.appendChild(backButton);
                 }
 
@@ -598,7 +611,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         workspaceHeading.textContent = 'Cultures, activités, finances et stocks';
                     }
                     if (workspaceDescription) {
-                        workspaceDescription.textContent = 'Consultez et gérez uniquement les informations rattachées à ' + parcelName + '. Les stocks sont calculés à partir des achats d’intrants.';
+                        workspaceDescription.textContent = 'Choisissez une rubrique pour consulter les informations de ' + parcelName + '. Cultures, activités, finances et stocks restent liés à cette parcelle.';
                     }
 
                     content.appendChild(management);
@@ -608,6 +621,21 @@ document.addEventListener('DOMContentLoaded', function () {
                 initializeWorkspaceTabs(content, selectedSectionId);
                 initializeImagePreviews(content);
                 initializeRecordFilters(content);
+                if (revealActivityId) {
+                    const activityCard = content.querySelector('[data-activity-id="' + revealActivityId + '"]');
+                    const financeDetails = activityCard && activityCard.querySelector('.baykat-farm-activity-finances');
+                    if (financeDetails) {
+                        financeDetails.open = true;
+                    }
+                }
+                if (notice) {
+                    const noticeElement = document.createElement('div');
+                    const backButton = content.querySelector('[data-modal-back]');
+                    noticeElement.className = notice.className;
+                    noticeElement.setAttribute('role', notice.role);
+                    noticeElement.textContent = notice.text;
+                    content.insertBefore(noticeElement, backButton ? backButton.nextSibling : content.firstChild);
+                }
                 document.dispatchEvent(new Event('baykat:farm-module-loaded'));
             }
 
@@ -644,7 +672,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     backButton.className = 'baykat-farm-modal-back';
                     backButton.type = 'button';
                     backButton.dataset.modalBack = 'true';
-                    backButton.textContent = '← Retour aux fermes';
+                    backButton.textContent = '← Retour à ' + modalHistory[modalHistory.length - 1].title;
                     content.appendChild(backButton);
                 }
 
@@ -688,7 +716,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         workspaceHeading.textContent = 'Parcelles de ' + (farmName ? farmName.textContent : 'la ferme');
                     }
                     if (workspaceDescription) {
-                        workspaceDescription.textContent = 'Choisissez une parcelle pour découvrir ses cultures, son journal et ses finances.';
+                        workspaceDescription.textContent = 'Ouvrez une parcelle pour retrouver au même endroit ses cultures, ses activités, ses finances et ses stocks.';
                     }
 
                     content.appendChild(management);
@@ -732,6 +760,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 ];
                 content.className = 'baykat-farm-dashboard-content';
                 const farmSummary = stats.querySelector('.baykat-farm-stats-farms');
+                const statsDisclosure = document.createElement('details');
+                const statsSummary = document.createElement('summary');
+                statsDisclosure.className = 'baykat-farm-stats-disclosure';
+                statsSummary.textContent = 'Afficher les statistiques';
+                statsDisclosure.appendChild(statsSummary);
+                statsDisclosure.appendChild(stats);
 
                 if (farmSummary) {
                     farmSummary.remove();
@@ -747,7 +781,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     workspaceDescription.textContent = 'Ouvrez une exploitation pour consulter ses parcelles, cultures, activités et finances.';
                 }
 
-                content.appendChild(stats);
+                content.appendChild(statsDisclosure);
                 content.appendChild(workspaceView);
 
                 if (!farmsSection) {
@@ -880,6 +914,21 @@ document.addEventListener('DOMContentLoaded', function () {
                     modalHistory.length = 0;
                 }
             });
+            app.addEventListener('baykat:farm-refresh-parcel-modal', function (event) {
+                const detail = event.detail || {};
+                const dialog = app.querySelector('[data-farm-dashboard-dialog]');
+                if (!dialog || !dialog.open || !detail.parcelId) {
+                    return;
+                }
+                openParcelModal(
+                    dialog,
+                    detail.parcelId,
+                    false,
+                    detail.sectionId,
+                    detail.activityId,
+                    detail.notice
+                );
+            });
             app.addEventListener('cancel', function (event) {
                 if (event.target.matches('[data-farm-dashboard-dialog]')) {
                     modalHistory.length = 0;
@@ -940,6 +989,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     throw new Error('La réponse ne contient pas le module attendu.');
                 }
 
+                const incomingNotice = isSubmission
+                    ? incomingModule.querySelector('.baykat-farm-notice')
+                    : null;
+                const submissionNotice = incomingNotice
+                    ? {
+                        className: incomingNotice.className,
+                        role: incomingNotice.getAttribute('role') || 'status',
+                        text: incomingNotice.textContent.trim()
+                    }
+                    : null;
                 currentNavigation.replaceWith(incomingNavigation);
                 currentModule.replaceWith(incomingModule);
                 const errorNotice = app.querySelector('.baykat-farm-request-error');
@@ -1008,10 +1067,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 } else {
                     window.scrollTo(0, requestOptions.scrollY ?? previousScroll);
                 }
+                return { success: true, notice: submissionNotice };
             } catch (error) {
                 if (!isSubmission && requestOptions.pushHistory) {
                     window.location.assign(targetUrl.href);
-                    return;
+                    return { success: false };
                 }
 
                 showRequestError(
@@ -1020,6 +1080,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         : 'Le module n’a pas pu être chargé. Vérifiez votre connexion puis réessayez.'
                 );
                 console.error('Baykat Farm request failed:', error);
+                return { success: false };
             }
         }
 
@@ -1085,7 +1146,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const form = event.target;
 
-            if (!form.matches('.baykat-farm-form, .baykat-farm-image-update-form, .baykat-farm-record-form, .baykat-farm-delete-form, .baykat-finance-form-content')) {
+            if (!form.matches('.baykat-farm-form, .baykat-farm-image-update-form, .baykat-farm-record-form, .baykat-farm-delete-form, .baykat-finance-form-content, .baykat-farm-activity-finance-form')) {
                 return;
             }
 
@@ -1105,7 +1166,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 formData.set(submitter.name, submitter.value);
             }
 
-            if (form.matches('.baykat-farm-form, .baykat-farm-image-update-form, .baykat-farm-record-form, .baykat-farm-delete-form')) {
+            if (form.matches('.baykat-farm-form, .baykat-farm-image-update-form, .baykat-farm-record-form, .baykat-farm-delete-form, .baykat-farm-activity-finance-form')) {
                 form.setAttribute('aria-busy', 'true');
 
                 if (submitter) {
@@ -1114,7 +1175,56 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
-            loadApplication(form.action || window.location.href, { formData: formData });
+            const dialog = app.querySelector('[data-farm-dashboard-dialog]');
+            const parcelCard = dialog && dialog.open
+                ? dialog.querySelector('[data-dashboard-modal-body] [data-parcel-record-card]')
+                : null;
+            const selectedTab = dialog && dialog.open
+                ? dialog.querySelector('[data-dashboard-modal-body] [role="tab"][aria-selected="true"]')
+                : null;
+            const activityField = form.querySelector('[name="activity_id"]');
+            const modalContext = parcelCard
+                ? {
+                    parcelId: parcelCard.dataset.parcelId,
+                    sectionId: selectedTab ? selectedTab.getAttribute('aria-controls') : '',
+                    activityId: activityField ? activityField.value : ''
+                }
+                : null;
+
+            loadApplication(form.action || window.location.href, { formData: formData }).then(function (result) {
+                if (modalContext && result && result.success) {
+                    app.dispatchEvent(new CustomEvent('baykat:farm-refresh-parcel-modal', {
+                        detail: Object.assign({}, modalContext, { notice: result.notice })
+                    }));
+                }
+            });
+        });
+
+        app.addEventListener('change', function (event) {
+            const activityFinanceType = event.target.closest('.baykat-farm-activity-form select[name="activity_finance_type"]');
+            if (activityFinanceType) {
+                const categorySelect = activityFinanceType.form.querySelector('select[name="activity_finance_category"]');
+                const categoryField = categorySelect && categorySelect.closest('[data-activity-finance-category-field]');
+                if (categoryField && categorySelect) {
+                    const isExpense = activityFinanceType.value === 'expense';
+                    categoryField.hidden = !isExpense;
+                    categorySelect.disabled = !isExpense;
+                }
+                return;
+            }
+
+            const typeSelect = event.target.closest('.baykat-farm-activity-finance-form select[name="type"]');
+            if (!typeSelect) {
+                return;
+            }
+
+            const categorySelect = typeSelect.form.querySelector('select[name="expense_category"]');
+            const categoryField = categorySelect && categorySelect.closest('.baykat-farm-field');
+            if (categoryField && categorySelect) {
+                const isExpense = typeSelect.value === 'expense';
+                categoryField.hidden = !isExpense;
+                categorySelect.disabled = !isExpense;
+            }
         });
 
         window.addEventListener('popstate', function (event) {
