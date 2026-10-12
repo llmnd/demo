@@ -1072,12 +1072,159 @@ body.admin-bar .baykat-farm-navigation { top: 32px; }
 .baykat-farm-filter-empty { margin: -4px 0 18px; padding: 12px 14px; border: 1px dashed #ded8ce; border-radius: 10px; background: #fff; }
 
 /* =========================================================================
-   LOGIN
+   LOGIN — écran d'entrée non connecté
    ========================================================================= */
-.baykat-farm-login { padding: 28px; border: 1px solid #e9e4dc; border-radius: 16px; background: #fff; }
-.baykat-farm-login h1 { margin: 0 0 8px; color: #302b25; }
-.baykat-farm-login p { margin: 0; color: #777168; }
-.baykat-farm-login .baykat-finance-button { display: inline-flex; margin-top: 18px; }
+body.baykat-farm-login-page {
+    min-height: 100vh;
+    background: #f3f5f1;
+}
+body.baykat-farm-login-page .wp-site-blocks { min-height: 100vh; }
+body.baykat-farm-login-page main#wp--skip-link--target {
+    width: 100%;
+    max-width: none;
+    padding: 0 !important;
+}
+body.baykat-farm-login-page .wp-block-group.alignfull {
+    width: 100%;
+    margin-inline: 0 !important;
+    padding: 0 !important;
+}
+body.baykat-farm-login-page .wp-block-post-content {
+    width: 100%;
+    max-width: none;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+body.baykat-farm-login-page .wp-block-post-content > p:empty { display: none !important; }
+body.baykat-farm-login-page .baykat-farm-app.baykat-farm-login {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    margin: 0 !important;
+    padding: clamp(24px, 5vh, 54px) 24px;
+    background:
+        linear-gradient(135deg, rgba(245, 247, 243, .94), rgba(242, 244, 248, .88)),
+        url("https://baykat.sn/wp-content/uploads/2022/12/Sans-titre-21.png") center / cover;
+    color: #35495a;
+    font-family: "DM Sans", sans-serif;
+}
+.baykat-farm-login-brand,
+.baykat-farm-login-card,
+.baykat-farm-login-footer { width: min(100%, 1040px); }
+.baykat-farm-login-brand {
+    display: flex;
+    min-height: 54px;
+    align-items: center;
+    text-decoration: none;
+}
+.baykat-farm-login-brand img { display: block; width: 118px; height: 54px; object-fit: contain; }
+.baykat-farm-login-card {
+    display: grid;
+    min-height: 430px;
+    grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+    overflow: hidden;
+    border: 1px solid rgba(227, 230, 233, .9);
+    border-radius: 20px;
+    background: #fff;
+    box-shadow: 0 24px 70px rgba(53, 73, 90, .12);
+}
+.baykat-farm-login-copy {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    padding: clamp(30px, 5vw, 66px);
+}
+.baykat-farm-login-eyebrow {
+    color: #947747;
+    font-size: 11px;
+    font-weight: 750;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+}
+.baykat-farm-login-copy h1 {
+    max-width: 390px;
+    margin: 18px 0 0;
+    color: #35495a;
+    font-family: "Manrope", sans-serif;
+    font-size: clamp(34px, 4vw, 48px);
+    font-weight: 700;
+    letter-spacing: -.05em;
+    line-height: 1.1;
+}
+.baykat-farm-login-copy p {
+    max-width: 360px;
+    margin: 16px 0 0;
+    color: #718091;
+    font-size: 14px;
+    line-height: 1.7;
+}
+.baykat-farm-login-button {
+    display: inline-flex;
+    min-height: 50px;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    margin-top: 27px;
+    padding: 0 19px;
+    border: 1px solid #d1b184;
+    border-radius: 7px;
+    background: #d1b184;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background-color .18s ease, transform .18s ease;
+}
+.baykat-farm-login-button:hover { transform: translateY(-1px); border-color: #c4a273; background: #c4a273; color: #fff; }
+.baykat-farm-login-button:focus-visible,
+.baykat-farm-login-footer a:focus-visible { outline: 3px solid rgba(185, 154, 100, .45); outline-offset: 3px; }
+.baykat-farm-login-visual {
+    position: relative;
+    display: flex;
+    min-height: 430px;
+    align-items: flex-end;
+    padding: 28px;
+    background:
+        linear-gradient(180deg, rgba(28, 44, 34, .02) 35%, rgba(28, 44, 34, .64) 100%),
+        url("https://baykat.sn/wp-content/uploads/2022/12/Sans-titre-21.png") center / cover;
+}
+.baykat-farm-login-visual span {
+    padding: 12px 16px;
+    border: 1px solid rgba(255, 255, 255, .55);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, .92);
+    color: #35495a;
+    font-size: 12px;
+    font-weight: 700;
+}
+.baykat-farm-login-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    color: #718091;
+    font-size: 11px;
+}
+.baykat-farm-login-footer a { color: #536578; font-weight: 700; text-decoration: none; }
+.baykat-farm-login-footer a:hover { color: #947747; }
+
+@media (max-width: 700px) {
+    body.baykat-farm-login-page .baykat-farm-app.baykat-farm-login { justify-content: flex-start; gap: 12px; padding: 22px 16px; }
+    .baykat-farm-login-brand img { width: 100px; height: 48px; }
+    .baykat-farm-login-card { grid-template-columns: minmax(0, 1fr); border-radius: 16px; }
+    .baykat-farm-login-copy { padding: 30px 24px; }
+    .baykat-farm-login-copy h1 { margin-top: 13px; font-size: clamp(32px, 9vw, 42px); }
+    .baykat-farm-login-copy p { margin-top: 11px; font-size: 13px; }
+    .baykat-farm-login-button { margin-top: 20px; }
+    .baykat-farm-login-visual { min-height: 190px; padding: 16px; }
+    .baykat-farm-login-visual span { padding: 10px 12px; font-size: 11px; }
+    .baykat-farm-login-footer { align-items: flex-start; flex-direction: column; padding: 4px 2px 8px; }
+}
 
 /* =========================================================================
    RESPONSIVE

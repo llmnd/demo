@@ -12,8 +12,29 @@ function baykat_farm_shortcode() {
         $login_url = wp_login_url( get_permalink() );
 
         return sprintf(
-            '<div class="baykat-farm-app baykat-farm-login"><h1>Gérer ma ferme</h1><p>Vous devez être connecté pour accéder à votre espace.</p><a class="baykat-finance-button" href="%1$s">Se connecter</a></div>',
-            esc_url( $login_url )
+            '<div class="baykat-farm-app baykat-farm-login">
+                <a class="baykat-farm-login-brand" href="%2$s" aria-label="Baykat, accueil">
+                    <img src="%3$s" alt="Baykat">
+                </a>
+                <section class="baykat-farm-login-card" aria-labelledby="baykat-farm-login-title">
+                    <div class="baykat-farm-login-copy">
+                        <span class="baykat-farm-login-eyebrow">Votre espace agricole</span>
+                        <h1 id="baykat-farm-login-title">Votre ferme, au même endroit.</h1>
+                        <p>Retrouvez vos parcelles, cultures, activités et finances dans un espace simple.</p>
+                        <a class="baykat-farm-login-button" href="%1$s">Se connecter <span aria-hidden="true">→</span></a>
+                    </div>
+                    <div class="baykat-farm-login-visual" role="img" aria-label="Une exploitation agricole au Sénégal">
+                        <span>La gestion agricole, simplement.</span>
+                    </div>
+                </section>
+                <footer class="baykat-farm-login-footer">
+                    <a href="%2$s"><span aria-hidden="true">←</span> Retour à l’accueil</a>
+                    <span>Fermes · Parcelles · Activités · Finances</span>
+                </footer>
+            </div>',
+            esc_url( $login_url ),
+            esc_url( home_url( '/' ) ),
+            esc_url( BAYKAT_FINANCE_URL . 'image.png' )
         );
     }
 
@@ -136,6 +157,10 @@ function baykat_farm_add_body_class( $classes ) {
 
     if ( $post instanceof WP_Post && has_shortcode( $post->post_content, 'baykat_farm' ) ) {
         $classes[] = 'baykat-farm-page';
+
+        if ( ! is_user_logged_in() ) {
+            $classes[] = 'baykat-farm-login-page';
+        }
     }
 
     return $classes;
