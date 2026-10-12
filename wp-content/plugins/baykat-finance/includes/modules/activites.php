@@ -4,14 +4,18 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-function baykat_farm_render_activites() {
+function baykat_farm_render_activites( $process_actions = true ) {
     $user_id = get_current_user_id();
-    $message = baykat_farm_process_record_action( $user_id, 'activity' );
-    if ( ! $message ) {
-        $message = baykat_farm_process_activity_submission( $user_id );
-    }
-    if ( ! $message ) {
-        $message = baykat_farm_process_image_update( $user_id, 'activity' );
+    $message = null;
+
+    if ( $process_actions ) {
+        $message = baykat_farm_process_record_action( $user_id, 'activity' );
+        if ( ! $message ) {
+            $message = baykat_farm_process_activity_submission( $user_id );
+        }
+        if ( ! $message ) {
+            $message = baykat_farm_process_image_update( $user_id, 'activity' );
+        }
     }
     $parcels = baykat_farm_get_user_parcels( $user_id );
     $activities = baykat_farm_get_user_activities( $user_id );
@@ -36,8 +40,9 @@ function baykat_farm_render_activites() {
 
         <?php if ( $parcels ) : ?>
             <section class="baykat-farm-panel" aria-labelledby="baykat-farm-activity-form-title">
-                <header class="baykat-farm-panel-heading"><span class="baykat-farm-eyebrow">Nouvelle opération</span><h3 id="baykat-farm-activity-form-title">Ajouter une activité</h3></header>
-                <form class="baykat-farm-form" method="post" enctype="multipart/form-data">
+                <details class="baykat-farm-add-form">
+                    <summary id="baykat-farm-activity-form-title"><span class="baykat-farm-eyebrow">Nouvelle opération</span><strong>Ajouter une activité</strong><span class="baykat-farm-add-form-icon" aria-hidden="true">+</span></summary>
+                    <form class="baykat-farm-form" method="post" enctype="multipart/form-data">
                     <?php wp_nonce_field( 'baykat_add_activity', '_wpnonce' ); ?>
                     <div class="baykat-farm-field baykat-farm-field-wide">
                         <label for="baykat_activity_parcel">Parcelle</label>
@@ -70,7 +75,8 @@ function baykat_farm_render_activites() {
                     </div>
                     <?php baykat_farm_render_image_field( 'activity_image', 'Photo de l’activité' ); ?>
                     <button class="baykat-finance-button" type="submit" name="baykat_add_activity" value="1">Enregistrer l’activité</button>
-                </form>
+                    </form>
+                </details>
             </section>
         <?php else : ?>
             <section class="baykat-farm-panel baykat-farm-empty-state"><p>Créez d’abord une ferme et une parcelle pour enregistrer une activité.</p></section>
@@ -79,9 +85,15 @@ function baykat_farm_render_activites() {
         <section class="baykat-farm-panel" aria-labelledby="baykat-farm-activity-list-title">
             <header class="baykat-farm-panel-heading"><span class="baykat-farm-eyebrow">Journal</span><h3 id="baykat-farm-activity-list-title">Activités enregistrées</h3></header>
             <?php if ( $activities ) : ?>
-                <div class="baykat-farm-record-grid baykat-farm-visual-grid">
+                <?php baykat_farm_render_record_filters( 'baykat-farm-activity-list', 'Rechercher une activité', $activity_types, 'Filtrer par activité' ); ?>
+                <div class="baykat-farm-record-grid baykat-farm-visual-grid" id="baykat-farm-activity-list">
                     <?php foreach ( $activities as $activity ) : ?>
-                        <article class="baykat-farm-record-card baykat-farm-visual-card baykat-farm-activity-card">
+                        <article
+                            class="baykat-farm-record-card baykat-farm-visual-card baykat-farm-activity-card"
+                            data-farm-record-card
+                            data-search-text="<?php echo esc_attr( $activity->title . ' ' . $activity->activity_date . ' ' . $activity->farm_name . ' ' . $activity->parcel_name . ' ' . ( isset( $activity_types[ $activity->activity_type ] ) ? $activity_types[ $activity->activity_type ] : $activity->activity_type ) . ' ' . $activity->notes ); ?>"
+                            data-farm-record-filter-value="<?php echo esc_attr( $activity->activity_type ); ?>"
+                        >
                             <?php echo baykat_farm_render_image( $activity->image_id, 'medium_large' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
                             <div class="baykat-farm-visual-card-body">
                                 <span class="baykat-farm-eyebrow"><?php echo esc_html( $activity->activity_date ); ?></span>

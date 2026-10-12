@@ -64,7 +64,7 @@ add_action(
 /**
  * Affiche la page de gestion financière côté utilisateur.
  */
-function baykat_finance_render_frontend_page( $initial_type = 'all' ) {
+function baykat_finance_render_frontend_page( $initial_type = 'all', $process_submission = true ) {
 
     if ( ! in_array( $initial_type, array( 'all', 'income', 'expense' ), true ) ) {
         $initial_type = 'all';
@@ -86,7 +86,9 @@ function baykat_finance_render_frontend_page( $initial_type = 'all' ) {
     $user_id = get_current_user_id();
 
     // Traiter une éventuelle nouvelle transaction.
-    $message = baykat_finance_process_transaction_submission( $user_id );
+    $message = $process_submission
+        ? baykat_finance_process_transaction_submission( $user_id )
+        : null;
 
     // Récupérer les données financières.
     $finance_data = baykat_finance_get_user_transactions( $user_id );
@@ -175,13 +177,12 @@ function baykat_finance_render_frontend_page( $initial_type = 'all' ) {
 
         <div class="baykat-finance-form">
 
-            <div class="baykat-finance-section-heading">
-                <span class="baykat-finance-eyebrow">Votre activité</span>
-                <h2>Ajouter une transaction</h2>
-                <p>Enregistrez un revenu ou une dépense pour garder vos comptes à jour.</p>
-            </div>
-
             <?php if ( empty( $parcels ) ) : ?>
+                <div class="baykat-finance-section-heading">
+                    <span class="baykat-finance-eyebrow">Votre activité</span>
+                    <h2>Ajouter une transaction</h2>
+                    <p>Enregistrez un revenu ou une dépense pour garder vos comptes à jour.</p>
+                </div>
                 <div class="baykat-farm-notice baykat-farm-notice-error" role="status">
                     <p>
                         <?php if ( $farms ) : ?>
@@ -201,7 +202,10 @@ function baykat_finance_render_frontend_page( $initial_type = 'all' ) {
                     </a>
                 </div>
             <?php else : ?>
-            <form class="baykat-finance-form-content" method="post">
+            <details class="baykat-farm-add-form baykat-farm-finance-add-form">
+                <summary id="baykat-finance-add-transaction-title"><span class="baykat-farm-eyebrow">Votre activité</span><strong>Ajouter une transaction</strong><span class="baykat-farm-add-form-icon" aria-hidden="true">+</span></summary>
+                <p class="baykat-farm-add-form-description">Enregistrez un revenu ou une dépense pour garder vos comptes à jour.</p>
+                <form class="baykat-finance-form-content" method="post">
 
                 <?php
                 wp_nonce_field(
@@ -242,6 +246,7 @@ function baykat_finance_render_frontend_page( $initial_type = 'all' ) {
                         type="number"
                         name="amount"
                         id="baykat_amount"
+                        data-finance-amount
                         min="0.01"
                         step="0.01"
                         inputmode="decimal"
@@ -289,7 +294,8 @@ function baykat_finance_render_frontend_page( $initial_type = 'all' ) {
                     Enregistrer la transaction
                 </button>
 
-            </form>
+                </form>
+            </details>
             <?php endif; ?>
 
         </div>
@@ -310,6 +316,7 @@ function baykat_finance_render_frontend_page( $initial_type = 'all' ) {
                     <input
                         type="search"
                         id="baykat-finance-search"
+                        data-finance-search
                         placeholder="Description, montant ou date"
                         autocomplete="off"
                     >

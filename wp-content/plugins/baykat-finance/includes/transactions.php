@@ -11,8 +11,34 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return array|null Message à afficher, ou null si le formulaire n'a pas été envoyé.
  */
 function baykat_finance_process_transaction_submission( $user_id, $expected_category = 'general' ) {
-    $is_item_submission = isset( $_POST['baykat_add_finance_item'] )
+    $is_item_request = isset( $_POST['baykat_add_finance_item'] );
+    $is_item_submission = $is_item_request
         && in_array( $expected_category, array( 'input', 'sale' ), true );
+
+    if ( $is_item_request && ! in_array( $expected_category, array( 'input', 'sale' ), true ) ) {
+        return null;
+    }
+
+    if ( $is_item_submission ) {
+        $submitted_category = isset( $_POST['finance_item_category'] ) && is_string( $_POST['finance_item_category'] )
+            ? sanitize_key( wp_unslash( $_POST['finance_item_category'] ) )
+            : '';
+
+        if ( ! in_array( $submitted_category, array( 'input', 'sale' ), true ) ) {
+            return array(
+                'type'    => 'error',
+                'message' => 'Veuillez sélectionner une catégorie valide pour cet enregistrement.',
+            );
+        }
+
+        if ( $submitted_category !== $expected_category ) {
+            return null;
+        }
+    }
+
+    if ( isset( $_POST['baykat_add_transaction'] ) && 'general' !== $expected_category ) {
+        return null;
+    }
 
     if ( ! $is_item_submission && ! isset( $_POST['baykat_add_transaction'] ) ) {
         return null;

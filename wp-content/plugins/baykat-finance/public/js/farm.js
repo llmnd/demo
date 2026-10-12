@@ -1,5 +1,78 @@
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.baykat-farm-app').forEach(function (app) {
+        function normalizeSearchText(value) {
+            return value
+                .toLocaleLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '');
+        }
+
+        function initializeRecordFilters(root) {
+            root.querySelectorAll('.baykat-farm-record-tools').forEach(function (tools) {
+                if (tools.dataset.filterReady) {
+                    return;
+                }
+                tools.dataset.filterReady = 'true';
+
+                const searchInput = tools.querySelector('[data-farm-record-search]');
+                const filterInput = tools.querySelector('[data-farm-record-filter]');
+                const listId = searchInput
+                    ? searchInput.getAttribute('aria-controls')
+                    : filterInput.getAttribute('aria-controls');
+                const panel = tools.closest('.baykat-farm-panel');
+                const list = panel && listId
+                    ? panel.querySelector('#' + listId)
+                    : null;
+                const resultCount = tools.querySelector('[data-farm-record-count]');
+                const emptyMessage = panel
+                    ? panel.querySelector('[data-farm-record-empty]')
+                    : null;
+
+                if (!list || !panel || !resultCount) {
+                    console.error('Baykat Farm record filters could not find their list.');
+                    return;
+                }
+
+                const cards = Array.from(list.querySelectorAll('[data-farm-record-card]'));
+
+                function filterRecords() {
+                    const searchTerm = normalizeSearchText(searchInput ? searchInput.value.trim() : '');
+                    const selectedFilter = filterInput ? filterInput.value : 'all';
+                    let visibleCount = 0;
+
+                    cards.forEach(function (card) {
+                        const cardText = normalizeSearchText(card.dataset.searchText || card.textContent);
+                        const matchesSearch = cardText.includes(searchTerm);
+                        const matchesFilter = selectedFilter === 'all'
+                            || card.dataset.farmRecordFilterValue === selectedFilter;
+                        const isVisible = matchesSearch && matchesFilter;
+
+                        card.hidden = !isVisible;
+
+                        if (isVisible) {
+                            visibleCount += 1;
+                        }
+                    });
+
+                    resultCount.textContent = visibleCount + (visibleCount === 1 ? ' résultat' : ' résultats');
+
+                    if (emptyMessage) {
+                        emptyMessage.hidden = visibleCount > 0;
+                    }
+                }
+
+                if (searchInput) {
+                    searchInput.addEventListener('input', filterRecords);
+                }
+
+                if (filterInput) {
+                    filterInput.addEventListener('change', filterRecords);
+                }
+
+                filterRecords();
+            });
+        }
+
         function showRequestError(message) {
             let notice = app.querySelector('.baykat-farm-request-error');
 
@@ -73,6 +146,18 @@ document.addEventListener('DOMContentLoaded', function () {
             const targetUrl = new URL(url, window.location.href);
             const previousScroll = window.scrollY;
             const isSubmission = Boolean(requestOptions.formData);
+            const openDetails = Array.from(app.querySelectorAll('details[open]'))
+                .map(function (details) {
+                    return details.id;
+                })
+                .filter(Boolean);
+            const filterValues = Array.from(
+                app.querySelectorAll('[data-farm-record-search], [data-farm-record-filter]')
+            ).map(function (filter) {
+                return { id: filter.id, value: filter.value };
+            }).filter(function (filter) {
+                return filter.id;
+            });
 
             app.setAttribute('aria-busy', 'true');
 
@@ -125,11 +210,35 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 app.setAttribute('aria-busy', 'false');
                 initializeImagePreviews(app);
+                initializeRecordFilters(app);
+                openDetails.forEach(function (detailsId) {
+                    const details = app.querySelector('#' + detailsId);
+
+                    if (details) {
+                        details.open = true;
+                    }
+                });
+                filterValues.forEach(function (savedFilter) {
+                    const filter = app.querySelector('#' + savedFilter.id);
+
+                    if (filter) {
+                        filter.value = savedFilter.value;
+                        filter.dispatchEvent(new Event(filter.matches('select') ? 'change' : 'input', { bubbles: true }));
+                    }
+                });
                 document.dispatchEvent(new CustomEvent('baykat:farm-module-loaded'));
 
                 if (targetUrl.hash) {
                     const anchor = document.getElementById(targetUrl.hash.slice(1));
+
                     if (anchor) {
+                        let disclosure = anchor.closest('details');
+
+                        while (disclosure) {
+                            disclosure.open = true;
+                            disclosure = disclosure.parentElement.closest('details');
+                        }
+
                         anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }
                 } else {
@@ -166,6 +275,30 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             const targetUrl = new URL(link.href, window.location.href);
+            const isSamePage = targetUrl.origin === window.location.origin
+                && targetUrl.pathname === window.location.pathname
+                && targetUrl.search === window.location.search;
+
+            if (isSamePage && targetUrl.hash) {
+                const anchor = document.getElementById(targetUrl.hash.slice(1));
+
+                if (anchor) {
+                    event.preventDefault();
+                    let disclosure = anchor.closest('details');
+
+                    while (disclosure) {
+                        disclosure.open = true;
+                        disclosure = disclosure.parentElement.closest('details');
+                    }
+
+                    if (window.location.href !== targetUrl.href) {
+                        history.pushState({ scrollY: window.scrollY }, '', targetUrl.href);
+                    }
+
+                    anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    return;
+                }
+            }
 
             if (
                 targetUrl.origin !== window.location.origin
@@ -197,18 +330,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
             event.preventDefault();
             const formData = new FormData(form);
+            const submitter = event.submitter
+                || (document.activeElement && form.contains(document.activeElement) && document.activeElement.matches('button[type="submit"], input[type="submit"]')
+                    ? document.activeElement
+                    : form.querySelector('button[type="submit"][name], input[type="submit"][name]'));
 
-            if (event.submitter && event.submitter.name) {
-                formData.append(event.submitter.name, event.submitter.value);
+            if (submitter && submitter.name && !formData.has(submitter.name)) {
+                formData.set(submitter.name, submitter.value);
             }
 
             if (form.matches('.baykat-farm-form, .baykat-farm-image-update-form, .baykat-farm-record-form, .baykat-farm-delete-form')) {
                 form.setAttribute('aria-busy', 'true');
-                const submitButton = event.submitter || form.querySelector('button[type="submit"]');
 
-                if (submitButton) {
-                    submitButton.disabled = true;
-                    submitButton.textContent = 'Enregistrement...';
+                if (submitter) {
+                    submitter.disabled = true;
+                    submitter.textContent = 'Enregistrement...';
                 }
             }
 
@@ -224,5 +360,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         initializeImagePreviews(app);
+        initializeRecordFilters(app);
     });
 });

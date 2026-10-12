@@ -1,141 +1,585 @@
 <?php
-
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+/**
+ * Traite les soumissions du workspace agricole.
+ */
+function baykat_farm_process_workspace_submissions( $user_id ) {
+    $processors = array(
+        array( 'baykat_farm_process_record_action', array( $user_id, 'farm' ) ),
+        array( 'baykat_farm_process_farm_submission', array( $user_id ) ),
+        array( 'baykat_farm_process_image_update', array( $user_id, 'farm' ) ),
+        array( 'baykat_farm_process_record_action', array( $user_id, 'parcel' ) ),
+        array( 'baykat_farm_process_parcel_submission', array( $user_id ) ),
+        array( 'baykat_farm_process_image_update', array( $user_id, 'parcel' ) ),
+        array( 'baykat_farm_process_record_action', array( $user_id, 'crop' ) ),
+        array( 'baykat_farm_process_crop_submission', array( $user_id ) ),
+        array( 'baykat_farm_process_image_update', array( $user_id, 'crop' ) ),
+        array( 'baykat_farm_process_record_action', array( $user_id, 'activity' ) ),
+        array( 'baykat_farm_process_activity_submission', array( $user_id ) ),
+        array( 'baykat_farm_process_image_update', array( $user_id, 'activity' ) ),
+        array( 'baykat_finance_process_transaction_submission', array( $user_id ) ),
+        array( 'baykat_finance_process_transaction_submission', array( $user_id, 'input' ) ),
+        array( 'baykat_finance_process_transaction_submission', array( $user_id, 'sale' ) ),
+    );
+    $messages = array();
+
+    foreach ( $processors as $processor ) {
+        $message = call_user_func_array( $processor[0], $processor[1] );
+        if ( $message ) {
+            $messages[] = $message;
+        }
+    }
+
+    foreach ( $messages as $message ) {
+        if ( 'error' === $message['type'] ) {
+            return $message;
+        }
+    }
+
+    return $messages ? $messages[0] : null;
+}
+
+/**
+ * Récupère un identifiant de ferme parent depuis n'importe quel nommage de clé.
+ */
+function baykat_farm_resolve_parent_farm_id( $item ) {
+    if ( ! is_object( $item ) ) {
+        return 0;
+    }
+    $keys = array( 'farm_id', 'farmId', 'farm', 'parent_farm_id', 'parent_id' );
+    foreach ( $keys as $key ) {
+        if ( isset( $item->$key ) && $item->$key ) {
+            return (int) $item->$key;
+        }
+    }
+    return 0;
+}
+
+/**
+ * Tableau de bord principal — refonte v4 (cartes égalisées, style Baykat).
+ */
 function baykat_farm_render_dashboard() {
     $user_id = get_current_user_id();
-    $message = baykat_farm_process_record_action( $user_id, 'farm' );
-    if ( ! $message ) {
-        $message = baykat_farm_process_farm_submission( $user_id );
-    }
-    if ( ! $message ) {
-        $message = baykat_farm_process_image_update( $user_id, 'farm' );
-    }
-    $farms = baykat_farm_get_user_farms( $user_id );
+    $message = baykat_farm_process_workspace_submissions( $user_id );
 
-    global $wpdb;
+    $farms        = baykat_farm_get_user_farms( $user_id );
+    $parcels      = baykat_farm_get_user_parcels( $user_id );
+    $crops        = baykat_farm_get_user_crops( $user_id );
+    $activities   = baykat_farm_get_user_activities( $user_id );
     $transactions = baykat_finance_get_user_transactions( $user_id );
-    $parcels_table = baykat_farm_table_name( 'parcels' );
-    $crops_table = baykat_farm_table_name( 'crops' );
-    $activities_table = baykat_farm_table_name( 'activities' );
-    $counts = array(
-        'parcels'    => (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $parcels_table WHERE user_id = %d", $user_id ) ),
-        'crops'      => (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $crops_table WHERE user_id = %d", $user_id ) ),
-        'activities' => (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $activities_table WHERE user_id = %d", $user_id ) ),
+    $stocks       = baykat_farm_get_stock_totals( $user_id );
+
+    $total_area = 0;
+    foreach ( $farms as $farm ) {
+        $total_area += (float) $farm->area_ha;
+    }
+
+    $growing_crops = array_filter( $crops, function ( $crop ) {
+        return 'growing' === $crop->status;
+    } );
+
+    $today = current_time( 'Y-m-d' );
+    $upcoming_harvests = array_filter( $crops, function ( $crop ) use ( $today ) {
+        return ! empty( $crop->expected_harvest_date )
+            && $crop->expected_harvest_date >= $today
+            && 'harvested' !== $crop->status;
+    } );
+    usort( $upcoming_harvests, function ( $first, $second ) {
+        return strcmp( $first->expected_harvest_date, $second->expected_harvest_date );
+    } );
+
+    $activity_types = array(
+        'sowing'      => 'Semis',
+        'watering'    => 'Arrosage',
+        'fertilizing' => 'Fertilisation',
+        'treatment'   => 'Traitement',
+        'harvest'     => 'Récolte',
+        'other'       => 'Autre',
     );
+
+    $current_user = wp_get_current_user();
+
+    // Image hero : priorité à la première ferme, sinon ambiance Baykat
+    $hero_image = '';
+    if ( ! empty( $farms ) && ! empty( $farms[0]->image_id ) ) {
+        $hero_image = wp_get_attachment_image_url( $farms[0]->image_id, 'full' );
+    }
+
+    // Pré-calculs par ferme
+    $parcels_by_farm = array();
+    foreach ( $parcels as $p ) {
+        $fid = baykat_farm_resolve_parent_farm_id( $p );
+        if ( $fid > 0 ) {
+            if ( ! isset( $parcels_by_farm[ $fid ] ) ) {
+                $parcels_by_farm[ $fid ] = array();
+            }
+            $parcels_by_farm[ $fid ][] = $p;
+        }
+    }
+
+    $crops_by_farm = array();
+    foreach ( $crops as $c ) {
+        $fid = baykat_farm_resolve_parent_farm_id( $c );
+        if ( $fid > 0 ) {
+            if ( ! isset( $crops_by_farm[ $fid ] ) ) {
+                $crops_by_farm[ $fid ] = array();
+            }
+            $crops_by_farm[ $fid ][] = $c;
+        }
+    }
+
+    $balance_value = isset( $transactions['balance'] ) ? (float) $transactions['balance'] : 0;
+    $all_tx_count  = count( $transactions['transactions'] );
     ?>
-    <div class="baykat-farm-content">
-        <header class="baykat-farm-section-heading">
-            <span class="baykat-farm-eyebrow">Votre espace agricole</span>
-            <h2>Vue d’ensemble</h2>
-            <p>Enregistrez vos fermes et retrouvez les principaux indicateurs de votre activité.</p>
+    <div class="baykat-farm-content baykat-farm-v4">
+
+        <!-- ============================= HERO IMMERSIF ============================= -->
+        <header class="baykat-farm-hero<?php echo $hero_image ? ' has-image' : ' is-default'; ?>"
+            <?php if ( $hero_image ) : ?>
+                style="--baykat-hero-image:url('<?php echo esc_url( $hero_image ); ?>');"
+            <?php endif; ?>>
+            <div class="baykat-farm-hero-overlay" aria-hidden="true"></div>
+            <div class="baykat-farm-hero-grain" aria-hidden="true"></div>
+
+            <div class="baykat-farm-hero-inner">
+                <span class="baykat-farm-eyebrow">Tableau de bord · <?php echo esc_html( date_i18n( 'd/m/Y' ) ); ?></span>
+                <h1 class="baykat-farm-hero-title">
+                    Bonjour <em><?php echo esc_html( $current_user->display_name ); ?></em>
+                </h1>
+                <p class="baykat-farm-hero-sub">
+                    <?php
+                    if ( count( $farms ) > 1 ) {
+                        echo esc_html( 'Vos ' . number_format_i18n( count( $farms ) ) . ' exploitations sous un même ciel.' );
+                    } elseif ( ! empty( $farms ) ) {
+                        echo esc_html( 'Voici l\'état de ' . $farms[0]->name . ' aujourd\'hui.' );
+                    } else {
+                        echo esc_html( 'Créez votre première exploitation pour commencer.' );
+                    }
+                    ?>
+                </p>
+
+                <div class="baykat-farm-hero-actions">
+                    <!-- Bouton style "Vendre sur BAYKAT" -->
+                    <a class="baykat-farm-sell-button" href="#baykat-farm-add-title">
+                        <span class="baykat-farm-sell-button-label">＋ Ajouter une ferme</span>
+                        <span class="baykat-farm-sell-button-plus" aria-hidden="true">+</span>
+                    </a>
+                    <a class="baykat-farm-cta-ghost" href="#baykat-workspace-parcels">
+                        Gérer mes parcelles
+                        <span aria-hidden="true">→</span>
+                    </a>
+                </div>
+            </div>
+
+            <a class="baykat-farm-scroll-hint" href="#baykat-farm-kpi" aria-label="Voir les indicateurs">
+                <span></span>
+            </a>
         </header>
 
         <?php if ( $message ) : ?>
-            <div class="baykat-farm-notice baykat-farm-notice-<?php echo esc_attr( $message['type'] ); ?>" role="<?php echo 'error' === $message['type'] ? 'alert' : 'status'; ?>">
+            <div class="baykat-farm-notice baykat-farm-notice-<?php echo esc_attr( $message['type'] ); ?>"
+                 role="<?php echo 'error' === $message['type'] ? 'alert' : 'status'; ?>">
                 <?php echo esc_html( $message['message'] ); ?>
             </div>
         <?php endif; ?>
 
-        <div class="baykat-farm-stat-grid">
-            <article class="baykat-farm-stat-card">
-                <span>Fermes</span>
-                <strong><?php echo esc_html( number_format_i18n( count( $farms ) ) ); ?></strong>
-            </article>
-            <article class="baykat-farm-stat-card">
-                <span>Parcelles</span>
-                <strong><?php echo esc_html( number_format_i18n( $counts['parcels'] ) ); ?></strong>
-            </article>
-            <article class="baykat-farm-stat-card">
-                <span>Cultures</span>
-                <strong><?php echo esc_html( number_format_i18n( $counts['crops'] ) ); ?></strong>
-            </article>
-            <article class="baykat-farm-stat-card">
-                <span>Activités</span>
-                <strong><?php echo esc_html( number_format_i18n( $counts['activities'] ) ); ?></strong>
-            </article>
-            <article class="baykat-farm-stat-card">
-                <span>Solde Finance</span>
-                <strong><?php echo esc_html( number_format( $transactions['balance'], 0, ',', ' ' ) ); ?> FCFA</strong>
-            </article>
+        <!-- ============================= KPI BAND ============================= -->
+        <section class="baykat-farm-kpi-band" id="baykat-farm-kpi" aria-label="Indicateurs clés">
+            <div class="baykat-farm-kpi-band-inner">
+
+                <a class="baykat-farm-kpi-tile" href="#baykat-workspace-farms">
+                    <span class="baykat-farm-kpi-tile-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 21h18"/><path d="M5 21V9l7-5 7 5v12"/><path d="M9 21v-6h6v6"/>
+                        </svg>
+                    </span>
+                    <span class="baykat-farm-kpi-tile-label">Fermes</span>
+                    <strong class="baykat-farm-kpi-tile-value"><?php echo esc_html( number_format_i18n( count( $farms ) ) ); ?></strong>
+                </a>
+
+                <a class="baykat-farm-kpi-tile" href="#baykat-workspace-farms">
+                    <span class="baykat-farm-kpi-tile-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16"/><path d="M9 4v16"/>
+                        </svg>
+                    </span>
+                    <span class="baykat-farm-kpi-tile-label">Surface</span>
+                    <strong class="baykat-farm-kpi-tile-value"><?php echo esc_html( number_format( $total_area, 0, ',', ' ' ) ); ?><small>ha</small></strong>
+                </a>
+
+                <a class="baykat-farm-kpi-tile" href="#baykat-workspace-parcels">
+                    <span class="baykat-farm-kpi-tile-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 6l3-3 3 3"/><path d="M6 3v18"/><path d="M21 18l-3 3-3-3"/><path d="M18 21V3"/>
+                        </svg>
+                    </span>
+                    <span class="baykat-farm-kpi-tile-label">Parcelles</span>
+                    <strong class="baykat-farm-kpi-tile-value"><?php echo esc_html( number_format_i18n( count( $parcels ) ) ); ?></strong>
+                </a>
+
+                <a class="baykat-farm-kpi-tile is-accent" href="#baykat-workspace-crops">
+                    <span class="baykat-farm-kpi-tile-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22V12"/><path d="M12 12c0-4 3-7 8-7 0 5-3 8-8 8z"/><path d="M12 12c0-4-3-7-8-7 0 5 3 8 8 8z"/>
+                        </svg>
+                    </span>
+                    <span class="baykat-farm-kpi-tile-label">En culture</span>
+                    <strong class="baykat-farm-kpi-tile-value"><?php echo esc_html( number_format_i18n( count( $growing_crops ) ) ); ?></strong>
+                </a>
+
+                <a class="baykat-farm-kpi-tile" href="#baykat-workspace-crops">
+                    <span class="baykat-farm-kpi-tile-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/>
+                        </svg>
+                    </span>
+                    <span class="baykat-farm-kpi-tile-label">Récoltes</span>
+                    <strong class="baykat-farm-kpi-tile-value"><?php echo esc_html( number_format_i18n( count( $upcoming_harvests ) ) ); ?></strong>
+                </a>
+
+                <a class="baykat-farm-kpi-tile is-finance" href="#baykat-workspace-finances">
+                    <span class="baykat-farm-kpi-tile-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                    </span>
+                    <span class="baykat-farm-kpi-tile-label">Solde</span>
+                    <strong class="baykat-farm-kpi-tile-value"><?php echo esc_html( number_format( $balance_value, 0, ',', ' ' ) ); ?><small>F</small></strong>
+                </a>
+
+            </div>
+        </section>
+
+        <!-- ============================= 3 TIMELINES ÉGALISÉES ============================= -->
+        <div class="baykat-farm-dashboard-overview">
+
+            <section class="baykat-farm-panel baykat-farm-dashboard-list" aria-labelledby="baykat-farm-upcoming-title">
+                <header class="baykat-farm-panel-heading">
+                    <span class="baykat-farm-eyebrow">Calendrier</span>
+                    <h3 id="baykat-farm-upcoming-title">Prochaines récoltes</h3>
+                </header>
+                <div class="baykat-farm-dashboard-list-body">
+                    <?php if ( $upcoming_harvests ) : ?>
+                        <ul class="baykat-farm-timeline">
+                            <?php foreach ( array_slice( $upcoming_harvests, 0, 4 ) as $crop ) :
+                                $days = (int) floor( ( strtotime( $crop->expected_harvest_date ) - strtotime( $today ) ) / DAY_IN_SECONDS );
+                                $farm_label   = isset( $crop->farm_name )   ? $crop->farm_name   : 'Ferme';
+                                $parcel_label = isset( $crop->parcel_name ) ? $crop->parcel_name : 'Parcelle';
+                            ?>
+                                <li>
+                                    <span class="baykat-farm-timeline-dot is-harvest" aria-hidden="true"></span>
+                                    <span class="baykat-farm-dashboard-list-copy">
+                                        <strong><?php echo esc_html( $crop->name ); ?></strong>
+                                        <small><?php echo esc_html( $farm_label . ' · ' . $parcel_label ); ?></small>
+                                    </span>
+                                    <span class="baykat-farm-dashboard-badge">
+                                        <?php
+                                        if ( $days <= 0 ) {
+                                            echo 'Aujourd\'hui';
+                                        } elseif ( $days < 30 ) {
+                                            echo esc_html( $days . ' j' );
+                                        } else {
+                                            echo esc_html( date_i18n( 'd/m', strtotime( $crop->expected_harvest_date . ' 12:00:00' ) ) );
+                                        }
+                                        ?>
+                                    </span>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php else : ?>
+                        <p class="baykat-farm-empty-state">Aucune récolte planifiée pour le moment.</p>
+                    <?php endif; ?>
+                </div>
+                <a class="baykat-farm-dashboard-more" href="#baykat-workspace-crops">Voir toutes les cultures <span aria-hidden="true">→</span></a>
+            </section>
+
+            <section class="baykat-farm-panel baykat-farm-dashboard-list" aria-labelledby="baykat-farm-recent-activities-title">
+                <header class="baykat-farm-panel-heading">
+                    <span class="baykat-farm-eyebrow">Journal</span>
+                    <h3 id="baykat-farm-recent-activities-title">Activités récentes</h3>
+                </header>
+                <div class="baykat-farm-dashboard-list-body">
+                    <?php if ( $activities ) : ?>
+                        <ul class="baykat-farm-timeline">
+                            <?php foreach ( array_slice( $activities, 0, 4 ) as $activity ) :
+                                $parcel_label = isset( $activity->parcel_name ) ? $activity->parcel_name : '';
+                                $type_label   = isset( $activity_types[ $activity->activity_type ] ) ? $activity_types[ $activity->activity_type ] : $activity->activity_type;
+                                $meta         = trim( $type_label . ( $parcel_label ? ' · ' . $parcel_label : '' ) );
+                            ?>
+                                <li>
+                                    <span class="baykat-farm-timeline-dot" aria-hidden="true"></span>
+                                    <span class="baykat-farm-dashboard-list-copy">
+                                        <strong><?php echo esc_html( $activity->title ); ?></strong>
+                                        <small><?php echo esc_html( $meta ); ?></small>
+                                    </span>
+                                    <time datetime="<?php echo esc_attr( $activity->activity_date ); ?>"><?php echo esc_html( date_i18n( 'd/m', strtotime( $activity->activity_date . ' 12:00:00' ) ) ); ?></time>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php else : ?>
+                        <p class="baykat-farm-empty-state">Les activités de votre ferme apparaîtront ici.</p>
+                    <?php endif; ?>
+                </div>
+                <a class="baykat-farm-dashboard-more" href="#baykat-workspace-activities">Voir le journal <span aria-hidden="true">→</span></a>
+            </section>
+
+            <section class="baykat-farm-panel baykat-farm-dashboard-list" aria-labelledby="baykat-farm-recent-finances-title">
+                <header class="baykat-farm-panel-heading">
+                    <span class="baykat-farm-eyebrow">Finances</span>
+                    <h3 id="baykat-farm-recent-finances-title">Dernières transactions</h3>
+                </header>
+                <div class="baykat-farm-dashboard-list-body">
+                    <?php if ( ! empty( $transactions['transactions'] ) ) : ?>
+                        <ul class="baykat-farm-timeline">
+                            <?php foreach ( array_slice( $transactions['transactions'], 0, 4 ) as $transaction ) :
+                                $is_income    = 'income' === $transaction->type;
+                                $farm_label   = isset( $transaction->farm_name )   ? $transaction->farm_name   : '';
+                                $parcel_label = isset( $transaction->parcel_name ) ? $transaction->parcel_name : '';
+                                $meta         = trim( $farm_label . ( $farm_label && $parcel_label ? ' · ' : '' ) . $parcel_label );
+                            ?>
+                                <li>
+                                    <span class="baykat-farm-timeline-dot <?php echo $is_income ? 'is-income' : 'is-expense'; ?>" aria-hidden="true"></span>
+                                    <span class="baykat-farm-dashboard-list-copy">
+                                        <strong><?php echo esc_html( $transaction->description ? $transaction->description : ( $is_income ? 'Revenu' : 'Dépense' ) ); ?></strong>
+                                        <?php if ( $meta ) : ?>
+                                            <small><?php echo esc_html( $meta ); ?></small>
+                                        <?php endif; ?>
+                                    </span>
+                                    <span class="baykat-farm-dashboard-amount<?php echo $is_income ? ' is-income' : ' is-expense'; ?>"><?php echo esc_html( number_format( (float) $transaction->amount, 0, ',', ' ' ) ); ?></span>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php else : ?>
+                        <p class="baykat-farm-empty-state">Aucune transaction n'a encore été enregistrée.</p>
+                    <?php endif; ?>
+                </div>
+                <a class="baykat-farm-dashboard-more" href="#baykat-workspace-finances">Voir les finances <span aria-hidden="true">→</span></a>
+            </section>
         </div>
 
-        <section id="baykat-farm-add-title" class="baykat-farm-panel" aria-labelledby="baykat-farm-add-heading">
-            <header class="baykat-farm-panel-heading">
-                <span class="baykat-farm-eyebrow">Nouvelle exploitation</span>
-                <h3 id="baykat-farm-add-heading">Ajouter une ferme</h3>
+        <!-- ============================= SHOWCASE FERMES ============================= -->
+        <?php if ( $farms ) : ?>
+        <section class="baykat-farm-showcase" aria-labelledby="baykat-farm-showcase-title">
+            <header class="baykat-farm-showcase-heading">
+                <div>
+                    <span class="baykat-farm-eyebrow">Mes exploitations</span>
+                    <h3 id="baykat-farm-showcase-title">Vos fermes</h3>
+                </div>
+                <a class="baykat-farm-dashboard-more" href="#baykat-workspace-farms">Tout gérer <span aria-hidden="true">→</span></a>
             </header>
-            <form class="baykat-farm-form" method="post" enctype="multipart/form-data">
-                <?php wp_nonce_field( 'baykat_add_farm', '_wpnonce' ); ?>
-                <div class="baykat-farm-field">
-                    <label for="baykat_farm_name">Nom de la ferme</label>
-                    <input type="text" name="farm_name" id="baykat_farm_name" maxlength="190" required>
-                </div>
-                <div class="baykat-farm-field">
-                    <label for="baykat_farm_location">Localisation</label>
-                    <input type="text" name="farm_location" id="baykat_farm_location" maxlength="190" placeholder="Village, commune ou région">
-                </div>
-                <div class="baykat-farm-field">
-                    <label for="baykat_farm_area_ha">Superficie (hectares, facultatif)</label>
-                    <input type="number" name="farm_area_ha" id="baykat_farm_area_ha" min="0.001" step="0.001">
-                </div>
-                <?php baykat_farm_render_image_field( 'farm_image', 'Photo de la ferme' ); ?>
-                <button class="baykat-finance-button" type="submit" name="baykat_add_farm" value="1">Enregistrer la ferme</button>
-            </form>
-        </section>
-
-        <section class="baykat-farm-panel" aria-labelledby="baykat-farm-list-title">
-            <header class="baykat-farm-panel-heading">
-                <span class="baykat-farm-eyebrow">Mes exploitations</span>
-                <h3 id="baykat-farm-list-title">Fermes enregistrées</h3>
-            </header>
-            <?php if ( $farms ) : ?>
-                <div class="baykat-farm-record-grid baykat-farm-visual-grid">
-                    <?php foreach ( $farms as $farm ) : ?>
-                        <article class="baykat-farm-record-card baykat-farm-visual-card">
-                            <?php echo baykat_farm_render_image( $farm->image_id, 'medium_large' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-                            <div class="baykat-farm-visual-card-body">
-                                <h4><?php echo esc_html( $farm->name ); ?></h4>
-                                <p><?php echo esc_html( $farm->location ? $farm->location : 'Localisation non renseignée' ); ?></p>
-                                <?php if ( null !== $farm->area_ha ) : ?>
-                                    <span><?php echo esc_html( number_format( (float) $farm->area_ha, 3, ',', ' ' ) ); ?> ha</span>
+            <div class="baykat-farm-showcase-grid">
+                <?php foreach ( array_slice( $farms, 0, 3 ) as $farm ) :
+                    $image        = ! empty( $farm->image_id ) ? wp_get_attachment_image_url( $farm->image_id, 'large' ) : '';
+                    $farm_parcels = isset( $parcels_by_farm[ $farm->id ] ) ? $parcels_by_farm[ $farm->id ] : array();
+                    $farm_crops   = isset( $crops_by_farm[ $farm->id ] ) ? $crops_by_farm[ $farm->id ] : array();
+                    $growing      = count( array_filter( $farm_crops, function ( $c ) { return 'growing' === $c->status; } ) );
+                ?>
+                    <article class="baykat-farm-showcase-card">
+                        <a class="baykat-farm-showcase-link" href="#baykat-workspace-farms" aria-label="<?php echo esc_attr( 'Voir ' . $farm->name ); ?>">
+                            <div class="baykat-farm-showcase-media">
+                                <?php if ( $image ) : ?>
+                                    <img src="<?php echo esc_url( $image ); ?>" alt="<?php echo esc_attr( $farm->name ); ?>" loading="lazy">
+                                <?php else : ?>
+                                    <div class="baykat-farm-card-image-placeholder"><span>BAYKAT</span></div>
                                 <?php endif; ?>
-                                <?php baykat_farm_render_image_update_form( 'farm', $farm->id, $farm->image_id ? 'Changer la photo' : 'Ajouter une photo' ); ?>
-                                <details class="baykat-farm-record-actions">
-                                    <summary>Modifier la ferme</summary>
-                                    <form class="baykat-farm-record-form" method="post">
-                                        <?php wp_nonce_field( 'baykat_update_farm', '_wpnonce' ); ?>
-                                        <input type="hidden" name="baykat_update_farm_id" value="<?php echo esc_attr( $farm->id ); ?>">
-                                        <div class="baykat-farm-field">
-                                            <label for="baykat_farm_edit_name_<?php echo esc_attr( $farm->id ); ?>">Nom</label>
-                                            <input type="text" name="farm_name" id="baykat_farm_edit_name_<?php echo esc_attr( $farm->id ); ?>" maxlength="190" value="<?php echo esc_attr( $farm->name ); ?>" required>
-                                        </div>
-                                        <div class="baykat-farm-field">
-                                            <label for="baykat_farm_edit_location_<?php echo esc_attr( $farm->id ); ?>">Localisation</label>
-                                            <input type="text" name="farm_location" id="baykat_farm_edit_location_<?php echo esc_attr( $farm->id ); ?>" maxlength="190" value="<?php echo esc_attr( $farm->location ); ?>">
-                                        </div>
-                                        <div class="baykat-farm-field">
-                                            <label for="baykat_farm_edit_area_<?php echo esc_attr( $farm->id ); ?>">Superficie (ha)</label>
-                                            <input type="number" name="farm_area_ha" id="baykat_farm_edit_area_<?php echo esc_attr( $farm->id ); ?>" min="0.001" step="0.001" value="<?php echo esc_attr( $farm->area_ha ); ?>">
-                                        </div>
-                                        <button class="baykat-finance-button" type="submit" name="baykat_update_farm" value="1">Enregistrer les modifications</button>
-                                    </form>
-                                    <form class="baykat-farm-delete-form" method="post">
-                                        <?php wp_nonce_field( 'baykat_delete_farm', '_wpnonce' ); ?>
-                                        <input type="hidden" name="baykat_delete_farm_id" value="<?php echo esc_attr( $farm->id ); ?>">
-                                        <button class="baykat-finance-button baykat-farm-delete-button" type="submit" name="baykat_delete_farm" value="1">Supprimer la ferme</button>
-                                    </form>
-                                </details>
+                                <div class="baykat-farm-showcase-shade" aria-hidden="true"></div>
+                                <div class="baykat-farm-showcase-head">
+                                    <h4><?php echo esc_html( $farm->name ); ?></h4>
+                                    <p><?php echo esc_html( $farm->location ? $farm->location : 'Localisation non renseignée' ); ?></p>
+                                </div>
                             </div>
-                        </article>
-                    <?php endforeach; ?>
-                </div>
-            <?php else : ?>
-                <p class="baykat-farm-empty-state">Aucune ferme enregistrée. Ajoutez votre première ferme ci-dessus.</p>
-            <?php endif; ?>
+                            <div class="baykat-farm-showcase-stats">
+                                <span>
+                                    <strong><?php echo esc_html( number_format( (float) $farm->area_ha, 1, ',', ' ' ) ); ?></strong>
+                                    <small>ha</small>
+                                </span>
+                                <span>
+                                    <strong><?php echo esc_html( number_format_i18n( count( $farm_parcels ) ) ); ?></strong>
+                                    <small>parcelles</small>
+                                </span>
+                                <span>
+                                    <strong><?php echo esc_html( number_format_i18n( $growing ) ); ?></strong>
+                                    <small>en culture</small>
+                                </span>
+                            </div>
+                        </a>
+                    </article>
+                <?php endforeach; ?>
+            </div>
         </section>
+        <?php endif; ?>
+
+        <!-- ============================= WORKSPACE ============================= -->
+        <header class="baykat-farm-workspace-heading">
+            <span class="baykat-farm-eyebrow">Gestion complète</span>
+            <h3>Tout votre espace agricole</h3>
+            <p>Consultez, ajoutez ou modifiez vos données sans quitter cette page.</p>
+        </header>
+
+        <details class="baykat-farm-workspace-section" id="baykat-workspace-parcels">
+            <summary>
+                <span class="baykat-farm-workspace-summary">
+                    <strong>Parcelles</strong>
+                    <small>Surfaces, statuts et rattachement à vos fermes</small>
+                </span>
+                <span class="baykat-farm-workspace-count"><?php echo esc_html( number_format_i18n( count( $parcels ) ) ); ?></span>
+            </summary>
+            <div class="baykat-farm-workspace-content"><?php baykat_farm_render_parcelles( false ); ?></div>
+        </details>
+
+        <details class="baykat-farm-workspace-section" id="baykat-workspace-crops">
+            <summary>
+                <span class="baykat-farm-workspace-summary">
+                    <strong>Cultures</strong>
+                    <small>Plantations, variétés et calendrier des récoltes</small>
+                </span>
+                <span class="baykat-farm-workspace-count"><?php echo esc_html( number_format_i18n( count( $crops ) ) ); ?></span>
+            </summary>
+            <div class="baykat-farm-workspace-content"><?php baykat_farm_render_cultures( false ); ?></div>
+        </details>
+
+        <details class="baykat-farm-workspace-section" id="baykat-workspace-activities">
+            <summary>
+                <span class="baykat-farm-workspace-summary">
+                    <strong>Activités</strong>
+                    <small>Journal des travaux réalisés sur vos parcelles</small>
+                </span>
+                <span class="baykat-farm-workspace-count"><?php echo esc_html( number_format_i18n( count( $activities ) ) ); ?></span>
+            </summary>
+            <div class="baykat-farm-workspace-content"><?php baykat_farm_render_activites( false ); ?></div>
+        </details>
+
+        <details class="baykat-farm-workspace-section" id="baykat-workspace-finances">
+            <summary>
+                <span class="baykat-farm-workspace-summary">
+                    <strong>Finances</strong>
+                    <small>Revenus, dépenses, achats d'intrants et ventes</small>
+                </span>
+                <span class="baykat-farm-workspace-count"><?php echo esc_html( number_format_i18n( $all_tx_count ) ); ?></span>
+            </summary>
+            <div class="baykat-farm-workspace-content baykat-farm-workspace-finances">
+                <details class="baykat-farm-workspace-subsection" id="baykat-workspace-finance-general">
+                    <summary>Revenus, dépenses et transactions générales</summary>
+                    <?php echo baykat_finance_render_frontend_page( 'all', false ); // phpcs:ignore ?>
+                </details>
+                <details class="baykat-farm-workspace-subsection" id="baykat-workspace-finance-input">
+                    <summary>Achats et intrants <span><?php echo esc_html( number_format_i18n( count( baykat_finance_get_user_transactions( $user_id, 'input' )['transactions'] ) ) ); ?></span></summary>
+                    <?php echo baykat_farm_render_finance_item_section( 'input', false ); // phpcs:ignore ?>
+                </details>
+                <details class="baykat-farm-workspace-subsection" id="baykat-workspace-finance-sale">
+                    <summary>Ventes <span><?php echo esc_html( number_format_i18n( count( baykat_finance_get_user_transactions( $user_id, 'sale' )['transactions'] ) ) ); ?></span></summary>
+                    <?php echo baykat_farm_render_finance_item_section( 'sale', false ); // phpcs:ignore ?>
+                </details>
+            </div>
+        </details>
+
+        <details class="baykat-farm-workspace-section" id="baykat-workspace-stocks">
+            <summary>
+                <span class="baykat-farm-workspace-summary">
+                    <strong>Stocks</strong>
+                    <small>Quantités d'intrants et coûts cumulés par ferme</small>
+                </span>
+                <span class="baykat-farm-workspace-count"><?php echo esc_html( number_format_i18n( count( $stocks ) ) ); ?></span>
+            </summary>
+            <div class="baykat-farm-workspace-content"><?php baykat_farm_render_stocks(); ?></div>
+        </details>
+
+        <details class="baykat-farm-workspace-section" id="baykat-workspace-farms">
+            <summary>
+                <span class="baykat-farm-workspace-summary">
+                    <strong>Mes fermes</strong>
+                    <small>Gérer les informations, photos et exploitations</small>
+                </span>
+                <span class="baykat-farm-workspace-count"><?php echo esc_html( number_format_i18n( count( $farms ) ) ); ?></span>
+            </summary>
+
+            <section class="baykat-farm-panel" aria-labelledby="baykat-farm-add-heading">
+                <details class="baykat-farm-add-form">
+                    <summary id="baykat-farm-add-title">
+                        <span class="baykat-farm-eyebrow">Nouvelle exploitation</span>
+                        <strong id="baykat-farm-add-heading">Ajouter une ferme</strong>
+                        <span class="baykat-farm-add-form-icon" aria-hidden="true">+</span>
+                    </summary>
+                    <form class="baykat-farm-form" method="post" enctype="multipart/form-data">
+                        <?php wp_nonce_field( 'baykat_add_farm', '_wpnonce' ); ?>
+                        <input type="hidden" name="baykat_add_farm" value="1">
+                        <div class="baykat-farm-field">
+                            <label for="baykat_farm_name">Nom de la ferme</label>
+                            <input type="text" name="farm_name" id="baykat_farm_name" maxlength="190" required>
+                        </div>
+                        <div class="baykat-farm-field">
+                            <label for="baykat_farm_location">Localisation</label>
+                            <input type="text" name="farm_location" id="baykat_farm_location" maxlength="190" placeholder="Village, commune ou région">
+                        </div>
+                        <div class="baykat-farm-field">
+                            <label for="baykat_farm_area_ha">Superficie (hectares, facultatif)</label>
+                            <input type="number" name="farm_area_ha" id="baykat_farm_area_ha" min="0.001" step="0.001">
+                        </div>
+                        <?php baykat_farm_render_image_field( 'farm_image', 'Photo de la ferme' ); ?>
+                        <button class="baykat-finance-button" type="submit">Enregistrer la ferme</button>
+                    </form>
+                </details>
+            </section>
+
+            <section class="baykat-farm-panel" aria-labelledby="baykat-farm-list-title">
+                <header class="baykat-farm-panel-heading">
+                    <span class="baykat-farm-eyebrow">Mes exploitations</span>
+                    <h3 id="baykat-farm-list-title">Fermes enregistrées</h3>
+                </header>
+                <?php if ( $farms ) : ?>
+                    <?php baykat_farm_render_record_filters( 'baykat-farm-farm-list', 'Rechercher une ferme' ); ?>
+                    <div class="baykat-farm-record-grid baykat-farm-visual-grid" id="baykat-farm-farm-list">
+                        <?php foreach ( $farms as $farm ) : ?>
+                            <article
+                                class="baykat-farm-record-card baykat-farm-visual-card"
+                                data-farm-record-card
+                                data-search-text="<?php echo esc_attr( $farm->name . ' ' . $farm->location . ' ' . $farm->area_ha ); ?>"
+                            >
+                                <?php echo baykat_farm_render_image( $farm->image_id, 'medium_large' ); // phpcs:ignore ?>
+                                <div class="baykat-farm-visual-card-body">
+                                    <h4><?php echo esc_html( $farm->name ); ?></h4>
+                                    <p><?php echo esc_html( $farm->location ? $farm->location : 'Localisation non renseignée' ); ?></p>
+                                    <?php if ( null !== $farm->area_ha ) : ?>
+                                        <span><?php echo esc_html( number_format( (float) $farm->area_ha, 3, ',', ' ' ) ); ?> ha</span>
+                                    <?php endif; ?>
+                                    <?php baykat_farm_render_image_update_form( 'farm', $farm->id, $farm->image_id ? 'Changer la photo' : 'Ajouter une photo' ); ?>
+                                    <details class="baykat-farm-record-actions">
+                                        <summary>Modifier la ferme</summary>
+                                        <form class="baykat-farm-record-form" method="post">
+                                            <?php wp_nonce_field( 'baykat_update_farm', '_wpnonce' ); ?>
+                                            <input type="hidden" name="baykat_update_farm_id" value="<?php echo esc_attr( $farm->id ); ?>">
+                                            <div class="baykat-farm-field">
+                                                <label for="baykat_farm_edit_name_<?php echo esc_attr( $farm->id ); ?>">Nom</label>
+                                                <input type="text" name="farm_name" id="baykat_farm_edit_name_<?php echo esc_attr( $farm->id ); ?>" maxlength="190" value="<?php echo esc_attr( $farm->name ); ?>" required>
+                                            </div>
+                                            <div class="baykat-farm-field">
+                                                <label for="baykat_farm_edit_location_<?php echo esc_attr( $farm->id ); ?>">Localisation</label>
+                                                <input type="text" name="farm_location" id="baykat_farm_edit_location_<?php echo esc_attr( $farm->id ); ?>" maxlength="190" value="<?php echo esc_attr( $farm->location ); ?>">
+                                            </div>
+                                            <div class="baykat-farm-field">
+                                                <label for="baykat_farm_edit_area_<?php echo esc_attr( $farm->id ); ?>">Superficie (ha)</label>
+                                                <input type="number" name="farm_area_ha" id="baykat_farm_edit_area_<?php echo esc_attr( $farm->id ); ?>" min="0.001" step="0.001" value="<?php echo esc_attr( $farm->area_ha ); ?>">
+                                            </div>
+                                            <button class="baykat-finance-button" type="submit" name="baykat_update_farm" value="1">Enregistrer les modifications</button>
+                                        </form>
+                                        <form class="baykat-farm-delete-form" method="post">
+                                            <?php wp_nonce_field( 'baykat_delete_farm', '_wpnonce' ); ?>
+                                            <input type="hidden" name="baykat_delete_farm_id" value="<?php echo esc_attr( $farm->id ); ?>">
+                                            <button class="baykat-finance-button baykat-farm-delete-button" type="submit" name="baykat_delete_farm" value="1">Supprimer la ferme</button>
+                                        </form>
+                                    </details>
+                                </div>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else : ?>
+                    <p class="baykat-farm-empty-state">Aucune ferme enregistrée. Ajoutez votre première ferme ci-dessus.</p>
+                <?php endif; ?>
+            </section>
+        </details>
     </div>
     <?php
 }

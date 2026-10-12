@@ -7,10 +7,10 @@ function initializeBaykatFinancePages(root) {
         financePage.dataset.financeReady = 'true';
 
         const form = financePage.querySelector('.baykat-finance-form-content');
-        const amountInput = financePage.querySelector('#baykat_amount');
-        const quantityInput = financePage.querySelector('#baykat_quantity');
+        const amountInput = financePage.querySelector('[data-finance-amount]');
+        const quantityInput = financePage.querySelector('[data-finance-quantity]');
         const submitButton = form ? form.querySelector('button[type="submit"]') : null;
-        const searchInput = financePage.querySelector('#baykat-finance-search');
+        const searchInput = financePage.querySelector('[data-finance-search]');
         const typeFilter = financePage.querySelector('#baykat-finance-filter');
         const transactionRows = Array.from(
             financePage.querySelectorAll('.baykat-finance-transaction-row')

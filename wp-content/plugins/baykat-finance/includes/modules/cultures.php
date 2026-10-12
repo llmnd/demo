@@ -4,14 +4,18 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-function baykat_farm_render_cultures() {
+function baykat_farm_render_cultures( $process_actions = true ) {
     $user_id = get_current_user_id();
-    $message = baykat_farm_process_record_action( $user_id, 'crop' );
-    if ( ! $message ) {
-        $message = baykat_farm_process_crop_submission( $user_id );
-    }
-    if ( ! $message ) {
-        $message = baykat_farm_process_image_update( $user_id, 'crop' );
+    $message = null;
+
+    if ( $process_actions ) {
+        $message = baykat_farm_process_record_action( $user_id, 'crop' );
+        if ( ! $message ) {
+            $message = baykat_farm_process_crop_submission( $user_id );
+        }
+        if ( ! $message ) {
+            $message = baykat_farm_process_image_update( $user_id, 'crop' );
+        }
     }
     $parcels = baykat_farm_get_user_parcels( $user_id );
     $crops = baykat_farm_get_user_crops( $user_id );
@@ -34,8 +38,9 @@ function baykat_farm_render_cultures() {
 
         <?php if ( $parcels ) : ?>
             <section class="baykat-farm-panel" aria-labelledby="baykat-farm-crop-form-title">
-                <header class="baykat-farm-panel-heading"><span class="baykat-farm-eyebrow">Nouvelle plantation</span><h3 id="baykat-farm-crop-form-title">Ajouter une culture</h3></header>
-                <form class="baykat-farm-form" method="post" enctype="multipart/form-data">
+                <details class="baykat-farm-add-form">
+                    <summary id="baykat-farm-crop-form-title"><span class="baykat-farm-eyebrow">Nouvelle plantation</span><strong>Ajouter une culture</strong><span class="baykat-farm-add-form-icon" aria-hidden="true">+</span></summary>
+                    <form class="baykat-farm-form" method="post" enctype="multipart/form-data">
                     <?php wp_nonce_field( 'baykat_add_crop', '_wpnonce' ); ?>
                     <div class="baykat-farm-field baykat-farm-field-wide">
                         <label for="baykat_crop_parcel">Parcelle</label>
@@ -72,7 +77,8 @@ function baykat_farm_render_cultures() {
                     </div>
                     <?php baykat_farm_render_image_field( 'crop_image', 'Photo de la culture' ); ?>
                     <button class="baykat-finance-button" type="submit" name="baykat_add_crop" value="1">Enregistrer la culture</button>
-                </form>
+                    </form>
+                </details>
             </section>
         <?php else : ?>
             <section class="baykat-farm-panel baykat-farm-empty-state"><p>Créez une ferme et une parcelle avant d’ajouter une culture.</p></section>
@@ -81,9 +87,15 @@ function baykat_farm_render_cultures() {
         <section class="baykat-farm-panel" aria-labelledby="baykat-farm-crop-list-title">
             <header class="baykat-farm-panel-heading"><span class="baykat-farm-eyebrow">Cultures suivies</span><h3 id="baykat-farm-crop-list-title">Cultures enregistrées</h3></header>
             <?php if ( $crops ) : ?>
-                <div class="baykat-farm-record-grid baykat-farm-visual-grid">
+                <?php baykat_farm_render_record_filters( 'baykat-farm-crop-list', 'Rechercher une culture', $statuses ); ?>
+                <div class="baykat-farm-record-grid baykat-farm-visual-grid" id="baykat-farm-crop-list">
                     <?php foreach ( $crops as $crop ) : ?>
-                        <article class="baykat-farm-record-card baykat-farm-visual-card">
+                        <article
+                            class="baykat-farm-record-card baykat-farm-visual-card"
+                            data-farm-record-card
+                            data-search-text="<?php echo esc_attr( $crop->farm_name . ' ' . $crop->parcel_name . ' ' . $crop->name . ' ' . $crop->variety . ' ' . ( isset( $statuses[ $crop->status ] ) ? $statuses[ $crop->status ] : $crop->status ) . ' ' . $crop->planted_at . ' ' . $crop->expected_harvest_date ); ?>"
+                            data-farm-record-filter-value="<?php echo esc_attr( $crop->status ); ?>"
+                        >
                             <?php echo baykat_farm_render_image( $crop->image_id, 'medium_large' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
                             <div class="baykat-farm-visual-card-body">
                                 <span class="baykat-farm-eyebrow"><?php echo esc_html( $crop->farm_name . ' — ' . $crop->parcel_name ); ?></span>

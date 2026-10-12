@@ -18,12 +18,12 @@ function baykat_farm_shortcode() {
     }
 
     if ( ! baykat_finance_user_can_access() ) {
-        return '<div class="baykat-farm-app"><p>Vous n’avez pas l’autorisation d’accéder à cette application.</p></div>';
+        return '<div class="baykat-farm-app"><p>Vous n\'avez pas l\'autorisation d\'accéder à cette application.</p></div>';
     }
 
     $modules = array(
         'vue-ensemble' => array(
-            'label'    => 'Vue d’ensemble',
+            'label'    => 'Vue d\'ensemble',
             'callback' => 'baykat_farm_render_dashboard',
         ),
         'parcelles' => array(
@@ -56,24 +56,45 @@ function baykat_farm_shortcode() {
         ? $requested_module
         : 'vue-ensemble';
 
-    $base_url = get_permalink();
+    $base_url     = get_permalink();
+    $current_user = wp_get_current_user();
 
     ob_start();
     ?>
     <main class="baykat-farm-app">
-        <header class="baykat-farm-header">
-            <span class="baykat-farm-eyebrow">Baykat</span>
-            <h1>Gérer ma ferme</h1>
-            <p>Retrouvez vos outils agricoles dans un seul espace.</p>
-            <p class="baykat-farm-header-actions">
-                <a
-                    class="baykat-finance-button"
-                    href="<?php echo esc_url( add_query_arg( 'module', 'vue-ensemble', $base_url ) . '#baykat-farm-add-title' ); ?>"
-                >
-                    Ajouter une ferme
-                </a>
-            </p>
+        <header class="baykat-farm-site-header">
+            <a class="baykat-farm-site-logo" href="<?php echo esc_url( home_url( '/' ) ); ?>" aria-label="Baykat — Accueil">
+                <img src="<?php echo esc_url( BAYKAT_FINANCE_URL . 'image.png' ); ?>" alt="Baykat">
+            </a>
+            <nav class="baykat-farm-site-navigation" aria-label="Navigation principale">
+                <a class="baykat-farm-home-link" href="<?php echo esc_url( home_url( '/' ) ); ?>">Accueil <span aria-hidden="true">⌄</span></a>
+                <span aria-disabled="true">Infos du marché</span>
+                <span aria-disabled="true">A propos de BAYKAT</span>
+                <span aria-disabled="true">Nous contacter</span>
+            </nav>
+            <div class="baykat-farm-user">
+                <span class="baykat-farm-user-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="8" r="3.25"></circle>
+                        <path d="M5.75 19a6.25 6.25 0 0 1 12.5 0"></path>
+                    </svg>
+                </span>
+                <span><?php echo esc_html( $current_user->display_name ); ?></span>
+            </div>
+            <div class="baykat-farm-sell-action" aria-label="Vendre sur Baykat">
+                <span>Vendre sur BAYKAT !</span>
+                <span class="baykat-farm-sell-plus" aria-hidden="true">+</span>
+            </div>
         </header>
+
+        <nav class="baykat-farm-account-navigation" aria-label="Navigation du compte">
+            <span aria-disabled="true">Ajouter nouveau</span>
+            <span aria-disabled="true">Mes annonces</span>
+            <span aria-disabled="true">Favoris</span>
+            <span aria-disabled="true">Messages</span>
+            <span aria-disabled="true">Réglages</span>
+            <a href="<?php echo esc_url( $base_url ); ?>" aria-current="page">Gestion de ferme</a>
+        </nav>
 
         <?php baykat_farm_render_navigation( $modules, $active_module, $base_url ); ?>
 
@@ -95,3 +116,15 @@ function baykat_farm_shortcode() {
 }
 
 add_shortcode( 'baykat_farm', 'baykat_farm_shortcode' );
+
+function baykat_farm_add_body_class( $classes ) {
+    $post = get_queried_object();
+
+    if ( $post instanceof WP_Post && has_shortcode( $post->post_content, 'baykat_farm' ) ) {
+        $classes[] = 'baykat-farm-page';
+    }
+
+    return $classes;
+}
+
+add_filter( 'body_class', 'baykat_farm_add_body_class' );

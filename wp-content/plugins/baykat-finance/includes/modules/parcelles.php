@@ -4,14 +4,18 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-function baykat_farm_render_parcelles() {
+function baykat_farm_render_parcelles( $process_actions = true ) {
     $user_id = get_current_user_id();
-    $message = baykat_farm_process_record_action( $user_id, 'parcel' );
-    if ( ! $message ) {
-        $message = baykat_farm_process_parcel_submission( $user_id );
-    }
-    if ( ! $message ) {
-        $message = baykat_farm_process_image_update( $user_id, 'parcel' );
+    $message = null;
+
+    if ( $process_actions ) {
+        $message = baykat_farm_process_record_action( $user_id, 'parcel' );
+        if ( ! $message ) {
+            $message = baykat_farm_process_parcel_submission( $user_id );
+        }
+        if ( ! $message ) {
+            $message = baykat_farm_process_image_update( $user_id, 'parcel' );
+        }
     }
     $farms = baykat_farm_get_user_farms( $user_id );
     $parcels = baykat_farm_get_user_parcels( $user_id );
@@ -26,16 +30,17 @@ function baykat_farm_render_parcelles() {
         <header class="baykat-farm-section-heading">
             <span class="baykat-farm-eyebrow">Organisation de la ferme</span>
             <h2>Parcelles</h2>
-            <p>Associez chaque parcelle à l’une de vos fermes.</p>
+            <p>Associez chaque parcelle à l'une de vos fermes.</p>
         </header>
         <?php if ( $message ) : ?>
             <div class="baykat-farm-notice baykat-farm-notice-<?php echo esc_attr( $message['type'] ); ?>" role="<?php echo 'error' === $message['type'] ? 'alert' : 'status'; ?>"><?php echo esc_html( $message['message'] ); ?></div>
         <?php endif; ?>
 
         <?php if ( $farms ) : ?>
-            <section id="baykat-farm-parcel-form-title" class="baykat-farm-panel" aria-labelledby="baykat-farm-parcel-form-heading">
-                <header class="baykat-farm-panel-heading"><span class="baykat-farm-eyebrow">Nouvelle parcelle</span><h3 id="baykat-farm-parcel-form-heading">Ajouter une parcelle</h3></header>
-                <form class="baykat-farm-form" method="post" enctype="multipart/form-data">
+            <section class="baykat-farm-panel" aria-labelledby="baykat-farm-parcel-form-heading">
+                <details class="baykat-farm-add-form">
+                    <summary id="baykat-farm-parcel-form-title"><span class="baykat-farm-eyebrow">Nouvelle parcelle</span><strong id="baykat-farm-parcel-form-heading">Ajouter une parcelle</strong><span class="baykat-farm-add-form-icon" aria-hidden="true">+</span></summary>
+                    <form class="baykat-farm-form" method="post" enctype="multipart/form-data">
                     <?php wp_nonce_field( 'baykat_add_parcel', '_wpnonce' ); ?>
                     <div class="baykat-farm-field">
                         <label for="baykat_parcel_farm">Ferme</label>
@@ -64,20 +69,27 @@ function baykat_farm_render_parcelles() {
                     </div>
                     <?php baykat_farm_render_image_field( 'parcel_image', 'Photo de la parcelle' ); ?>
                     <button class="baykat-finance-button" type="submit" name="baykat_add_parcel" value="1">Enregistrer la parcelle</button>
-                </form>
+                    </form>
+                </details>
             </section>
         <?php else : ?>
             <section class="baykat-farm-panel baykat-farm-empty-state">
-                <p>Ajoutez d’abord une ferme dans la <a href="<?php echo esc_url( add_query_arg( 'module', 'vue-ensemble', get_permalink() ) ); ?>">Vue d’ensemble</a> pour pouvoir créer ses parcelles.</p>
+                <p>Ajoutez d'abord une ferme dans la <a href="<?php echo esc_url( add_query_arg( 'module', 'vue-ensemble', get_permalink() ) ); ?>">Vue d'ensemble</a> pour pouvoir créer ses parcelles.</p>
             </section>
         <?php endif; ?>
 
         <section class="baykat-farm-panel" aria-labelledby="baykat-farm-parcel-list-title">
             <header class="baykat-farm-panel-heading"><span class="baykat-farm-eyebrow">Votre terrain</span><h3 id="baykat-farm-parcel-list-title">Parcelles enregistrées</h3></header>
             <?php if ( $parcels ) : ?>
-                <div class="baykat-farm-record-grid baykat-farm-visual-grid">
+                <?php baykat_farm_render_record_filters( 'baykat-farm-parcel-list', 'Rechercher une parcelle', $statuses ); ?>
+                <div class="baykat-farm-record-grid baykat-farm-visual-grid" id="baykat-farm-parcel-list">
                     <?php foreach ( $parcels as $parcel ) : ?>
-                        <article class="baykat-farm-record-card baykat-farm-visual-card">
+                        <article
+                            class="baykat-farm-record-card baykat-farm-visual-card"
+                            data-farm-record-card
+                            data-search-text="<?php echo esc_attr( $parcel->farm_name . ' ' . $parcel->name . ' ' . ( isset( $statuses[ $parcel->status ] ) ? $statuses[ $parcel->status ] : $parcel->status ) . ' ' . ( null === $parcel->area_m2 ? '' : $parcel->area_m2 ) ); ?>"
+                            data-farm-record-filter-value="<?php echo esc_attr( $parcel->status ); ?>"
+                        >
                             <?php echo baykat_farm_render_image( $parcel->image_id, 'medium_large' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
                             <div class="baykat-farm-visual-card-body">
                                 <span class="baykat-farm-eyebrow"><?php echo esc_html( $parcel->farm_name ); ?></span>

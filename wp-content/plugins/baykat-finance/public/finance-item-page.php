@@ -8,6 +8,8 @@ $is_sale = 'sale' === $category;
 $item_label = $is_sale ? 'Produit vendu' : 'Intrant';
 $amount_label = $is_sale ? 'Montant total de la vente' : 'Coût total';
 $summary_label = $is_sale ? 'Total des ventes' : 'Coût total des intrants';
+$field_suffix = sanitize_html_class( $category );
+$form_title_id = 'baykat-finance-item-form-title-' . $field_suffix;
 ?>
 <div class="baykat-finance-page baykat-finance-item-page">
     <div class="baykat-finance-header">
@@ -45,14 +47,13 @@ $summary_label = $is_sale ? 'Total des ventes' : 'Coût total des intrants';
         </div>
     </div>
 
-    <section class="baykat-finance-form" aria-labelledby="baykat-finance-item-form-title">
-        <div class="baykat-finance-section-heading">
-            <span class="baykat-finance-eyebrow"><?php echo $is_sale ? 'Revenu agricole' : 'Dépense agricole'; ?></span>
-            <h2 id="baykat-finance-item-form-title">Nouvel enregistrement</h2>
-            <p>Le montant sera ajouté automatiquement aux totaux Finance.</p>
-        </div>
-
+    <section class="baykat-finance-form" aria-labelledby="<?php echo esc_attr( $form_title_id ); ?>">
         <?php if ( empty( $parcels ) ) : ?>
+            <div class="baykat-finance-section-heading">
+                <span class="baykat-finance-eyebrow"><?php echo $is_sale ? 'Revenu agricole' : 'Dépense agricole'; ?></span>
+                <h2 id="<?php echo esc_attr( $form_title_id ); ?>">Nouvel enregistrement</h2>
+                <p>Le montant sera ajouté automatiquement aux totaux Finance.</p>
+            </div>
             <div class="baykat-farm-notice baykat-farm-notice-error" role="status">
                 <p>
                     <?php if ( $farms ) : ?>
@@ -72,15 +73,19 @@ $summary_label = $is_sale ? 'Total des ventes' : 'Coût total des intrants';
                 </a>
             </div>
         <?php else : ?>
-        <form class="baykat-finance-form-content baykat-finance-item-form" method="post">
+        <details class="baykat-farm-add-form baykat-farm-finance-add-form">
+            <summary id="<?php echo esc_attr( $form_title_id ); ?>"><span class="baykat-farm-eyebrow"><?php echo $is_sale ? 'Revenu agricole' : 'Dépense agricole'; ?></span><strong>Nouvel enregistrement</strong><span class="baykat-farm-add-form-icon" aria-hidden="true">+</span></summary>
+            <p class="baykat-farm-add-form-description">Le montant sera ajouté automatiquement aux totaux Finance.</p>
+            <form class="baykat-finance-form-content baykat-finance-item-form" method="post">
             <?php wp_nonce_field( 'baykat_add_finance_item', '_wpnonce' ); ?>
+            <input type="hidden" name="finance_item_category" value="<?php echo esc_attr( $category ); ?>">
 
             <div class="baykat-finance-field">
-                <label for="baykat_item_name"><?php echo esc_html( $item_label ); ?></label>
+                <label for="baykat_item_name_<?php echo esc_attr( $field_suffix ); ?>"><?php echo esc_html( $item_label ); ?></label>
                 <input
                     type="text"
                     name="item_name"
-                    id="baykat_item_name"
+                    id="baykat_item_name_<?php echo esc_attr( $field_suffix ); ?>"
                     maxlength="190"
                     placeholder="<?php echo $is_sale ? 'Ex. : Tomates' : 'Ex. : Semences'; ?>"
                     required
@@ -88,11 +93,12 @@ $summary_label = $is_sale ? 'Total des ventes' : 'Coût total des intrants';
             </div>
 
             <div class="baykat-finance-field">
-                <label for="baykat_quantity">Quantité</label>
+                <label for="baykat_quantity_<?php echo esc_attr( $field_suffix ); ?>">Quantité</label>
                 <input
                     type="number"
                     name="quantity"
-                    id="baykat_quantity"
+                    id="baykat_quantity_<?php echo esc_attr( $field_suffix ); ?>"
+                    data-finance-quantity
                     min="0.001"
                     step="0.001"
                     inputmode="decimal"
@@ -102,11 +108,11 @@ $summary_label = $is_sale ? 'Total des ventes' : 'Coût total des intrants';
             </div>
 
             <div class="baykat-finance-field">
-                <label for="baykat_unit">Unité</label>
+                <label for="baykat_unit_<?php echo esc_attr( $field_suffix ); ?>">Unité</label>
                 <input
                     type="text"
                     name="unit"
-                    id="baykat_unit"
+                    id="baykat_unit_<?php echo esc_attr( $field_suffix ); ?>"
                     maxlength="40"
                     placeholder="Ex. : kg, sac, litre, unité"
                     required
@@ -114,8 +120,8 @@ $summary_label = $is_sale ? 'Total des ventes' : 'Coût total des intrants';
             </div>
 
             <div class="baykat-finance-field">
-                <label for="baykat_parcel_id">Parcelle de la ferme</label>
-                <select name="parcel_id" id="baykat_parcel_id" required>
+                <label for="baykat_parcel_id_<?php echo esc_attr( $field_suffix ); ?>">Parcelle de la ferme</label>
+                <select name="parcel_id" id="baykat_parcel_id_<?php echo esc_attr( $field_suffix ); ?>" required>
                     <option value="">Choisir une parcelle</option>
                     <?php foreach ( $parcels as $parcel ) : ?>
                         <option value="<?php echo esc_attr( $parcel->id ); ?>">
@@ -126,11 +132,12 @@ $summary_label = $is_sale ? 'Total des ventes' : 'Coût total des intrants';
             </div>
 
             <div class="baykat-finance-field">
-                <label for="baykat_amount"><?php echo esc_html( $amount_label ); ?> (FCFA)</label>
+                <label for="baykat_amount_<?php echo esc_attr( $field_suffix ); ?>"><?php echo esc_html( $amount_label ); ?> (FCFA)</label>
                 <input
                     type="number"
                     name="amount"
-                    id="baykat_amount"
+                    id="baykat_amount_<?php echo esc_attr( $field_suffix ); ?>"
+                    data-finance-amount
                     min="0.01"
                     step="0.01"
                     inputmode="decimal"
@@ -140,10 +147,10 @@ $summary_label = $is_sale ? 'Total des ventes' : 'Coût total des intrants';
             </div>
 
             <div class="baykat-finance-field baykat-finance-field-description">
-                <label for="baykat_description">Note (facultatif)</label>
+                <label for="baykat_description_<?php echo esc_attr( $field_suffix ); ?>">Note (facultatif)</label>
                 <textarea
                     name="description"
-                    id="baykat_description"
+                    id="baykat_description_<?php echo esc_attr( $field_suffix ); ?>"
                     rows="3"
                     placeholder="Ajoutez un détail utile à cet enregistrement"
                 ></textarea>
@@ -157,7 +164,8 @@ $summary_label = $is_sale ? 'Total des ventes' : 'Coût total des intrants';
             >
                 <?php echo $is_sale ? 'Enregistrer la vente' : 'Enregistrer l’intrant'; ?>
             </button>
-        </form>
+            </form>
+        </details>
         <?php endif; ?>
     </section>
 
@@ -170,10 +178,11 @@ $summary_label = $is_sale ? 'Total des ventes' : 'Coût total des intrants';
         <?php if ( ! empty( $finance_data['transactions'] ) ) : ?>
             <div class="baykat-finance-tools" role="search" aria-label="Rechercher dans les enregistrements">
                 <div class="baykat-finance-tool baykat-finance-search">
-                    <label for="baykat-finance-search">Rechercher</label>
+                    <label for="baykat-finance-search-<?php echo esc_attr( $field_suffix ); ?>">Rechercher</label>
                     <input
                         type="search"
-                        id="baykat-finance-search"
+                        id="baykat-finance-search-<?php echo esc_attr( $field_suffix ); ?>"
+                        data-finance-search
                         placeholder="Nom, quantité, montant ou date"
                         autocomplete="off"
                     >
