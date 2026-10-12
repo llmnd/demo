@@ -503,6 +503,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (!dialog.open) {
                     dialog.showModal();
+                    const closeButton = dialog.querySelector('[data-close-dashboard-modal]');
+                    if (closeButton) {
+                        closeButton.focus({ preventScroll: true });
+                    }
                 }
             }
 
@@ -917,7 +921,7 @@ document.addEventListener('DOMContentLoaded', function () {
             app.addEventListener('baykat:farm-refresh-parcel-modal', function (event) {
                 const detail = event.detail || {};
                 const dialog = app.querySelector('[data-farm-dashboard-dialog]');
-                if (!dialog || !dialog.open || !detail.parcelId) {
+                if (!dialog || !detail.parcelId) {
                     return;
                 }
                 openParcelModal(

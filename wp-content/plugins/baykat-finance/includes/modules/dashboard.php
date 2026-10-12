@@ -528,7 +528,7 @@ function baykat_farm_render_dashboard() {
                         <span class="baykat-farm-eyebrow">Ferme BAYKAT</span>
                         <h2 id="baykat-farm-modal-title" data-dashboard-modal-title>Statistiques &amp; gestion</h2>
                     </div>
-                    <button class="baykat-farm-modal-close" type="button" data-close-dashboard-modal aria-label="Fermer la fenêtre">×</button>
+                    <button class="baykat-farm-modal-close" type="button" data-close-dashboard-modal aria-label="Fermer la fenêtre" autofocus>×</button>
                 </header>
                 <div class="baykat-farm-dashboard-modal-body" data-dashboard-modal-body></div>
                 <template data-dashboard-stats-template>
