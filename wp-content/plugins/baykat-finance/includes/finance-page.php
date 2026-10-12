@@ -122,7 +122,7 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
             <div class="baykat-finance-card baykat-finance-card-balance">
                 <span class="baykat-finance-card-label">Solde</span>
 
-                <strong class="baykat-finance-card-value">
+                <strong class="baykat-finance-card-value" data-farm-finance-total="balance">
                     <?php
                     echo esc_html(
                         number_format(
@@ -140,7 +140,7 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
             <div class="baykat-finance-card baykat-finance-card-income">
                 <span class="baykat-finance-card-label">Revenus</span>
 
-                <strong class="baykat-finance-card-value">
+                <strong class="baykat-finance-card-value" data-farm-finance-total="income">
                     <?php
                     echo esc_html(
                         number_format(
@@ -158,7 +158,7 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
             <div class="baykat-finance-card baykat-finance-card-expense">
                 <span class="baykat-finance-card-label">Dépenses</span>
 
-                <strong class="baykat-finance-card-value">
+                <strong class="baykat-finance-card-value" data-farm-finance-total="expense">
                     <?php
                     echo esc_html(
                         number_format(
@@ -376,6 +376,9 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
                                 ?>
                                 <tr
                                     class="baykat-finance-transaction-row"
+                                    data-farm-id="<?php echo esc_attr( $transaction->farm_id ); ?>"
+                                    data-transaction-id="<?php echo esc_attr( $transaction->id ); ?>"
+                                    data-amount="<?php echo esc_attr( $transaction->amount ); ?>"
                                     data-transaction-type="<?php echo esc_attr( $transaction->type ); ?>"
                                     data-search-text="<?php echo esc_attr( $transaction_search_text ); ?>"
                                 >

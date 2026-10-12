@@ -37,7 +37,7 @@ function baykat_farm_render_cultures( $process_actions = true ) {
         <?php endif; ?>
 
         <?php if ( $parcels ) : ?>
-            <section class="baykat-farm-panel" aria-labelledby="baykat-farm-crop-form-title">
+            <section class="baykat-farm-panel baykat-farm-add-panel" aria-labelledby="baykat-farm-crop-form-title">
                 <details class="baykat-farm-add-form">
                     <summary id="baykat-farm-crop-form-title"><span class="baykat-farm-eyebrow">Nouvelle plantation</span><strong>Ajouter une culture</strong><span class="baykat-farm-add-form-icon" aria-hidden="true">+</span></summary>
                     <form class="baykat-farm-form" method="post" enctype="multipart/form-data">
@@ -93,6 +93,7 @@ function baykat_farm_render_cultures( $process_actions = true ) {
                         <article
                             class="baykat-farm-record-card baykat-farm-visual-card"
                             data-farm-record-card
+                            data-farm-id="<?php echo esc_attr( $crop->farm_id ); ?>"
                             data-search-text="<?php echo esc_attr( $crop->farm_name . ' ' . $crop->parcel_name . ' ' . $crop->name . ' ' . $crop->variety . ' ' . ( isset( $statuses[ $crop->status ] ) ? $statuses[ $crop->status ] : $crop->status ) . ' ' . $crop->planted_at . ' ' . $crop->expected_harvest_date ); ?>"
                             data-farm-record-filter-value="<?php echo esc_attr( $crop->status ); ?>"
                         >

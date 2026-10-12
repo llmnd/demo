@@ -24,7 +24,7 @@ function baykat_farm_render_stocks() {
                         <thead><tr><th>Ferme</th><th>Intrant</th><th>Quantité cumulée</th><th>Coût d’achat cumulé</th></tr></thead>
                         <tbody>
                             <?php foreach ( $stocks as $stock ) : ?>
-                                <tr>
+                                <tr data-farm-id="<?php echo esc_attr( $stock->farm_id ); ?>">
                                     <td data-label="Ferme"><?php echo esc_html( $stock->farm_name ); ?></td>
                                     <td data-label="Intrant"><strong><?php echo esc_html( $stock->item_name ); ?></strong></td>
                                     <td data-label="Quantité cumulée"><?php echo esc_html( number_format( (float) $stock->total_quantity, 3, ',', ' ' ) . ' ' . $stock->unit ); ?></td>

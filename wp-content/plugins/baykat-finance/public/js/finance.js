@@ -100,7 +100,9 @@ function initializeBaykatFinancePages(root) {
                 const rowText = (row.dataset.searchText || row.textContent).toLocaleLowerCase();
                 const matchesSearch = rowText.includes(searchTerm);
                 const matchesType = selectedType === 'all' || row.dataset.transactionType === selectedType;
-                const isVisible = matchesSearch && matchesType;
+                const isVisible = matchesSearch
+                    && matchesType
+                    && row.dataset.farmScopeHidden !== 'true';
 
                 row.hidden = !isVisible;
 

@@ -75,7 +75,7 @@ function baykat_farm_get_user_crops( $user_id ) {
 
     return $wpdb->get_results(
         $wpdb->prepare(
-            "SELECT crops.*, parcels.name AS parcel_name, farms.name AS farm_name
+            "SELECT crops.*, parcels.farm_id AS farm_id, parcels.name AS parcel_name, farms.name AS farm_name
              FROM $crops_table AS crops
              INNER JOIN $parcels_table AS parcels
                 ON parcels.id = crops.parcel_id AND parcels.user_id = crops.user_id
@@ -97,7 +97,7 @@ function baykat_farm_get_user_activities( $user_id ) {
 
     return $wpdb->get_results(
         $wpdb->prepare(
-            "SELECT activities.*, parcels.name AS parcel_name, farms.name AS farm_name
+            "SELECT activities.*, parcels.farm_id AS farm_id, parcels.name AS parcel_name, farms.name AS farm_name
              FROM $activities_table AS activities
              INNER JOIN $parcels_table AS parcels
                 ON parcels.id = activities.parcel_id AND parcels.user_id = activities.user_id

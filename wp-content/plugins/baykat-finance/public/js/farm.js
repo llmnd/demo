@@ -7,7 +7,26 @@ document.addEventListener('DOMContentLoaded', function () {
                 .replace(/[\u0300-\u036f]/g, '');
         }
 
+        function initializeCompactAddForms(root) {
+            root.querySelectorAll('.baykat-farm-add-panel').forEach(function (panel) {
+                const nextPanel = panel.nextElementSibling;
+                const details = panel.querySelector(':scope > .baykat-farm-add-form');
+                const heading = nextPanel && nextPanel.matches('.baykat-farm-panel')
+                    ? nextPanel.querySelector(':scope > .baykat-farm-panel-heading')
+                    : null;
+
+                if (!details || !heading) {
+                    return;
+                }
+
+                heading.classList.add('has-add-action');
+                heading.appendChild(details);
+                panel.remove();
+            });
+        }
+
         function initializeRecordFilters(root) {
+            initializeCompactAddForms(root);
             root.querySelectorAll('.baykat-farm-record-tools').forEach(function (tools) {
                 if (tools.dataset.filterReady) {
                     return;
@@ -15,6 +34,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 tools.dataset.filterReady = 'true';
 
                 const searchInput = tools.querySelector('[data-farm-record-search]');
+                const searchToggle = tools.querySelector('[data-toggle-record-search]');
+                const searchTool = tools.querySelector('[data-record-search-tool]');
+                const filterTool = tools.querySelector('[data-record-filter-tool]');
                 const filterInput = tools.querySelector('[data-farm-record-filter]');
                 const listId = searchInput
                     ? searchInput.getAttribute('aria-controls')
@@ -45,7 +67,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         const matchesSearch = cardText.includes(searchTerm);
                         const matchesFilter = selectedFilter === 'all'
                             || card.dataset.farmRecordFilterValue === selectedFilter;
-                        const isVisible = matchesSearch && matchesFilter;
+                        const isVisible = matchesSearch
+                            && matchesFilter
+                            && card.dataset.farmScopeHidden !== 'true';
 
                         card.hidden = !isVisible;
 
@@ -65,11 +89,204 @@ document.addEventListener('DOMContentLoaded', function () {
                     searchInput.addEventListener('input', filterRecords);
                 }
 
+                if (searchToggle && searchTool) {
+                    searchToggle.addEventListener('click', function () {
+                        const isExpanded = searchToggle.getAttribute('aria-expanded') === 'true';
+                        searchToggle.setAttribute('aria-expanded', isExpanded ? 'false' : 'true');
+                        searchToggle.setAttribute('aria-label', isExpanded ? 'Afficher la recherche' : 'Masquer la recherche');
+                        searchTool.hidden = isExpanded;
+                        if (filterTool) {
+                            filterTool.hidden = isExpanded;
+                        }
+
+                        if (!isExpanded && searchInput) {
+                            searchInput.focus();
+                        }
+                    });
+                }
+
                 if (filterInput) {
                     filterInput.addEventListener('change', filterRecords);
                 }
 
                 filterRecords();
+            });
+        }
+
+        function filterWorkspaceToFarm(workspaceTarget, farmId) {
+            const farmIdString = String(farmId);
+            const farmParcels = Array.from(workspaceTarget.querySelectorAll('[data-parcel-record-card]'))
+                .filter(function (card) {
+                    return card.dataset.parcelFarmId === farmIdString;
+                });
+            const parcelIds = new Set(farmParcels.map(function (card) {
+                return card.dataset.parcelId;
+            }));
+
+            workspaceTarget.querySelectorAll('[data-parcel-record-card]').forEach(function (card) {
+                const isOutOfScope = card.dataset.parcelFarmId !== farmIdString;
+                card.dataset.farmScopeHidden = isOutOfScope ? 'true' : 'false';
+                card.hidden = isOutOfScope;
+            });
+            workspaceTarget.querySelectorAll('[data-farm-id]').forEach(function (record) {
+                const isOutOfScope = record.dataset.farmId !== farmIdString;
+                record.dataset.farmScopeHidden = isOutOfScope ? 'true' : 'false';
+                record.hidden = isOutOfScope;
+            });
+            workspaceTarget.querySelectorAll('select[name="parcel_id"] option').forEach(function (option) {
+                if (option.value) {
+                    option.hidden = !parcelIds.has(option.value);
+                }
+            });
+            workspaceTarget.querySelectorAll('select[name="farm_id"] option').forEach(function (option) {
+                if (option.value) {
+                    option.hidden = option.value !== farmIdString;
+                }
+            });
+            workspaceTarget.querySelectorAll('select[name="farm_id"]').forEach(function (select) {
+                select.value = farmIdString;
+            });
+
+            workspaceTarget.querySelectorAll('.baykat-farm-workspace-section').forEach(function (section) {
+                const count = section.querySelector(':scope > summary .baykat-farm-workspace-count');
+                if (!count) {
+                    return;
+                }
+
+                const records = Array.from(section.querySelectorAll('[data-farm-id], [data-parcel-record-card]'));
+                const visibleRecords = records.filter(function (record) {
+                    return !record.hidden
+                        && (record.dataset.farmId === farmIdString || record.dataset.parcelFarmId === farmIdString);
+                });
+                const transactionIds = new Set(visibleRecords.map(function (record) {
+                    return record.dataset.transactionId;
+                }).filter(Boolean));
+                count.textContent = String(transactionIds.size + visibleRecords.filter(function (record) {
+                    return !record.dataset.transactionId;
+                }).length);
+            });
+
+            workspaceTarget.querySelectorAll('[data-farm-finance-total]').forEach(function (total) {
+                const type = total.dataset.farmFinanceTotal;
+                const financePage = total.closest('.baykat-finance-page');
+                const rows = Array.from((financePage || workspaceTarget).querySelectorAll('.baykat-finance-transaction-row'))
+                    .filter(function (row) {
+                        return row.dataset.farmId === farmIdString
+                                && (type === 'balance' || type === 'count' || type === row.dataset.transactionType)
+                                && row.dataset.farmScopeHidden !== 'true';
+                    });
+
+                if (type === 'count') {
+                    total.textContent = String(rows.length);
+                    return;
+                }
+
+                const amount = rows.reduce(function (sum, row) {
+                    const rowAmount = Number(row.dataset.amount || 0);
+                    return sum + (type === 'balance' && row.dataset.transactionType === 'expense' ? -rowAmount : rowAmount);
+                }, 0);
+                total.textContent = Math.round(amount).toLocaleString('fr-FR') + ' FCFA';
+            });
+        }
+
+        function initializeWorkspaceTabs(root, selectedSectionId) {
+            root.querySelectorAll('.baykat-farm-modal-workspace [data-dashboard-workspace-target]').forEach(function (target) {
+                if (target.dataset.tabsReady) {
+                    return;
+                }
+
+                const sections = Array.from(target.children).filter(function (child) {
+                    return child.matches('.baykat-farm-workspace-section');
+                });
+
+                if (!sections.length) {
+                    return;
+                }
+
+                target.dataset.tabsReady = 'true';
+                const tablist = document.createElement('div');
+                const tabs = [];
+                tablist.className = 'baykat-farm-workspace-tabs';
+                tablist.setAttribute('role', 'tablist');
+                tablist.setAttribute('aria-label', 'Catégories de gestion');
+
+                sections.forEach(function (section, index) {
+                    const summary = section.querySelector(':scope > summary strong');
+                    const tab = document.createElement('button');
+                    const tabId = 'baykat-workspace-tab-' + section.id;
+
+                    tab.className = 'baykat-farm-workspace-tab';
+                    tab.type = 'button';
+                    tab.id = tabId;
+                    tab.setAttribute('role', 'tab');
+                    tab.setAttribute('aria-controls', section.id);
+                    tab.textContent = summary ? summary.textContent : 'Section ' + (index + 1);
+                    section.setAttribute('role', 'tabpanel');
+                    section.setAttribute('aria-labelledby', tabId);
+                    section.tabIndex = 0;
+                    tabs.push({ button: tab, section: section });
+                    tablist.appendChild(tab);
+                });
+
+                function activateTab(selectedTab, moveFocus) {
+                    tabs.forEach(function (tab) {
+                        const isActive = tab === selectedTab;
+                        tab.button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                        tab.button.tabIndex = isActive ? 0 : -1;
+                        tab.section.hidden = !isActive;
+                        tab.section.open = isActive;
+                    });
+
+                    if (moveFocus) {
+                        selectedTab.button.focus();
+                    }
+                }
+
+                tablist.addEventListener('click', function (event) {
+                    const button = event.target.closest('[role="tab"]');
+                    const selectedTab = tabs.find(function (tab) {
+                        return tab.button === button;
+                    });
+
+                    if (selectedTab) {
+                        activateTab(selectedTab, false);
+                    }
+                });
+                tablist.addEventListener('keydown', function (event) {
+                    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+                        return;
+                    }
+
+                    event.preventDefault();
+                    const currentIndex = tabs.findIndex(function (tab) {
+                        return tab.button.getAttribute('aria-selected') === 'true';
+                    });
+                    let nextIndex = currentIndex;
+
+                    if (event.key === 'ArrowLeft') {
+                        nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+                    } else if (event.key === 'ArrowRight') {
+                        nextIndex = (currentIndex + 1) % tabs.length;
+                    } else if (event.key === 'Home') {
+                        nextIndex = 0;
+                    } else {
+                        nextIndex = tabs.length - 1;
+                    }
+
+                    activateTab(tabs[nextIndex], true);
+                });
+                target.insertBefore(tablist, target.firstChild);
+
+                const targetSection = selectedSectionId
+                    ? sections.find(function (section) {
+                        return section.id === selectedSectionId
+                            || section.contains(document.getElementById(selectedSectionId));
+                    })
+                    : null;
+                const initialTab = tabs.find(function (tab) {
+                    return tab.section === targetSection;
+                }) || tabs[0];
+                activateTab(initialTab, false);
             });
         }
 
@@ -368,10 +585,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     const management = modalWorkspaceTemplate.content.firstElementChild.cloneNode(true);
                     const managementTarget = management.querySelector('[data-dashboard-workspace-target]');
                     managementTarget.appendChild(workspace.content.cloneNode(true));
+                    filterWorkspaceToFarm(managementTarget, farmId);
                     content.appendChild(management);
                 }
 
                 showModal(dialog, farmName ? farmName.textContent : 'Détail de la ferme', content);
+                initializeWorkspaceTabs(content);
                 initializeImagePreviews(content);
                 initializeRecordFilters(content);
             }
@@ -398,6 +617,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 content.appendChild(workspaceView);
                 workspaceTarget.appendChild(workspaceTemplate.content.cloneNode(true));
                 showModal(dialog, 'Statistiques & gestion', content);
+                initializeWorkspaceTabs(content, targetId);
                 initializeImagePreviews(content);
                 initializeRecordFilters(content);
 
@@ -606,6 +826,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     if (filter) {
                         filter.value = savedFilter.value;
+
+                        if (filter.matches('[data-farm-record-search]') && savedFilter.value) {
+                            const tools = filter.closest('.baykat-farm-record-tools');
+                            const searchToggle = tools && tools.querySelector('[data-toggle-record-search]');
+                            const searchTool = tools && tools.querySelector('[data-record-search-tool]');
+
+                            if (searchToggle && searchTool) {
+                                searchTool.hidden = false;
+                                searchToggle.setAttribute('aria-expanded', 'true');
+                                searchToggle.setAttribute('aria-label', 'Masquer la recherche');
+                            }
+                        }
+
                         filter.dispatchEvent(new Event(filter.matches('select') ? 'change' : 'input', { bubbles: true }));
                     }
                 });

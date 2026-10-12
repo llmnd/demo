@@ -36,14 +36,14 @@ $form_title_id = 'baykat-finance-item-form-title-' . $field_suffix;
     <div class="baykat-finance-cards baykat-finance-cards-single">
         <div class="baykat-finance-card<?php echo $is_sale ? ' baykat-finance-card-income' : ' baykat-finance-card-expense'; ?>">
             <span class="baykat-finance-card-label"><?php echo esc_html( $summary_label ); ?></span>
-            <strong class="baykat-finance-card-value">
+            <strong class="baykat-finance-card-value" data-farm-finance-total="<?php echo esc_attr( $is_sale ? 'income' : 'expense' ); ?>">
                 <?php echo esc_html( number_format( $is_sale ? $finance_data['total_income'] : $finance_data['total_expense'], 0, ',', ' ' ) ); ?>
                 FCFA
             </strong>
         </div>
         <div class="baykat-finance-card">
             <span class="baykat-finance-card-label">Enregistrements</span>
-            <strong class="baykat-finance-card-value"><?php echo esc_html( number_format_i18n( count( $finance_data['transactions'] ) ) ); ?></strong>
+            <strong class="baykat-finance-card-value" data-farm-finance-total="count"><?php echo esc_html( number_format_i18n( count( $finance_data['transactions'] ) ) ); ?></strong>
         </div>
     </div>
 
@@ -227,6 +227,9 @@ $form_title_id = 'baykat-finance-item-form-title-' . $field_suffix;
                             ?>
                             <tr
                                 class="baykat-finance-transaction-row"
+                                data-farm-id="<?php echo esc_attr( $transaction->farm_id ); ?>"
+                                data-transaction-id="<?php echo esc_attr( $transaction->id ); ?>"
+                                data-amount="<?php echo esc_attr( $transaction->amount ); ?>"
                                 data-transaction-type="<?php echo esc_attr( $transaction->type ); ?>"
                                 data-search-text="<?php echo esc_attr( $search_text ); ?>"
                             >

@@ -44,7 +44,20 @@ function baykat_farm_render_record_filters( $list_id, $search_label, $filters = 
     $filter_id = sanitize_html_class( $list_id . '-filter' );
     ?>
     <div class="baykat-farm-record-tools<?php echo $filters ? ' has-filter' : ''; ?>">
-        <div class="baykat-farm-record-tool">
+        <button
+            class="baykat-farm-search-toggle"
+            type="button"
+            aria-label="Afficher la recherche"
+            aria-expanded="false"
+            aria-controls="<?php echo esc_attr( $search_id ); ?>"
+            data-toggle-record-search
+        >
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="10.8" cy="10.8" r="6.3"></circle>
+                <path d="m15.5 15.5 4.2 4.2"></path>
+            </svg>
+        </button>
+        <div class="baykat-farm-record-tool" data-record-search-tool hidden>
             <label for="<?php echo esc_attr( $search_id ); ?>"><?php echo esc_html( $search_label ); ?></label>
             <input
                 type="search"
@@ -56,7 +69,7 @@ function baykat_farm_render_record_filters( $list_id, $search_label, $filters = 
             >
         </div>
         <?php if ( $filters ) : ?>
-            <div class="baykat-farm-record-tool">
+            <div class="baykat-farm-record-tool" data-record-filter-tool hidden>
                 <label for="<?php echo esc_attr( $filter_id ); ?>"><?php echo esc_html( $filter_label ); ?></label>
                 <select
                     id="<?php echo esc_attr( $filter_id ); ?>"

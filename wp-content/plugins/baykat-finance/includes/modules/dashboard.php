@@ -432,7 +432,7 @@ function baykat_farm_render_dashboard() {
                 <span class="baykat-farm-workspace-count"><?php echo esc_html( number_format_i18n( count( $farms ) ) ); ?></span>
             </summary>
 
-            <section class="baykat-farm-panel" aria-labelledby="baykat-farm-add-heading">
+            <section class="baykat-farm-panel baykat-farm-add-panel" aria-labelledby="baykat-farm-add-heading">
                 <details class="baykat-farm-add-form">
                     <summary id="baykat-farm-add-title">
                         <span class="baykat-farm-eyebrow">Nouvelle exploitation</span>

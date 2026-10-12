@@ -426,6 +426,33 @@ body.admin-bar .baykat-farm-navigation { top: 32px; }
 .baykat-farm-panel-heading { margin-bottom: 20px; }
 .baykat-farm-panel-heading h3 { margin: 0; color: #302b25; font-size: 20px; letter-spacing: -0.015em; }
 .baykat-farm-panel-heading .baykat-farm-eyebrow { margin-bottom: 5px; }
+.baykat-farm-panel-heading.has-add-action { position: relative; padding-right: 54px; }
+.baykat-farm-panel-heading.has-add-action h3 { max-width: 100%; }
+.baykat-farm-panel-heading .baykat-farm-add-form { width: 100%; }
+.baykat-farm-panel-heading .baykat-farm-add-form > summary {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: grid;
+    width: 44px;
+    min-height: 44px;
+    place-items: center;
+    padding: 0;
+}
+.baykat-farm-panel-heading .baykat-farm-add-form > summary .baykat-farm-eyebrow,
+.baykat-farm-panel-heading .baykat-farm-add-form > summary strong {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    clip-path: inset(50%);
+}
+.baykat-farm-panel-heading .baykat-farm-add-form-icon { width: 44px; height: 44px; border-radius: 50%; }
+.baykat-farm-panel-heading .baykat-farm-add-form:focus-within > summary { outline: 3px solid rgba(185,154,100,0.42); outline-offset: 3px; }
+.baykat-farm-panel-heading .baykat-farm-add-form .baykat-farm-form { margin-top: 18px; }
 
 /* 3 cartes égalisées : Calendrier / Journal / Finances */
 .baykat-farm-dashboard-overview {
@@ -659,6 +686,41 @@ body.admin-bar .baykat-farm-navigation { top: 32px; }
     box-shadow: 0 3px 14px rgba(48, 43, 37, 0.03);
     scroll-margin-top: 100px;
 }
+.baykat-farm-workspace-section[hidden] { display: none; }
+.baykat-farm-workspace-tabs ~ .baykat-farm-workspace-section > summary { display: none; }
+.baykat-farm-workspace-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 4px;
+    overflow-x: auto;
+    border: 1px solid #eee8dc;
+    border-radius: 14px;
+    background: #f8f6f1;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+}
+.baykat-farm-workspace-tab {
+    min-height: 42px;
+    flex: 0 0 auto;
+    padding: 0 16px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: transparent;
+    color: #716a5f;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+}
+.baykat-farm-workspace-tab:hover { background: rgba(255,255,255,0.75); color: #35495a; }
+.baykat-farm-workspace-tab[aria-selected="true"] {
+    border-color: #e8dfce;
+    background: #fff;
+    color: #35495a;
+    box-shadow: 0 2px 8px rgba(48,43,37,0.07);
+}
+.baykat-farm-workspace-tab:focus-visible { outline: 3px solid rgba(185,154,100,0.42); outline-offset: 2px; }
 .baykat-farm-workspace-section > summary {
     display: flex;
     min-height: 72px;
@@ -706,6 +768,15 @@ body.admin-bar .baykat-farm-navigation { top: 32px; }
 .baykat-farm-workspace-section > .baykat-farm-panel,
 .baykat-farm-workspace-content { margin: 0 16px 16px; }
 .baykat-farm-workspace-content > .baykat-farm-content { gap: 16px; }
+.baykat-farm-add-panel {
+    display: flex;
+    min-height: 0;
+    justify-content: flex-end;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
 
 .baykat-farm-workspace-subsection {
     margin: 0 16px 12px;
@@ -787,6 +858,34 @@ body.admin-bar .baykat-farm-navigation { top: 32px; }
 .baykat-farm-add-form[open] .baykat-farm-add-form-icon { font-size: 0; }
 .baykat-farm-add-form[open] .baykat-farm-add-form-icon::before { content: "−"; font-size: 22px; }
 .baykat-farm-add-form .baykat-farm-form { margin-top: 18px; }
+.baykat-farm-add-panel > .baykat-farm-add-form { width: 100%; }
+.baykat-farm-add-panel .baykat-farm-add-form > summary {
+    position: relative;
+    display: grid;
+    width: 46px;
+    min-height: 46px;
+    margin-left: auto;
+    place-items: center;
+    padding: 0;
+}
+.baykat-farm-add-panel .baykat-farm-add-form > summary .baykat-farm-eyebrow,
+.baykat-farm-add-panel .baykat-farm-add-form > summary strong {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    clip-path: inset(50%);
+}
+.baykat-farm-add-panel .baykat-farm-add-form-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+}
+.baykat-farm-add-panel .baykat-farm-add-form .baykat-farm-form { width: 100%; }
+.baykat-farm-add-panel .baykat-farm-add-form > summary:focus-visible { outline: 3px solid rgba(185,154,100,0.42); outline-offset: 3px; }
 
 .baykat-farm-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 17px 20px; }
 .baykat-farm-field { display: flex; min-width: 0; flex-direction: column; gap: 7px; }
@@ -934,24 +1033,42 @@ body.admin-bar .baykat-farm-navigation { top: 32px; }
    FILTRES
    ========================================================================= */
 .baykat-farm-record-tools {
-    display: grid;
-    grid-template-columns: minmax(220px, 1fr) minmax(180px, 0.55fr) auto;
-    align-items: end;
-    gap: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
     margin-bottom: 18px;
-    padding: 15px;
-    border: 1px solid #eee9e1;
-    border-radius: 12px;
-    background: #faf8f4;
+    padding: 0;
+    border: 0;
+    background: transparent;
 }
-.baykat-farm-record-tools:not(.has-filter) { grid-template-columns: minmax(220px, 1fr) auto; }
 .baykat-farm-record-tool { display: flex; min-width: 0; flex-direction: column; gap: 6px; }
+.baykat-farm-record-tool[data-record-search-tool] { width: min(100%, 280px); }
+.baykat-farm-record-tool[hidden] { display: none !important; }
 .baykat-farm-record-tool label { color: #625b51; font-size: 12px; font-weight: 650; }
 .baykat-farm-record-tool input,
 .baykat-farm-record-tool select { width: 100%; min-height: 44px; padding: 9px 12px; border: 1px solid #ded8ce; border-radius: 9px; background: #fff; color: #302b25; font: inherit; font-size: 14px; }
 .baykat-farm-record-tool input:focus,
 .baykat-farm-record-tool select:focus { border-color: #b99a64; outline: 0; box-shadow: 0 0 0 3px rgba(185,154,100,0.18); }
-.baykat-farm-record-count { margin: 0; padding: 0 2px 12px; color: #777168; font-size: 13px; white-space: nowrap; }
+.baykat-farm-search-toggle {
+    display: grid;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 auto;
+    place-items: center;
+    padding: 0;
+    border: 1px solid #e9e4dc;
+    border-radius: 12px;
+    background: #fff;
+    color: #725b31;
+    cursor: pointer;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+.baykat-farm-search-toggle svg { width: 20px; height: 20px; stroke: currentColor; stroke-linecap: round; stroke-width: 1.8; }
+.baykat-farm-search-toggle:hover,
+.baykat-farm-search-toggle[aria-expanded="true"] { border-color: #d8c6a6; background: #fbf7ef; }
+.baykat-farm-search-toggle:focus-visible { outline: 3px solid rgba(185,154,100,0.42); outline-offset: 2px; }
+.baykat-farm-record-count { margin: 0; padding: 0 2px; color: #777168; font-size: 13px; white-space: nowrap; }
 .baykat-farm-filter-empty { margin: -4px 0 18px; padding: 12px 14px; border: 1px dashed #ded8ce; border-radius: 10px; background: #fff; }
 
 /* =========================================================================
@@ -1489,4 +1606,84 @@ body.admin-bar .baykat-farm-navigation { top: 32px; }
     .baykat-farm-modal-parcel-grid { grid-template-columns: minmax(0, 1fr); }
     .baykat-farm-modal-parcel { grid-template-columns: 86px minmax(0, 1fr); align-items: center; }
     .baykat-farm-modal-parcel > .baykat-farm-card-image { height: 76px; }
+}
+
+@media (max-width: 640px) {
+    .baykat-farm-app {
+        box-sizing: border-box;
+        width: 100%;
+        max-width: 100%;
+        margin-right: 0 !important;
+        margin-left: 0 !important;
+        padding-right: 12px;
+        padding-left: 12px;
+    }
+    .baykat-farm-site-header { margin-right: -12px; margin-left: -12px; padding-right: 12px; padding-left: 12px; }
+    .baykat-farm-app.is-mobile-nav-open .baykat-farm-account-navigation,
+    .baykat-farm-app.is-mobile-nav-open .baykat-farm-navigation { margin-right: -12px; margin-left: -12px; padding-right: 12px; padding-left: 12px; }
+    .baykat-farm-content { gap: 16px; }
+    .baykat-farm-section-heading h2 { font-size: clamp(26px, 8vw, 34px); }
+    .baykat-farm-panel { padding: 15px; border-radius: 14px; }
+    .baykat-farm-panel-heading { margin-bottom: 14px; }
+    .baykat-farm-panel-heading.has-add-action { padding-right: 48px; }
+    .baykat-farm-panel-heading .baykat-farm-add-form > summary { right: 0; width: 40px; min-height: 40px; }
+    .baykat-farm-panel-heading .baykat-farm-add-form-icon { width: 40px; height: 40px; }
+
+    .baykat-farm-record-tools {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 8px;
+        margin-bottom: 14px;
+        padding: 0;
+    }
+    .baykat-farm-record-tools .baykat-farm-search-toggle { order: 0; }
+    .baykat-farm-record-tools .baykat-farm-record-count { order: 1; margin-left: auto; }
+    .baykat-farm-record-tools .baykat-farm-record-tool[data-record-search-tool] {
+        order: 3;
+        flex: 1 0 100%;
+        width: 100%;
+    }
+    .baykat-farm-record-tools .baykat-farm-record-tool[data-record-filter-tool] {
+        order: 4;
+        flex: 1 0 100%;
+        width: 100%;
+    }
+    .baykat-farm-record-tools .baykat-farm-record-tool label { font-size: 11px; }
+    .baykat-farm-record-tools .baykat-farm-record-tool input,
+    .baykat-farm-record-tools .baykat-farm-record-tool select { min-height: 46px; }
+
+    .baykat-farm-workspace-tabs { gap: 6px; padding: 3px; }
+    .baykat-farm-workspace-tab { min-height: 44px; padding: 0 13px; scroll-snap-align: start; }
+    .baykat-farm-workspace-tabs { scroll-snap-type: x proximity; }
+    .baykat-farm-record-grid,
+    .baykat-farm-visual-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    .baykat-farm-visual-card > .baykat-farm-card-image { height: clamp(112px, 38vw, 158px); }
+    .baykat-farm-visual-card-body { gap: 6px; padding: 12px; }
+    .baykat-farm-visual-card-body h4 { font-size: 17px; }
+    .baykat-farm-card-meta { align-items: flex-start; font-size: 12px; }
+    .baykat-farm-card-meta .baykat-farm-status { font-size: 11px; }
+    .baykat-farm-visual-card-body > .baykat-farm-open-record { width: 100%; min-height: 46px; }
+    .baykat-farm-table-wrap,
+    .baykat-finance-table-wrap { overscroll-behavior-x: contain; }
+}
+
+@media (max-width: 380px) {
+    .baykat-farm-app { padding-right: 10px; padding-left: 10px; }
+    .baykat-farm-site-header { margin-right: -10px; margin-left: -10px; padding-right: 10px; padding-left: 10px; }
+    .baykat-farm-app.is-mobile-nav-open .baykat-farm-account-navigation,
+    .baykat-farm-app.is-mobile-nav-open .baykat-farm-navigation { margin-right: -10px; margin-left: -10px; padding-right: 10px; padding-left: 10px; }
+    .baykat-farm-panel { padding: 12px; }
+    .baykat-farm-workspace-tab { padding-right: 11px; padding-left: 11px; font-size: 12px; }
+    .baykat-farm-modal-parcel-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 640px) {
+    .baykat-farm-panel { padding: 12px; }
+    .baykat-farm-visual-card > .baykat-farm-card-image { height: clamp(100px, 32vw, 136px); }
+}
+
+@media (max-width: 380px) {
+    .baykat-farm-panel { padding: 10px; }
 }

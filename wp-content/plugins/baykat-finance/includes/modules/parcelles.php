@@ -27,17 +27,12 @@ function baykat_farm_render_parcelles( $process_actions = true ) {
     );
     ?>
     <div class="baykat-farm-content">
-        <header class="baykat-farm-section-heading">
-            <span class="baykat-farm-eyebrow">Organisation de la ferme</span>
-            <h2>Parcelles</h2>
-            <p>Associez chaque parcelle à l'une de vos fermes.</p>
-        </header>
         <?php if ( $message ) : ?>
             <div class="baykat-farm-notice baykat-farm-notice-<?php echo esc_attr( $message['type'] ); ?>" role="<?php echo 'error' === $message['type'] ? 'alert' : 'status'; ?>"><?php echo esc_html( $message['message'] ); ?></div>
         <?php endif; ?>
 
         <?php if ( $farms ) : ?>
-            <section class="baykat-farm-panel" aria-labelledby="baykat-farm-parcel-form-heading">
+            <section class="baykat-farm-panel baykat-farm-add-panel" aria-labelledby="baykat-farm-parcel-form-heading">
                 <details class="baykat-farm-add-form">
                     <summary id="baykat-farm-parcel-form-title"><span class="baykat-farm-eyebrow">Nouvelle parcelle</span><strong id="baykat-farm-parcel-form-heading">Ajouter une parcelle</strong><span class="baykat-farm-add-form-icon" aria-hidden="true">+</span></summary>
                     <form class="baykat-farm-form" method="post" enctype="multipart/form-data">
