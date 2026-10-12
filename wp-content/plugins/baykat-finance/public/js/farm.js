@@ -477,6 +477,26 @@ document.addEventListener('DOMContentLoaded', function () {
             const modalHistory = [];
 
             function findDashboardRecord(attribute, value) {
+                if (attribute === 'data-farm-id') {
+                    const farmRecordId = 'baykat-farm-record-' + String(value);
+                    const liveFarmRecord = Array.from(app.querySelectorAll('[id]')).find(function (record) {
+                        return record.id === farmRecordId;
+                    });
+
+                    if (liveFarmRecord) {
+                        return liveFarmRecord;
+                    }
+
+                    const workspace = app.querySelector('[data-dashboard-workspace-template]');
+                    if (!workspace) {
+                        return null;
+                    }
+
+                    return Array.from(workspace.content.querySelectorAll('[id]')).find(function (record) {
+                        return record.id === farmRecordId;
+                    }) || null;
+                }
+
                 const liveRecord = Array.from(app.querySelectorAll('[' + attribute + ']')).find(function (record) {
                     return record.getAttribute(attribute) === String(value);
                 });

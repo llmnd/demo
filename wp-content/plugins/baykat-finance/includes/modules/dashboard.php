@@ -397,7 +397,7 @@ function baykat_farm_render_dashboard() {
                 <span class="baykat-farm-workspace-count"><?php echo esc_html( number_format_i18n( $all_tx_count ) ); ?></span>
             </summary>
             <div class="baykat-farm-workspace-content baykat-farm-workspace-finances">
-                <details class="baykat-farm-workspace-subsection" id="baykat-workspace-finance-general" open>
+                <details class="baykat-farm-workspace-subsection" id="baykat-workspace-finance-general">
                     <summary>Autres revenus et dépenses <span>hors intrants et ventes</span></summary>
                     <?php echo baykat_finance_render_frontend_page( 'all', false, true, 'general' ); // phpcs:ignore ?>
                 </details>
