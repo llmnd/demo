@@ -11,7 +11,7 @@ function baykat_farm_render_stocks() {
         <header class="baykat-farm-section-heading">
             <span class="baykat-farm-eyebrow">Intrants enregistrés</span>
             <h2>Stocks</h2>
-            <p>Quantités d’intrants cumulées à partir des achats enregistrés. Les sorties de stock ne sont pas encore suivies.</p>
+            <p>Quantités cumulées par ferme, parcelle et intrant à partir des achats enregistrés. Les sorties de stock ne sont pas encore suivies.</p>
         </header>
         <section class="baykat-farm-panel" aria-labelledby="baykat-farm-stock-list-title">
             <header class="baykat-farm-panel-heading">
@@ -21,11 +21,12 @@ function baykat_farm_render_stocks() {
             <?php if ( $stocks ) : ?>
                 <div class="baykat-farm-table-wrap">
                     <table class="baykat-farm-table">
-                        <thead><tr><th>Ferme</th><th>Intrant</th><th>Quantité cumulée</th><th>Coût d’achat cumulé</th></tr></thead>
+                        <thead><tr><th>Ferme</th><th>Parcelle</th><th>Intrant</th><th>Quantité cumulée</th><th>Coût d’achat cumulé</th></tr></thead>
                         <tbody>
                             <?php foreach ( $stocks as $stock ) : ?>
-                                <tr data-farm-id="<?php echo esc_attr( $stock->farm_id ); ?>">
+                                <tr data-stock-record data-farm-id="<?php echo esc_attr( $stock->farm_id ); ?>" data-parcel-id="<?php echo esc_attr( $stock->parcel_id ); ?>">
                                     <td data-label="Ferme"><?php echo esc_html( $stock->farm_name ); ?></td>
+                                    <td data-label="Parcelle"><?php echo esc_html( $stock->parcel_name ); ?></td>
                                     <td data-label="Intrant"><strong><?php echo esc_html( $stock->item_name ); ?></strong></td>
                                     <td data-label="Quantité cumulée"><?php echo esc_html( number_format( (float) $stock->total_quantity, 3, ',', ' ' ) . ' ' . $stock->unit ); ?></td>
                                     <td data-label="Coût d’achat cumulé"><?php echo esc_html( number_format( (float) $stock->total_cost, 0, ',', ' ' ) ); ?> FCFA</td>

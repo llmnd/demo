@@ -92,6 +92,7 @@ function baykat_farm_render_activites( $process_actions = true ) {
                             class="baykat-farm-record-card baykat-farm-visual-card baykat-farm-activity-card"
                             data-farm-record-card
                             data-farm-id="<?php echo esc_attr( $activity->farm_id ); ?>"
+                            data-parcel-id="<?php echo esc_attr( $activity->parcel_id ); ?>"
                             data-search-text="<?php echo esc_attr( $activity->title . ' ' . $activity->activity_date . ' ' . $activity->farm_name . ' ' . $activity->parcel_name . ' ' . ( isset( $activity_types[ $activity->activity_type ] ) ? $activity_types[ $activity->activity_type ] : $activity->activity_type ) . ' ' . $activity->notes ); ?>"
                             data-farm-record-filter-value="<?php echo esc_attr( $activity->activity_type ); ?>"
                         >

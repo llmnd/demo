@@ -228,6 +228,7 @@ $form_title_id = 'baykat-finance-item-form-title-' . $field_suffix;
                             <tr
                                 class="baykat-finance-transaction-row"
                                 data-farm-id="<?php echo esc_attr( $transaction->farm_id ); ?>"
+                                data-parcel-id="<?php echo esc_attr( $transaction->parcel_id ); ?>"
                                 data-transaction-id="<?php echo esc_attr( $transaction->id ); ?>"
                                 data-amount="<?php echo esc_attr( $transaction->amount ); ?>"
                                 data-transaction-type="<?php echo esc_attr( $transaction->type ); ?>"

@@ -778,19 +778,26 @@ function baykat_farm_get_stock_totals( $user_id ) {
     global $wpdb;
 
     $table = baykat_finance_get_table_name();
+    $farms_table = baykat_farm_table_name( 'farms' );
+    $parcels_table = baykat_farm_table_name( 'parcels' );
 
     return $wpdb->get_results(
         $wpdb->prepare(
-            "SELECT transactions.farm_id, COALESCE(farms.name, 'Finances générales') AS farm_name,
+            "SELECT transactions.farm_id, transactions.parcel_id,
+                    COALESCE(farms.name, 'Ferme') AS farm_name,
+                    COALESCE(parcels.name, 'Sans parcelle') AS parcel_name,
                     transactions.item_name, transactions.unit,
                     SUM(transactions.quantity) AS total_quantity,
                     SUM(transactions.amount) AS total_cost
              FROM $table AS transactions
-             LEFT JOIN " . baykat_farm_table_name( 'farms' ) . " AS farms
+             LEFT JOIN $farms_table AS farms
                 ON farms.id = transactions.farm_id AND farms.user_id = transactions.user_id
+             LEFT JOIN $parcels_table AS parcels
+                ON parcels.id = transactions.parcel_id AND parcels.user_id = transactions.user_id
              WHERE transactions.user_id = %d AND transactions.category = %s
-             GROUP BY transactions.farm_id, farms.name, transactions.item_name, transactions.unit
-             ORDER BY farm_name ASC, transactions.item_name ASC, transactions.unit ASC",
+             GROUP BY transactions.farm_id, farms.name, transactions.parcel_id, parcels.name,
+                      transactions.item_name, transactions.unit
+             ORDER BY farm_name ASC, parcel_name ASC, transactions.item_name ASC, transactions.unit ASC",
             $user_id,
             'input'
         )

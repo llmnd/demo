@@ -94,6 +94,7 @@ function baykat_farm_render_cultures( $process_actions = true ) {
                             class="baykat-farm-record-card baykat-farm-visual-card"
                             data-farm-record-card
                             data-farm-id="<?php echo esc_attr( $crop->farm_id ); ?>"
+                            data-parcel-id="<?php echo esc_attr( $crop->parcel_id ); ?>"
                             data-search-text="<?php echo esc_attr( $crop->farm_name . ' ' . $crop->parcel_name . ' ' . $crop->name . ' ' . $crop->variety . ' ' . ( isset( $statuses[ $crop->status ] ) ? $statuses[ $crop->status ] : $crop->status ) . ' ' . $crop->planted_at . ' ' . $crop->expected_harvest_date ); ?>"
                             data-farm-record-filter-value="<?php echo esc_attr( $crop->status ); ?>"
                         >

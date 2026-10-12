@@ -416,7 +416,7 @@ function baykat_farm_render_dashboard() {
             <summary>
                 <span class="baykat-farm-workspace-summary">
                     <strong>Stocks</strong>
-                    <small>Quantités d'intrants et coûts cumulés par ferme</small>
+                    <small>Quantités d'intrants et coûts cumulés par parcelle</small>
                 </span>
                 <span class="baykat-farm-workspace-count"><?php echo esc_html( number_format_i18n( count( $stocks ) ) ); ?></span>
             </summary>
