@@ -5,6 +5,58 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
+ * Retourne l'URL de la page qui héberge l'application de gestion.
+ */
+function baykat_farm_get_management_page_url() {
+    static $application_url = null;
+
+    if ( null !== $application_url ) {
+        return $application_url;
+    }
+
+    $application_url = '';
+    $pages = get_posts(
+        array(
+            'post_type'      => 'page',
+            'post_status'    => 'publish',
+            'posts_per_page' => -1,
+            'fields'         => 'ids',
+        )
+    );
+
+    foreach ( $pages as $page_id ) {
+        $page = get_post( $page_id );
+
+        if (
+            $page instanceof WP_Post
+            && (
+                has_shortcode( $page->post_content, 'gerer_ma_ferme' )
+                || has_shortcode( $page->post_content, 'baykat_farm' )
+            )
+        ) {
+            $application_url = get_permalink( $page_id );
+            break;
+        }
+    }
+
+    return $application_url;
+}
+
+/**
+ * Redirige les comptes non-administrateurs vers l'application après connexion.
+ */
+function baykat_farm_redirect_user_after_login( $redirect_to, $requested_redirect_to, $user ) {
+    if ( is_wp_error( $user ) || ! ( $user instanceof WP_User ) || user_can( $user, 'manage_options' ) ) {
+        return $redirect_to;
+    }
+
+    $application_url = baykat_farm_get_management_page_url();
+
+    return $application_url ? $application_url : $redirect_to;
+}
+add_filter( 'login_redirect', 'baykat_farm_redirect_user_after_login', 10, 3 );
+
+/**
  * Affiche l'application agricole à partir de son shortcode principal.
  */
 function baykat_farm_shortcode() {
