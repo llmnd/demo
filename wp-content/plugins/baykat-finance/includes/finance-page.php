@@ -18,6 +18,7 @@ function baykat_finance_enqueue_frontend_assets() {
         ! $post
         || (
             ! has_shortcode( $post->post_content, 'baykat_farm' )
+            && ! has_shortcode( $post->post_content, 'gerer_ma_ferme' )
             && ! has_shortcode( $post->post_content, 'baykat_finance' )
         )
     ) {
@@ -39,7 +40,10 @@ function baykat_finance_enqueue_frontend_assets() {
         true
     );
 
-    if ( has_shortcode( $post->post_content, 'baykat_farm' ) ) {
+    if (
+        has_shortcode( $post->post_content, 'baykat_farm' )
+        || has_shortcode( $post->post_content, 'gerer_ma_ferme' )
+    ) {
         wp_enqueue_style(
             'baykat-farm',
             BAYKAT_FINANCE_URL . 'public/css/farm.css',

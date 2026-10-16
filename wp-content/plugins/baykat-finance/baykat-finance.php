@@ -1,7 +1,7 @@
 <?php
 /**
- * Plugin Name: Baykat Finance
- * Description: Module de gestion financière pour Baykat.
+ * Plugin Name: Gérer ma ferme
+ * Description: Espace de gestion agricole : fermes, parcelles, cultures, activités, finances et stocks.
  * Version: 1.0.1
  * Author: Lamine
  */
@@ -27,7 +27,6 @@ require_once BAYKAT_FINANCE_DIR . 'includes/modules/finances.php';
 require_once BAYKAT_FINANCE_DIR . 'includes/modules/stocks.php';
 require_once BAYKAT_FINANCE_DIR . 'includes/components/navigation.php';
 require_once BAYKAT_FINANCE_DIR . 'includes/farm-page.php';
-require_once BAYKAT_FINANCE_DIR . 'includes/public-pages.php';
 require_once BAYKAT_FINANCE_DIR . 'admin/dashboard.php';
 register_activation_hook( __FILE__, 'baykat_finance_activate' );
 add_action( 'plugins_loaded', 'baykat_finance_maybe_upgrade_database' );

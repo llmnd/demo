@@ -40,7 +40,7 @@ body.baykat-farm-page .wp-block-post-content { margin-block-start: 0 !important;
 .baykat-farm-site-header {
     display: grid;
     min-height: 96px;
-    grid-template-columns: 72px minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(72px, max-content) minmax(0, 1fr) auto auto;
     align-items: center;
     gap: clamp(18px, 3vw, 44px);
     margin: 0 calc(-1 * clamp(24px, 4vw, 56px));
@@ -49,7 +49,21 @@ body.baykat-farm-page .wp-block-post-content { margin-block-start: 0 !important;
     background: #fff;
     color: #303b40;
 }
-.baykat-farm-site-logo { display: flex; width: 72px; height: 72px; align-items: center; justify-content: center; }
+.baykat-farm-site-logo {
+    display: flex;
+    width: max-content;
+    max-width: 180px;
+    height: 72px;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    color: #303b40;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 .baykat-farm-site-logo img { display: block; width: 112px; max-width: none; height: 76px; object-fit: contain; }
 .baykat-farm-site-navigation { display: flex; min-width: 0; align-items: center; gap: clamp(18px, 3.4vw, 48px); }
 .baykat-farm-site-navigation > a,
@@ -1674,7 +1688,9 @@ body.baykat-farm-login-page .baykat-farm-app.baykat-farm-login {
         position: absolute;
         top: 50%;
         left: 50%;
-        width: 62px;
+        width: auto;
+        max-width: calc(100% - 120px);
+        min-width: 62px;
         height: 54px;
         transform: translate(-50%, -50%);
     }
