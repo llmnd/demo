@@ -45,18 +45,42 @@ function baykat_finance_enqueue_frontend_assets() {
         || has_shortcode( $post->post_content, 'gerer_ma_ferme' )
     ) {
         wp_enqueue_style(
+            'leaflet',
+            'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+            array(),
+            '1.9.4'
+        );
+
+        wp_enqueue_script(
+            'leaflet',
+            'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+            array(),
+            '1.9.4',
+            true
+        );
+
+        wp_enqueue_style(
             'baykat-farm',
             BAYKAT_FINANCE_URL . 'public/css/farm.css',
-            array( 'baykat-finance' ),
+            array( 'baykat-finance', 'leaflet' ),
             filemtime( BAYKAT_FINANCE_DIR . 'public/css/farm.css' )
         );
 
         wp_enqueue_script(
             'baykat-farm',
             BAYKAT_FINANCE_URL . 'public/js/farm.js',
-            array(),
+            array( 'leaflet' ),
             filemtime( BAYKAT_FINANCE_DIR . 'public/js/farm.js' ),
             true
+        );
+
+        wp_localize_script(
+            'baykat-farm',
+            'baykatFarmMapConfig',
+            array(
+                'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+                'nonce'   => wp_create_nonce( 'baykat_farm_geocode' ),
+            )
         );
     }
 }

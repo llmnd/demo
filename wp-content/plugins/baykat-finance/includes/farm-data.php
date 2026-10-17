@@ -34,6 +34,40 @@ function baykat_farm_request_id( $key ) {
     return (int) $value;
 }
 
+function baykat_farm_request_coordinates() {
+    $latitude_value  = isset( $_POST['farm_latitude'] ) && is_scalar( $_POST['farm_latitude'] )
+        ? trim( (string) wp_unslash( $_POST['farm_latitude'] ) )
+        : '';
+    $longitude_value = isset( $_POST['farm_longitude'] ) && is_scalar( $_POST['farm_longitude'] )
+        ? trim( (string) wp_unslash( $_POST['farm_longitude'] ) )
+        : '';
+
+    if ( '' === $latitude_value && '' === $longitude_value ) {
+        return null;
+    }
+
+    if (
+        '' === $latitude_value
+        || '' === $longitude_value
+        || ! is_numeric( $latitude_value )
+        || ! is_numeric( $longitude_value )
+    ) {
+        return new WP_Error( 'invalid_farm_coordinates', 'Choisissez un emplacement valide sur la carte.' );
+    }
+
+    $latitude  = (float) $latitude_value;
+    $longitude = (float) $longitude_value;
+
+    if ( $latitude < -90 || $latitude > 90 || $longitude < -180 || $longitude > 180 ) {
+        return new WP_Error( 'invalid_farm_coordinates', 'Les coordonnées de la ferme sont hors limites.' );
+    }
+
+    return array(
+        'latitude'  => $latitude,
+        'longitude' => $longitude,
+    );
+}
+
 function baykat_farm_get_user_farms( $user_id ) {
     global $wpdb;
 
@@ -510,8 +544,19 @@ function baykat_farm_process_record_action( $user_id, $entity ) {
             return array( 'type' => 'error', 'message' => 'Veuillez vérifier le nom, la localisation et la superficie de la ferme.' );
         }
 
-        $data = array( 'name' => $name, 'location' => $location, 'area_ha' => $area );
-        $formats = array( '%s', '%s', '%f' );
+        $coordinates = baykat_farm_request_coordinates();
+        if ( is_wp_error( $coordinates ) ) {
+            return array( 'type' => 'error', 'message' => $coordinates->get_error_message() );
+        }
+
+        $data = array(
+            'name'      => $name,
+            'location'  => $location,
+            'latitude'  => $coordinates ? $coordinates['latitude'] : null,
+            'longitude' => $coordinates ? $coordinates['longitude'] : null,
+            'area_ha'   => $area,
+        );
+        $formats = array( '%s', '%s', '%f', '%f', '%f' );
     } elseif ( 'parcel' === $entity ) {
         $farm_id = baykat_farm_request_id( 'farm_id' );
         $name = isset( $_POST['parcel_name'] ) && is_string( $_POST['parcel_name'] )
@@ -674,13 +719,19 @@ function baykat_farm_process_farm_submission( $user_id ) {
         ? trim( (string) wp_unslash( $_POST['farm_area_ha'] ) )
         : '';
     $area = '' === $area_value ? null : ( is_numeric( $area_value ) ? (float) $area_value : 0 );
+    $coordinates = baykat_farm_request_coordinates();
 
     if (
         '' === $name
         || strlen( $name ) > 190
+        || strlen( $location ) > 190
         || ( null !== $area && ( $area <= 0 || $area > 999999999.999 ) )
     ) {
-        return array( 'type' => 'error', 'message' => 'Veuillez saisir un nom de ferme et une superficie valides.' );
+        return array( 'type' => 'error', 'message' => 'Veuillez saisir un nom de ferme, une localisation et une superficie valides.' );
+    }
+
+    if ( is_wp_error( $coordinates ) ) {
+        return array( 'type' => 'error', 'message' => $coordinates->get_error_message() );
     }
 
     $image_id = baykat_farm_handle_image_upload( 'farm_image', $user_id );
@@ -696,10 +747,12 @@ function baykat_farm_process_farm_submission( $user_id ) {
             'user_id'  => $user_id,
             'name'     => $name,
             'location' => $location,
+            'latitude' => $coordinates ? $coordinates['latitude'] : null,
+            'longitude' => $coordinates ? $coordinates['longitude'] : null,
             'area_ha'  => $area,
             'image_id' => $image_id,
         ),
-        array( '%d', '%s', '%s', '%f', '%d' )
+        array( '%d', '%s', '%s', '%f', '%f', '%f', '%d' )
     );
 
     if ( false === $inserted ) {
@@ -713,6 +766,102 @@ function baykat_farm_process_farm_submission( $user_id ) {
     return array( 'type' => 'success', 'message' => 'Ferme enregistrée.' );
 }
 
+function baykat_farm_geocode_location() {
+    if ( ! is_user_logged_in() || ! baykat_finance_user_can_access() ) {
+        wp_send_json_error( array( 'message' => 'Vous n’êtes pas autorisé à rechercher un emplacement.' ), 403 );
+    }
+
+    check_ajax_referer( 'baykat_farm_geocode', 'nonce' );
+
+    $query = isset( $_POST['query'] ) && is_string( $_POST['query'] )
+        ? sanitize_text_field( wp_unslash( $_POST['query'] ) )
+        : '';
+    $query = trim( $query );
+
+    if ( strlen( $query ) < 3 || strlen( $query ) > 190 ) {
+        wp_send_json_error( array( 'message' => 'Saisissez au moins 3 caractères pour rechercher une adresse.' ), 400 );
+    }
+
+    $cache_key = 'baykat_farm_geocode_' . md5( strtolower( $query ) );
+    $results   = get_transient( $cache_key );
+
+    if ( false === $results ) {
+        $last_request = (float) get_transient( 'baykat_farm_nominatim_last_request' );
+
+        if ( $last_request && microtime( true ) - $last_request < 1 ) {
+            wp_send_json_error( array( 'message' => 'Patientez une seconde avant de lancer une autre recherche.' ), 429 );
+        }
+
+        set_transient( 'baykat_farm_nominatim_last_request', microtime( true ), 3 );
+        $endpoint = apply_filters(
+            'baykat_farm_nominatim_endpoint',
+            'https://nominatim.openstreetmap.org/search'
+        );
+        $url = add_query_arg(
+            array(
+                'format'         => 'jsonv2',
+                'limit'          => 5,
+                'addressdetails' => 1,
+                'q'              => $query,
+            ),
+            $endpoint
+        );
+        $response = wp_remote_get(
+            $url,
+            array(
+                'timeout' => 8,
+                'headers' => array(
+                    'User-Agent' => 'Baykat Finance; ' . home_url( '/' ) . '; contact: ' . get_option( 'admin_email' ),
+                    'Referer'    => home_url( '/' ),
+                ),
+            )
+        );
+
+        if ( is_wp_error( $response ) ) {
+            wp_send_json_error( array( 'message' => 'Le service de recherche OpenStreetMap est momentanément indisponible. Réessayez dans un instant.' ), 502 );
+        }
+
+        if ( 200 !== (int) wp_remote_retrieve_response_code( $response ) ) {
+            wp_send_json_error( array( 'message' => 'OpenStreetMap n’a pas pu traiter cette recherche pour le moment.' ), 502 );
+        }
+
+        $decoded = json_decode( wp_remote_retrieve_body( $response ), true );
+
+        if ( ! is_array( $decoded ) ) {
+            wp_send_json_error( array( 'message' => 'La réponse du service de recherche est invalide.' ), 502 );
+        }
+
+        $results = array();
+
+        foreach ( $decoded as $result ) {
+            if (
+                ! isset( $result['lat'], $result['lon'], $result['display_name'] )
+                || ! is_numeric( $result['lat'] )
+                || ! is_numeric( $result['lon'] )
+            ) {
+                continue;
+            }
+
+            $latitude  = (float) $result['lat'];
+            $longitude = (float) $result['lon'];
+
+            if ( $latitude < -90 || $latitude > 90 || $longitude < -180 || $longitude > 180 ) {
+                continue;
+            }
+
+            $results[] = array(
+                'latitude'  => $latitude,
+                'longitude' => $longitude,
+                'label'     => sanitize_text_field( $result['display_name'] ),
+            );
+        }
+
+        set_transient( $cache_key, $results, 30 * DAY_IN_SECONDS );
+    }
+
+    wp_send_json_success( $results );
+}
+add_action( 'wp_ajax_baykat_farm_geocode', 'baykat_farm_geocode_location' );
 function baykat_farm_process_parcel_submission( $user_id ) {
     if ( ! isset( $_POST['baykat_add_parcel'] ) ) {
         return null;

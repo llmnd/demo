@@ -61,6 +61,40 @@ function baykat_farm_resolve_parent_farm_id( $item ) {
     return 0;
 }
 
+function baykat_farm_render_location_picker( $farm = null ) {
+    $farm_id   = $farm ? (int) $farm->id : 0;
+    $field_id  = $farm_id ? 'baykat_farm_edit_location_' . $farm_id : 'baykat_farm_location';
+    $latitude  = $farm && isset( $farm->latitude ) ? (float) $farm->latitude : '';
+    $longitude = $farm && isset( $farm->longitude ) ? (float) $farm->longitude : '';
+    ?>
+    <div class="baykat-farm-field baykat-farm-field-wide">
+        <label for="<?php echo esc_attr( $field_id ); ?>">Localisation</label>
+        <div class="baykat-farm-location-search">
+            <input type="search" name="farm_location" id="<?php echo esc_attr( $field_id ); ?>" maxlength="190" placeholder="Adresse, village ou commune" value="<?php echo esc_attr( $farm ? $farm->location : '' ); ?>">
+            <button class="baykat-finance-button" type="button" data-geocode-search>Rechercher</button>
+        </div>
+        <small class="baykat-farm-location-privacy">La recherche envoie le lieu saisi à OpenStreetMap. Les tuiles de la carte sont également chargées depuis OpenStreetMap.</small>
+        <div class="baykat-farm-geocode-results" data-geocode-results hidden></div>
+    </div>
+    <div class="baykat-farm-field baykat-farm-field-wide">
+        <span class="baykat-farm-field-label">Emplacement précis</span>
+        <div
+            class="baykat-farm-location-picker"
+            data-farm-location-picker
+            data-latitude="<?php echo esc_attr( $latitude ); ?>"
+            data-longitude="<?php echo esc_attr( $longitude ); ?>"
+            role="application"
+            aria-label="Carte pour choisir l’emplacement de la ferme"
+            tabindex="0"
+        ></div>
+        <p class="baykat-farm-location-status" data-location-status role="status"><?php echo $farm && null !== $farm->latitude ? 'Déplacez l’épingle si nécessaire pour ajuster l’emplacement.' : 'Recherchez un lieu, puis cliquez sur la carte pour placer l’épingle.'; ?></p>
+        <button class="baykat-farm-location-clear" type="button" data-clear-farm-location>Retirer l’épingle</button>
+        <input type="hidden" name="farm_latitude" value="<?php echo esc_attr( $latitude ); ?>" data-farm-latitude>
+        <input type="hidden" name="farm_longitude" value="<?php echo esc_attr( $longitude ); ?>" data-farm-longitude>
+    </div>
+    <?php
+}
+
 /**
  * Tableau de bord principal — refonte v4 (cartes égalisées, style Baykat).
  */
@@ -309,19 +343,48 @@ function baykat_farm_render_dashboard() {
             </div>
         </template>
 
-        <!-- ============================= SHOWCASE FERMES ============================= -->
+        <!-- ============================= CARTE DES FERMES ============================= -->
         <?php if ( $farms ) : ?>
         <section class="baykat-farm-showcase" aria-labelledby="baykat-farm-showcase-title">
             <header class="baykat-farm-showcase-heading">
                 <div>
-                    <span class="baykat-farm-eyebrow">Mes exploitations</span>
-                    <h3 id="baykat-farm-showcase-title">Vos fermes</h3>
+                    <span class="baykat-farm-eyebrow">Vos exploitations</span>
+                    <h3 id="baykat-farm-showcase-title">Vos fermes sur la carte</h3>
                 </div>
-                <a class="baykat-farm-dashboard-more" href="#baykat-workspace-farms" data-open-management-target="baykat-workspace-farms">Tout gérer <span aria-hidden="true">→</span></a>
+                <div class="baykat-farm-showcase-intro">
+                    <span>Une épingle indique l’emplacement enregistré de chaque ferme.</span>
+                    <a class="baykat-farm-dashboard-more" href="#baykat-workspace-farms" data-open-management-target="baykat-workspace-farms">Gérer les fermes <span aria-hidden="true">→</span></a>
+                </div>
             </header>
+            <?php
+            $map_farms = array();
+            foreach ( $farms as $farm ) {
+                if ( ! isset( $farm->latitude, $farm->longitude ) ) {
+                    continue;
+                }
+
+                $map_farms[] = array(
+                    'id'        => (int) $farm->id,
+                    'name'      => $farm->name,
+                    'location'  => $farm->location,
+                    'latitude'  => (float) $farm->latitude,
+                    'longitude' => (float) $farm->longitude,
+                );
+            }
+            ?>
+            <div class="baykat-farm-overview-map<?php echo $map_farms ? ' has-locations' : ''; ?>" data-farm-overview-map data-farms="<?php echo esc_attr( wp_json_encode( $map_farms ) ); ?>">
+                <div class="baykat-farm-overview-map-canvas" data-farm-overview-map-canvas aria-label="Carte des emplacements de vos fermes"></div>
+                <p class="baykat-farm-overview-map-error" data-farm-overview-map-error hidden>La carte n’a pas pu se charger. Vérifiez votre connexion puis rechargez la page.</p>
+                <div class="baykat-farm-overview-map-empty" data-farm-overview-map-empty<?php echo $map_farms ? ' hidden' : ''; ?>>
+                    <span aria-hidden="true">⌖</span>
+                    <strong>Aucune ferme n’est encore positionnée</strong>
+                    <p>Modifiez une ferme pour rechercher son adresse et placer son épingle.</p>
+                    <a href="#baykat-workspace-farms" data-open-management-target="baykat-workspace-farms">Positionner une ferme <span aria-hidden="true">→</span></a>
+                </div>
+            </div>
+            <p class="baykat-farm-map-disclaimer">La carte localise les fermes. Les limites des parcelles ne sont pas encore géolocalisées.</p>
             <div class="baykat-farm-showcase-grid">
                 <?php foreach ( array_slice( $farms, 0, 3 ) as $farm ) :
-                    $image        = ! empty( $farm->image_id ) ? wp_get_attachment_image_url( $farm->image_id, 'large' ) : '';
                     $farm_parcels = isset( $parcels_by_farm[ $farm->id ] ) ? $parcels_by_farm[ $farm->id ] : array();
                     $farm_crops   = isset( $crops_by_farm[ $farm->id ] ) ? $crops_by_farm[ $farm->id ] : array();
                     $growing      = count( array_filter( $farm_crops, function ( $c ) { return 'growing' === $c->status; } ) );
@@ -329,15 +392,15 @@ function baykat_farm_render_dashboard() {
                     <article class="baykat-farm-showcase-card">
                         <a class="baykat-farm-showcase-link" href="#baykat-workspace-farms" data-open-farm-modal="<?php echo esc_attr( $farm->id ); ?>" aria-label="<?php echo esc_attr( 'Voir les informations de ' . $farm->name ); ?>">
                             <div class="baykat-farm-showcase-media">
-                                <?php if ( $image ) : ?>
-                                    <img src="<?php echo esc_url( $image ); ?>" alt="<?php echo esc_attr( $farm->name ); ?>" loading="lazy">
+                                <?php if ( ! empty( $farm->image_id ) ) : ?>
+                                    <?php echo wp_get_attachment_image( $farm->image_id, 'large', false, array( 'loading' => 'lazy', 'alt' => esc_attr( $farm->name ) ) ); ?>
                                 <?php else : ?>
                                     <div class="baykat-farm-card-image-placeholder"><span>BAYKAT</span></div>
                                 <?php endif; ?>
                                 <div class="baykat-farm-showcase-shade" aria-hidden="true"></div>
                                 <div class="baykat-farm-showcase-head">
                                     <h4><?php echo esc_html( $farm->name ); ?></h4>
-                                    <p><?php echo esc_html( $farm->location ? $farm->location : 'Localisation non renseignée' ); ?></p>
+                                    <p><?php echo esc_html( $farm->location ? $farm->location : 'Votre coin de terre' ); ?></p>
                                 </div>
                             </div>
                             <div class="baykat-farm-showcase-stats">
@@ -355,6 +418,11 @@ function baykat_farm_render_dashboard() {
                                 </span>
                             </div>
                         </a>
+                        <?php if ( ! isset( $farm->latitude, $farm->longitude ) ) : ?>
+                            <a class="baykat-farm-showcase-position" href="#baykat-workspace-farms" data-open-management-target="baykat-workspace-farms">
+                                <span aria-hidden="true">＋</span> Positionner cette ferme
+                            </a>
+                        <?php endif; ?>
                     </article>
                 <?php endforeach; ?>
             </div>
@@ -472,10 +540,7 @@ function baykat_farm_render_dashboard() {
                             <label for="baykat_farm_name">Nom de la ferme</label>
                             <input type="text" name="farm_name" id="baykat_farm_name" maxlength="190" required>
                         </div>
-                        <div class="baykat-farm-field">
-                            <label for="baykat_farm_location">Localisation</label>
-                            <input type="text" name="farm_location" id="baykat_farm_location" maxlength="190" placeholder="Village, commune ou région">
-                        </div>
+                        <?php baykat_farm_render_location_picker(); ?>
                         <div class="baykat-farm-field">
                             <label for="baykat_farm_area_ha">Superficie (hectares, facultatif)</label>
                             <input type="number" name="farm_area_ha" id="baykat_farm_area_ha" min="0.001" step="0.001">
@@ -524,10 +589,7 @@ function baykat_farm_render_dashboard() {
                                                 <label for="baykat_farm_edit_name_<?php echo esc_attr( $farm->id ); ?>">Nom</label>
                                                 <input type="text" name="farm_name" id="baykat_farm_edit_name_<?php echo esc_attr( $farm->id ); ?>" maxlength="190" value="<?php echo esc_attr( $farm->name ); ?>" required>
                                             </div>
-                                            <div class="baykat-farm-field">
-                                                <label for="baykat_farm_edit_location_<?php echo esc_attr( $farm->id ); ?>">Localisation</label>
-                                                <input type="text" name="farm_location" id="baykat_farm_edit_location_<?php echo esc_attr( $farm->id ); ?>" maxlength="190" value="<?php echo esc_attr( $farm->location ); ?>">
-                                            </div>
+                                            <?php baykat_farm_render_location_picker( $farm ); ?>
                                             <div class="baykat-farm-field">
                                                 <label for="baykat_farm_edit_area_<?php echo esc_attr( $farm->id ); ?>">Superficie (ha)</label>
                                                 <input type="number" name="farm_area_ha" id="baykat_farm_edit_area_<?php echo esc_attr( $farm->id ); ?>" min="0.001" step="0.001" value="<?php echo esc_attr( $farm->area_ha ); ?>">

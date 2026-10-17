@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'BAYKAT_FINANCE_DB_VERSION', '8' );
+define( 'BAYKAT_FINANCE_DB_VERSION', '9' );
 
 /**
  * Retourne le nom de la table des transactions.
@@ -62,6 +62,8 @@ function baykat_finance_activate() {
         user_id BIGINT UNSIGNED NOT NULL,
         name VARCHAR(190) NOT NULL,
         location VARCHAR(190) NULL,
+        latitude DECIMAL(10,7) NULL,
+        longitude DECIMAL(10,7) NULL,
         area_ha DECIMAL(12,3) NULL,
         image_id BIGINT UNSIGNED NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -197,7 +199,7 @@ function baykat_finance_activate() {
 
     $required_columns = array(
         $table_name       => array( 'category', 'item_name', 'quantity', 'expense_category', 'farm_id', 'parcel_id', 'activity_id', 'crop_id', 'cancelled_at', 'cancelled_by' ),
-        $farms_table      => array( 'user_id', 'name', 'location', 'area_ha', 'image_id' ),
+        $farms_table      => array( 'user_id', 'name', 'location', 'latitude', 'longitude', 'area_ha', 'image_id' ),
         $parcels_table    => array( 'user_id', 'farm_id', 'name', 'area_m2', 'status', 'image_id' ),
         $crops_table      => array( 'user_id', 'parcel_id', 'name', 'variety', 'planted_at', 'expected_harvest_date', 'harvested_quantity', 'harvested_unit', 'status', 'image_id' ),
         $activities_table => array( 'user_id', 'parcel_id', 'title', 'activity_type', 'activity_date', 'notes', 'image_id' ),

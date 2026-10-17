@@ -1,4 +1,319 @@
 document.addEventListener('DOMContentLoaded', function () {
+    function initializeFarmMaps(root) {
+        if (!root) {
+            return;
+        }
+
+        if (!window.L) {
+            root.querySelectorAll('[data-farm-overview-map-error]').forEach(function (message) {
+                message.hidden = false;
+            });
+            root.querySelectorAll('[data-location-status]').forEach(function (message) {
+                message.textContent = 'La carte OpenStreetMap n’a pas pu se charger. Rechargez la page avant de choisir un emplacement.';
+            });
+            root.querySelectorAll('[data-geocode-search]').forEach(function (button) {
+                button.disabled = true;
+            });
+            return;
+        }
+
+        root.querySelectorAll('[data-farm-overview-map]').forEach(function (container) {
+            if (container.dataset.mapReady) {
+                return;
+            }
+
+            const farms = JSON.parse(container.dataset.farms || '[]');
+            const canvas = container.querySelector('[data-farm-overview-map-canvas]');
+            const emptyState = container.querySelector('[data-farm-overview-map-empty]');
+            if (!canvas || !farms.length) {
+                if (emptyState) {
+                    emptyState.hidden = false;
+                }
+                return;
+            }
+
+            container.dataset.mapReady = 'true';
+            const map = L.map(canvas, { scrollWheelZoom: false }).setView(
+                [farms[0].latitude, farms[0].longitude],
+                13
+            );
+            const overviewTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 19
+            });
+            overviewTiles.on('tileerror', function () {
+                const mapError = container.querySelector('[data-farm-overview-map-error]');
+                if (mapError) {
+                    mapError.hidden = false;
+                }
+            });
+            overviewTiles.addTo(map);
+
+            const bounds = [];
+            farms.forEach(function (farm) {
+                const position = [Number(farm.latitude), Number(farm.longitude)];
+                const farmIcon = L.divIcon({
+                    className: 'baykat-farm-map-marker',
+                    html: '<span class="baykat-farm-map-marker-badge"><svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path class="baykat-farm-marker-roof" d="M6 21 24 7l18 14"/><path class="baykat-farm-marker-building" d="M11 19v22h26V19L24 9z"/><path class="baykat-farm-marker-trim" d="M7 22 24 9l17 13M16 26h6v6h-6zM26 26h6v6h-6z"/><path class="baykat-farm-marker-door" d="M20 41V32h8v9"/><path class="baykat-farm-marker-grain" d="M37 17v-7m0 4-3-3m3 5 3-3"/></svg></span>',
+                    iconSize: [48, 56],
+                    iconAnchor: [24, 51],
+                    popupAnchor: [0, -48],
+                    tooltipAnchor: [0, -48],
+                    tooltipDirection: 'top'
+                });
+                const marker = L.marker(position, {
+                    icon: farmIcon,
+                    title: farm.name,
+                    alt: 'Ferme : ' + farm.name,
+                    riseOnHover: true
+                }).addTo(map);
+                const popup = document.createElement('div');
+                const name = document.createElement('strong');
+                const location = document.createElement('span');
+                const openButton = document.createElement('button');
+
+                name.textContent = farm.name;
+                location.textContent = farm.location || 'Localisation non renseignée';
+                openButton.type = 'button';
+                openButton.className = 'baykat-farm-map-popup-link';
+                openButton.dataset.openFarmModal = String(farm.id);
+                openButton.textContent = 'Voir la ferme';
+                popup.append(name, location, openButton);
+                marker.bindPopup(popup);
+                marker.bindTooltip(farm.name, {
+                    permanent: true,
+                    direction: 'top',
+                    offset: [0, -3],
+                    opacity: 1,
+                    className: 'baykat-farm-map-tooltip'
+                });
+                bounds.push(position);
+            });
+
+            if (bounds.length > 1) {
+                map.fitBounds(bounds, { padding: [32, 32], maxZoom: 14 });
+            }
+        });
+
+        root.querySelectorAll('[data-farm-location-picker]').forEach(function (canvas) {
+            if (canvas.dataset.mapReady) {
+                return;
+            }
+
+            const form = canvas.closest('form');
+            const latitudeField = form && form.querySelector('[data-farm-latitude]');
+            const longitudeField = form && form.querySelector('[data-farm-longitude]');
+            const status = form && form.querySelector('[data-location-status]');
+            const locationField = form && form.querySelector('[name="farm_location"]');
+            if (!form || !latitudeField || !longitudeField) {
+                return;
+            }
+
+            canvas.dataset.mapReady = 'true';
+            const initialLatitude = Number.parseFloat(latitudeField.value);
+            const initialLongitude = Number.parseFloat(longitudeField.value);
+            const hasPosition = Number.isFinite(initialLatitude) && Number.isFinite(initialLongitude);
+            const map = L.map(canvas, { scrollWheelZoom: false }).setView(
+                hasPosition ? [initialLatitude, initialLongitude] : [0, 0],
+                hasPosition ? 15 : 2
+            );
+            const pickerTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 19
+            });
+            pickerTiles.on('tileerror', function () {
+                if (status) {
+                    status.textContent = 'Le fond de carte OpenStreetMap ne s’est pas chargé. Vérifiez votre connexion ; vous pouvez encore choisir l’épingle.';
+                }
+            });
+            pickerTiles.addTo(map);
+
+            let marker = null;
+
+            function updateCoordinates(position) {
+                latitudeField.value = position.lat.toFixed(7);
+                longitudeField.value = position.lng.toFixed(7);
+                if (status) {
+                    status.textContent = 'Emplacement sélectionné. Déplacez l’épingle ou cliquez sur la carte pour l’ajuster.';
+                }
+            }
+
+            function setMarker(latitude, longitude) {
+                const position = L.latLng(latitude, longitude);
+                if (marker) {
+                    marker.setLatLng(position);
+                } else {
+                    marker = L.marker(position, { draggable: true }).addTo(map);
+                    marker.on('dragend', function (event) {
+                        updateCoordinates(event.target.getLatLng());
+                    });
+                }
+                updateCoordinates(position);
+            }
+
+            if (hasPosition) {
+                setMarker(initialLatitude, initialLongitude);
+            }
+
+            map.on('click', function (event) {
+                setMarker(event.latlng.lat, event.latlng.lng);
+            });
+
+            const clearButton = form.querySelector('[data-clear-farm-location]');
+            if (clearButton) {
+                clearButton.addEventListener('click', function () {
+                    if (marker) {
+                        map.removeLayer(marker);
+                        marker = null;
+                    }
+                    latitudeField.value = '';
+                    longitudeField.value = '';
+                    if (status) {
+                        status.textContent = 'Aucune épingle sélectionnée. Recherchez un lieu ou cliquez sur la carte.';
+                    }
+                });
+            }
+
+            const searchButton = form.querySelector('[data-geocode-search]');
+            const resultsContainer = form.querySelector('[data-geocode-results]');
+            let selectedLocation = locationField ? locationField.value : '';
+
+            if (locationField) {
+                locationField.addEventListener('input', function () {
+                    if (locationField.value === selectedLocation) {
+                        return;
+                    }
+                    selectedLocation = locationField.value;
+                    if (marker) {
+                        map.removeLayer(marker);
+                        marker = null;
+                        latitudeField.value = '';
+                        longitudeField.value = '';
+                        if (status) {
+                            status.textContent = 'La localisation a changé. Recherchez-la à nouveau ou replacez l’épingle sur la carte.';
+                        }
+                    }
+                });
+            }
+
+            async function searchLocation() {
+                const query = locationField ? locationField.value.trim() : '';
+                if (query.length < 3) {
+                    if (status) {
+                        status.textContent = 'Saisissez au moins 3 caractères pour rechercher une adresse.';
+                    }
+                    return;
+                }
+                if (!window.baykatFarmMapConfig || !window.baykatFarmMapConfig.ajaxUrl) {
+                    console.error('Baykat Farm map configuration is missing.');
+                    if (status) {
+                        status.textContent = 'La recherche de lieu n’est pas configurée. Vous pouvez toujours placer l’épingle sur la carte.';
+                    }
+                    return;
+                }
+
+                if (searchButton) {
+                    searchButton.disabled = true;
+                    searchButton.textContent = 'Recherche…';
+                }
+                if (resultsContainer) {
+                    resultsContainer.replaceChildren();
+                    resultsContainer.hidden = true;
+                }
+                if (status) {
+                    status.textContent = 'Recherche du lieu sur OpenStreetMap…';
+                }
+
+                const request = new URLSearchParams({
+                    action: 'baykat_farm_geocode',
+                    nonce: window.baykatFarmMapConfig.nonce,
+                    query: query
+                });
+
+                try {
+                    const response = await fetch(window.baykatFarmMapConfig.ajaxUrl, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                        body: request.toString()
+                    });
+                    const payload = await response.json();
+                    if (!response.ok || !payload.success) {
+                        throw new Error(payload.data && payload.data.message
+                            ? payload.data.message
+                            : 'La recherche du lieu a échoué.');
+                    }
+
+                    if (!payload.data.length) {
+                        if (status) {
+                            status.textContent = 'Aucun lieu trouvé. Essayez une adresse plus précise ou placez l’épingle sur la carte.';
+                        }
+                        return;
+                    }
+
+                    resultsContainer.hidden = false;
+                    payload.data.forEach(function (result) {
+                        const option = document.createElement('button');
+                        option.type = 'button';
+                        option.className = 'baykat-farm-geocode-result';
+                        option.textContent = result.label;
+                        option.addEventListener('click', function () {
+                            const label = result.label.slice(0, 190);
+                            if (locationField) {
+                                locationField.value = label;
+                                selectedLocation = label;
+                            }
+                            setMarker(Number(result.latitude), Number(result.longitude));
+                            map.setView([Number(result.latitude), Number(result.longitude)], 16);
+                            resultsContainer.hidden = true;
+                        });
+                        resultsContainer.appendChild(option);
+                    });
+
+                    if (status) {
+                        status.textContent = 'Choisissez le bon résultat pour placer l’épingle.';
+                    }
+                } catch (error) {
+                    if (status) {
+                        status.textContent = error.message;
+                    }
+                } finally {
+                    if (searchButton) {
+                        searchButton.disabled = false;
+                        searchButton.textContent = 'Rechercher';
+                    }
+                }
+            }
+
+            if (searchButton) {
+                searchButton.addEventListener('click', searchLocation);
+            }
+            if (locationField) {
+                locationField.addEventListener('keydown', function (event) {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        searchLocation();
+                    }
+                });
+            }
+
+            let parent = canvas.parentElement;
+            while (parent && parent !== form) {
+                if (parent.matches('details')) {
+                    const disclosure = parent;
+                    disclosure.addEventListener('toggle', function () {
+                        if (disclosure.open) {
+                            window.requestAnimationFrame(function () {
+                                map.invalidateSize();
+                            });
+                        }
+                    });
+                }
+                parent = parent.parentElement;
+            }
+        });
+    }
+
     document.querySelectorAll('.baykat-farm-app').forEach(function (app) {
         function normalizeSearchText(value) {
             return value
@@ -1567,5 +1882,9 @@ document.addEventListener('DOMContentLoaded', function () {
         initializeRecordFilters(app);
         initializeDashboardModals();
         initializeMobileNavigation();
+        initializeFarmMaps(app);
+        document.addEventListener('baykat:farm-module-loaded', function () {
+            initializeFarmMaps(app);
+        });
     });
 });

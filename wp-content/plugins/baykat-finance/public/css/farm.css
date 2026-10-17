@@ -578,6 +578,8 @@ body.admin-bar .baykat-farm-navigation { top: 32px; }
     flex-wrap: wrap;
 }
 .baykat-farm-showcase-heading h3 { margin: 4px 0 0; color: #302b25; font-size: clamp(20px, 2.4vw, 26px); letter-spacing: -0.025em; }
+.baykat-farm-showcase-intro { display: flex; align-items: center; gap: 16px; color: #898277; font-size: 12px; }
+.baykat-farm-showcase-intro .baykat-farm-dashboard-more { margin-top: 0; padding-top: 0; border-top: 0; }
 .baykat-farm-showcase-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
@@ -669,6 +671,188 @@ body.admin-bar .baykat-farm-navigation { top: 32px; }
     letter-spacing: 0.09em;
     text-transform: uppercase;
 }
+.baykat-farm-overview-map {
+    position: relative;
+    min-height: 270px;
+    height: clamp(270px, 43vw, 460px);
+    overflow: hidden;
+    border: 1px solid #e9e4dc;
+    border-radius: 18px;
+    background: #e8e7df;
+    box-shadow: 0 8px 26px rgba(48,43,37,.06);
+}
+.baykat-farm-overview-map-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+.baykat-farm-overview-map:not(.has-locations) .baykat-farm-overview-map-canvas { display: none; }
+.baykat-farm-overview-map-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    padding: 24px;
+    background: linear-gradient(145deg, #f3f0e8, #e5e8dc);
+    color: #625b51;
+    text-align: center;
+}
+.baykat-farm-overview-map-empty[hidden] { display: none; }
+.baykat-farm-overview-map-error {
+    position: absolute;
+    inset: auto 16px 16px;
+    z-index: 500;
+    margin: 0;
+    padding: 10px 13px;
+    border: 1px solid #efd7d4;
+    border-radius: 10px;
+    background: #fff5f3;
+    color: #8f3832;
+    font-size: 12px;
+}
+.baykat-farm-overview-map-error[hidden] { display: none; }
+.baykat-farm-overview-map .baykat-farm-map-marker {
+    border: 0;
+    background: none;
+}
+.baykat-farm-map-marker-badge {
+    position: relative;
+    display: grid;
+    width: 44px;
+    height: 44px;
+    place-items: center;
+    border: 3px solid #fffdf7;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #667c53, #405a3d);
+    box-shadow: 0 5px 13px rgba(35,45,31,.3), 0 0 0 1px rgba(48,43,37,.12);
+    transition: transform 180ms ease, box-shadow 180ms ease;
+}
+.baykat-farm-map-marker-badge::after {
+    position: absolute;
+    z-index: -1;
+    bottom: -5px;
+    left: 50%;
+    width: 12px;
+    height: 12px;
+    border-right: 2px solid #fffdf7;
+    border-bottom: 2px solid #fffdf7;
+    background: #4a6241;
+    content: "";
+    transform: translateX(-50%) rotate(45deg);
+}
+.baykat-farm-overview-map .leaflet-marker-icon:hover .baykat-farm-map-marker-badge {
+    transform: translateY(-3px) scale(1.07);
+    box-shadow: 0 8px 17px rgba(35,45,31,.36), 0 0 0 3px rgba(255,253,247,.3);
+}
+.baykat-farm-map-marker-badge svg { position: relative; z-index: 1; width: 30px; height: 30px; overflow: visible; }
+.baykat-farm-marker-roof { fill: none; stroke: #f5d9a1; stroke-linecap: round; stroke-linejoin: round; stroke-width: 4; }
+.baykat-farm-marker-building { fill: #fffaf0; stroke: #fffaf0; stroke-linejoin: round; stroke-width: 1.5; }
+.baykat-farm-marker-trim { fill: none; stroke: #667c53; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+.baykat-farm-marker-door { fill: #c3a36f; stroke: #c3a36f; stroke-linejoin: round; stroke-width: 1.5; }
+.baykat-farm-marker-grain { fill: none; stroke: #f5d9a1; stroke-linecap: round; stroke-width: 1.5; }
+.baykat-farm-overview-map .baykat-farm-map-tooltip {
+    padding: 5px 9px;
+    border: 1px solid rgba(113,91,51,.16);
+    border-radius: 8px;
+    background: rgba(255,253,247,.97);
+    color: #403729;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 750;
+    box-shadow: 0 3px 12px rgba(48,43,37,.15);
+}
+.baykat-farm-overview-map .baykat-farm-map-tooltip::before { border-top-color: #fffdf7; }
+.baykat-farm-overview-map-empty > span { margin-bottom: 7px; color: #947747; font-size: 32px; }
+.baykat-farm-overview-map-empty strong { color: #302b25; font-size: 16px; }
+.baykat-farm-overview-map-empty p { margin: 5px 0 12px; font-size: 13px; }
+.baykat-farm-overview-map-empty a { color: #725b31; font-size: 13px; font-weight: 700; text-decoration: none; }
+.baykat-farm-overview-map-empty a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.baykat-farm-map-disclaimer { margin: -7px 0 0; color: #898277; font-size: 11px; }
+.baykat-farm-map-popup-link {
+    display: flex;
+    margin-top: 8px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #725b31;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.baykat-farm-showcase-position {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    border-top: 1px solid #f1ece2;
+    color: #725b31;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background-color 160ms ease, color 160ms ease;
+}
+.baykat-farm-showcase-position:hover { background: #faf8f3; color: #302b25; }
+.baykat-farm-showcase-position:focus-visible { outline: 3px solid #b99a64; outline-offset: -3px; }
+.baykat-farm-showcase-position span { font-size: 17px; font-weight: 400; }
+.baykat-farm-location-search { display: flex; align-items: stretch; gap: 8px; }
+.baykat-farm-location-search input { min-width: 0; flex: 1 1 auto; }
+.baykat-farm-location-search .baykat-finance-button { flex: 0 0 auto; }
+.baykat-farm-location-privacy { display: block; margin-top: 6px; color: #898277; font-size: 11px; line-height: 1.45; }
+.baykat-farm-geocode-results {
+    display: grid;
+    max-height: 180px;
+    margin-top: 8px;
+    overflow-y: auto;
+    border: 1px solid #e9e4dc;
+    border-radius: 10px;
+    background: #fff;
+}
+.baykat-farm-geocode-results[hidden] { display: none; }
+.baykat-farm-geocode-result {
+    padding: 10px 12px;
+    border: 0;
+    border-bottom: 1px solid #f0ede7;
+    background: transparent;
+    color: #35495a;
+    font: inherit;
+    font-size: 12px;
+    line-height: 1.45;
+    text-align: left;
+    cursor: pointer;
+}
+.baykat-farm-geocode-result:last-child { border-bottom: 0; }
+.baykat-farm-geocode-result:hover,
+.baykat-farm-geocode-result:focus-visible { background: #f7f4ee; color: #302b25; }
+.baykat-farm-location-picker {
+    width: 100%;
+    height: 260px;
+    overflow: hidden;
+    border: 1px solid #e9e4dc;
+    border-radius: 12px;
+    background: #e8e7df;
+}
+.baykat-farm-location-picker:focus-visible { outline: 3px solid rgba(185,154,100,.5); outline-offset: 2px; }
+.baykat-farm-location-status { margin: 7px 0 0; color: #777168; font-size: 12px; }
+.baykat-farm-location-clear {
+    margin-top: 5px;
+    padding: 4px 0;
+    border: 0;
+    background: transparent;
+    color: #8b5047;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}
+.baykat-farm-location-clear:hover { text-decoration: underline; text-underline-offset: 3px; }
+.baykat-farm-location-clear:focus-visible { outline: 3px solid rgba(185,154,100,.42); outline-offset: 2px; }
+.baykat-farm-overview-map .leaflet-popup-content > div { display: grid; gap: 2px; }
+.baykat-farm-overview-map .leaflet-popup-content > div > span { max-width: 220px; color: #777168; font-size: 11px; }
+.baykat-farm-overview-map .leaflet-popup-content > div > button { justify-self: start; }
 
 .baykat-farm-card-image-placeholder {
     display: grid;
@@ -906,7 +1090,8 @@ body.admin-bar .baykat-farm-navigation { top: 32px; }
 .baykat-farm-add-form-description { grid-column: 1 / -1; margin: 10px 0 18px; color: #777168; font-size: 13px; line-height: 1.55; }
 .baykat-farm-field-help { color: #777168; font-size: 12px; line-height: 1.45; }
 .baykat-farm-field-wide { grid-column: 1 / -1; }
-.baykat-farm-field label { color: #302b25; font-size: 13px; font-weight: 650; }
+.baykat-farm-field label,
+.baykat-farm-field-label { color: #302b25; font-size: 13px; font-weight: 650; }
 .baykat-farm-field input,
 .baykat-farm-field select,
 .baykat-farm-field textarea {
@@ -1384,6 +1569,8 @@ body.baykat-farm-login-page .baykat-farm-app.baykat-farm-login {
     .baykat-farm-kpi-tile:nth-child(3) { border-right: 1px solid #ece7dd; }
     .baykat-farm-kpi-tile:nth-child(-n+3) { border-bottom: 1px solid #ece7dd; }
     .baykat-farm-kpi-tile:last-child { border-bottom: 1px solid #ece7dd; }
+    .baykat-farm-location-search { align-items: stretch; flex-direction: column; }
+    .baykat-farm-location-search .baykat-finance-button { width: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1680,6 +1867,8 @@ body.baykat-farm-login-page .baykat-farm-app.baykat-farm-login {
     .baykat-farm-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .baykat-farm-overview-caption { display: none; }
     .baykat-farm-dashboard-list { min-height: 0; padding: 18px; }
+    .baykat-farm-showcase-intro > span { display: none; }
+    .baykat-farm-showcase-intro { gap: 0; }
 }
 @media (max-width: 540px) {
     .baykat-farm-overview-block { padding: 16px; border-radius: 15px; }
