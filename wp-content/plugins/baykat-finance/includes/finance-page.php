@@ -438,6 +438,7 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
                                     data-transaction-type="<?php echo esc_attr( $transaction->type ); ?>"
                                     data-activity-id="<?php echo esc_attr( $transaction->activity_id ); ?>"
                                     data-expense-category="<?php echo esc_attr( $transaction->expense_category ); ?>"
+                                    data-cancelled="<?php echo empty( $transaction->cancelled_at ) ? 'false' : 'true'; ?>"
                                     data-search-text="<?php echo esc_attr( $transaction_search_text ); ?>"
                                 >
 

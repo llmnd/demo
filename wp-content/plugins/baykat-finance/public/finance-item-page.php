@@ -327,6 +327,7 @@ $form_title_id = 'baykat-finance-item-form-title-' . $field_suffix;
                                 data-amount="<?php echo esc_attr( $transaction->amount ); ?>"
                                 data-transaction-type="<?php echo esc_attr( $transaction->type ); ?>"
                                 data-activity-id="<?php echo esc_attr( $transaction->activity_id ); ?>"
+                                data-cancelled="<?php echo empty( $transaction->cancelled_at ) ? 'false' : 'true'; ?>"
                                 data-search-text="<?php echo esc_attr( $search_text ); ?>"
                             >
                                 <td data-label="<?php echo esc_attr( $item_label ); ?>">

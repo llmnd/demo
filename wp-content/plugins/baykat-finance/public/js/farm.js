@@ -480,7 +480,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
-                const amount = rows.reduce(function (sum, row) {
+                const amount = rows.filter(function (row) {
+                    return row.dataset.cancelled !== 'true';
+                }).reduce(function (sum, row) {
                     const rowAmount = Number(row.dataset.amount || 0);
                     return sum + (type === 'balance' && row.dataset.transactionType === 'expense' ? -rowAmount : rowAmount);
                 }, 0);
@@ -538,7 +540,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
-                const amount = rows.reduce(function (sum, row) {
+                const amount = rows.filter(function (row) {
+                    return row.dataset.cancelled !== 'true';
+                }).reduce(function (sum, row) {
                     const rowAmount = Number(row.dataset.amount || 0);
                     return sum + (type === 'balance' && row.dataset.transactionType === 'expense' ? -rowAmount : rowAmount);
                 }, 0);

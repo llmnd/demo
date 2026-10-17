@@ -404,6 +404,24 @@ function baykat_farm_render_dashboard() {
                 <span class="baykat-farm-workspace-count"><?php echo esc_html( number_format_i18n( $all_tx_count ) ); ?></span>
             </summary>
             <div class="baykat-farm-workspace-content baykat-farm-workspace-finances">
+                <section class="baykat-farm-modal-finance-overview" aria-label="Résumé général des finances de la ferme">
+                    <h3>Résumé général</h3>
+                    <div class="baykat-finance-cards baykat-farm-modal-finance-summary">
+                        <article class="baykat-finance-card baykat-finance-card-balance">
+                            <span class="baykat-finance-card-label">Solde</span>
+                            <strong class="baykat-finance-card-value" data-farm-finance-total="balance"><?php echo esc_html( number_format( $transactions['balance'], 0, ',', ' ' ) ); ?> FCFA</strong>
+                        </article>
+                        <article class="baykat-finance-card baykat-finance-card-income">
+                            <span class="baykat-finance-card-label">Revenus</span>
+                            <strong class="baykat-finance-card-value" data-farm-finance-total="income"><?php echo esc_html( number_format( $transactions['total_income'], 0, ',', ' ' ) ); ?> FCFA</strong>
+                        </article>
+                        <article class="baykat-finance-card baykat-finance-card-expense">
+                            <span class="baykat-finance-card-label">Dépenses</span>
+                            <strong class="baykat-finance-card-value" data-farm-finance-total="expense"><?php echo esc_html( number_format( $transactions['total_expense'], 0, ',', ' ' ) ); ?> FCFA</strong>
+                        </article>
+                    </div>
+                    <p>Ce résumé regroupe les revenus et dépenses généraux, les ventes et les achats d’intrants de cette ferme.</p>
+                </section>
                 <details class="baykat-farm-workspace-subsection" id="baykat-workspace-finance-general">
                     <summary>Autres revenus et dépenses <span>hors intrants et ventes</span></summary>
                     <?php echo baykat_finance_render_frontend_page( 'all', false, true, 'general' ); // phpcs:ignore ?>
