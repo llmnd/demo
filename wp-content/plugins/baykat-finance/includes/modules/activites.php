@@ -21,6 +21,7 @@ function baykat_farm_render_activites( $process_actions = true ) {
         }
     }
     $parcels = baykat_farm_get_user_parcels( $user_id );
+    $editable_parcels = baykat_farm_filter_editable_records( $parcels );
     $activities = baykat_farm_get_user_activities( $user_id );
     $activity_finances = baykat_finance_get_activity_transactions( $user_id );
     $activity_types = array(
@@ -42,17 +43,18 @@ function baykat_farm_render_activites( $process_actions = true ) {
             <div class="baykat-farm-notice baykat-farm-notice-<?php echo esc_attr( $message['type'] ); ?>" role="<?php echo 'error' === $message['type'] ? 'alert' : 'status'; ?>"><?php echo esc_html( $message['message'] ); ?></div>
         <?php endif; ?>
 
-        <?php if ( $parcels ) : ?>
+        <?php if ( $editable_parcels ) : ?>
             <section class="baykat-farm-panel baykat-farm-add-panel" aria-labelledby="baykat-farm-activity-form-title">
                 <details class="baykat-farm-add-form">
                     <summary id="baykat-farm-activity-form-title"><span class="baykat-farm-eyebrow">Nouvelle opération</span><strong>Ajouter une activité</strong><span class="baykat-farm-add-form-icon" aria-hidden="true">+</span></summary>
                     <form class="baykat-farm-form baykat-farm-activity-form" method="post" enctype="multipart/form-data">
                     <?php wp_nonce_field( 'baykat_add_activity', '_wpnonce' ); ?>
+                    <p class="baykat-farm-add-form-description">Choisissez la parcelle concernée, décrivez l’opération et datez-la. La dépense ou le revenu associé est facultatif.</p>
                     <div class="baykat-farm-field baykat-farm-field-wide">
                         <label for="baykat_activity_parcel">Parcelle</label>
                         <select name="parcel_id" id="baykat_activity_parcel" required>
                             <option value="">Choisir une parcelle</option>
-                            <?php foreach ( $parcels as $parcel ) : ?>
+                            <?php foreach ( $editable_parcels as $parcel ) : ?>
                                 <option value="<?php echo esc_attr( $parcel->id ); ?>"><?php echo esc_html( $parcel->farm_name . ' — ' . $parcel->name ); ?></option>
                             <?php endforeach; ?>
                         </select>
@@ -111,8 +113,10 @@ function baykat_farm_render_activites( $process_actions = true ) {
                     </form>
                 </details>
             </section>
-        <?php else : ?>
+        <?php elseif ( ! $parcels ) : ?>
             <section class="baykat-farm-panel baykat-farm-empty-state"><p>Créez d’abord une ferme et une parcelle pour enregistrer une activité.</p></section>
+        <?php else : ?>
+            <p class="baykat-farm-empty-state">Votre rôle actuel autorise uniquement la consultation des activités partagées avec vous.</p>
         <?php endif; ?>
 
         <section class="baykat-farm-panel" aria-labelledby="baykat-farm-activity-list-title">
@@ -180,6 +184,9 @@ function baykat_farm_render_activites( $process_actions = true ) {
                                                             <?php if ( $finance->description && $finance->item_name ) : ?>
                                                                 <small class="baykat-farm-activity-finance-note"><?php echo esc_html( $finance->description ); ?></small>
                                                             <?php endif; ?>
+                                                            <?php if ( ! empty( $finance->cancelled_at ) ) : ?>
+                                                                <small class="baykat-finance-cancelled-label">Vente annulée le <?php echo esc_html( $finance->cancelled_at ); ?></small>
+                                                            <?php endif; ?>
                                                         </span>
                                                         <strong class="baykat-farm-activity-finance-amount <?php echo 'income' === $finance->type ? 'is-income' : 'is-expense'; ?>">
                                                             <?php echo 'income' === $finance->type ? '+' : '−'; ?><?php echo esc_html( number_format( (float) $finance->amount, 0, ',', ' ' ) ); ?> FCFA
@@ -190,6 +197,7 @@ function baykat_farm_render_activites( $process_actions = true ) {
                                         <?php else : ?>
                                             <p class="baykat-farm-empty-state">Aucune opération financière n’est encore liée à cette activité.</p>
                                         <?php endif; ?>
+                                        <?php if ( in_array( $activity->access_role, array( 'owner', 'manager' ), true ) ) : ?>
                                         <form class="baykat-farm-activity-finance-form" method="post">
                                             <?php wp_nonce_field( 'baykat_add_activity_finance', '_wpnonce' ); ?>
                                             <input type="hidden" name="activity_id" value="<?php echo esc_attr( $activity->id ); ?>">
@@ -222,8 +230,10 @@ function baykat_farm_render_activites( $process_actions = true ) {
                                             </div>
                                             <button class="baykat-finance-button" type="submit" name="baykat_add_activity_finance" value="1">Ajouter à cette activité</button>
                                         </form>
+                                        <?php endif; ?>
                                     </div>
                                 </details>
+                                <?php if ( in_array( $activity->access_role, array( 'owner', 'manager' ), true ) ) : ?>
                                 <?php baykat_farm_render_image_update_form( 'activity', $activity->id, $activity->image_id ? 'Changer la photo' : 'Ajouter une photo' ); ?>
                                 <details class="baykat-farm-record-actions">
                                     <summary>Modifier l’activité</summary>
@@ -233,7 +243,7 @@ function baykat_farm_render_activites( $process_actions = true ) {
                                         <div class="baykat-farm-field">
                                             <label for="baykat_activity_edit_parcel_<?php echo esc_attr( $activity->id ); ?>">Parcelle</label>
                                             <select name="parcel_id" id="baykat_activity_edit_parcel_<?php echo esc_attr( $activity->id ); ?>" required>
-                                                <?php foreach ( $parcels as $parcel ) : ?>
+                                                <?php foreach ( $editable_parcels as $parcel ) : ?>
                                                     <option value="<?php echo esc_attr( $parcel->id ); ?>" <?php selected( (int) $activity->parcel_id, (int) $parcel->id ); ?>><?php echo esc_html( $parcel->farm_name . ' — ' . $parcel->name ); ?></option>
                                                 <?php endforeach; ?>
                                             </select>
@@ -266,6 +276,7 @@ function baykat_farm_render_activites( $process_actions = true ) {
                                         <button class="baykat-finance-button baykat-farm-delete-button" type="submit" name="baykat_delete_activity" value="1">Supprimer l’activité</button>
                                     </form>
                                 </details>
+                                <?php endif; ?>
                             </div>
                         </article>
                     <?php endforeach; ?>

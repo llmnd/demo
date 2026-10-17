@@ -8,6 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 function baykat_farm_process_workspace_submissions( $user_id ) {
     $processors = array(
+        array( 'baykat_farm_process_sharing_submission', array( $user_id ) ),
         array( 'baykat_farm_process_record_action', array( $user_id, 'farm' ) ),
         array( 'baykat_farm_process_farm_submission', array( $user_id ) ),
         array( 'baykat_farm_process_image_update', array( $user_id, 'farm' ) ),
@@ -16,6 +17,7 @@ function baykat_farm_process_workspace_submissions( $user_id ) {
         array( 'baykat_farm_process_image_update', array( $user_id, 'parcel' ) ),
         array( 'baykat_farm_process_record_action', array( $user_id, 'crop' ) ),
         array( 'baykat_farm_process_crop_submission', array( $user_id ) ),
+        array( 'baykat_farm_process_crop_harvest', array( $user_id ) ),
         array( 'baykat_farm_process_image_update', array( $user_id, 'crop' ) ),
         array( 'baykat_farm_process_record_action', array( $user_id, 'activity' ) ),
         array( 'baykat_farm_process_activity_submission', array( $user_id ) ),
@@ -23,6 +25,7 @@ function baykat_farm_process_workspace_submissions( $user_id ) {
         array( 'baykat_finance_process_transaction_submission', array( $user_id ) ),
         array( 'baykat_finance_process_transaction_submission', array( $user_id, 'input' ) ),
         array( 'baykat_finance_process_transaction_submission', array( $user_id, 'sale' ) ),
+        array( 'baykat_finance_process_sale_cancellation', array( $user_id ) ),
     );
     $messages = array();
 
@@ -276,6 +279,7 @@ function baykat_farm_render_dashboard() {
                     <?php if ( ! empty( $transactions['transactions'] ) ) : ?>
                         <ul class="baykat-farm-timeline">
                             <?php foreach ( array_slice( $transactions['transactions'], 0, 4 ) as $transaction ) :
+                                $is_cancelled = ! empty( $transaction->cancelled_at );
                                 $is_income    = 'income' === $transaction->type;
                                 $farm_label   = isset( $transaction->farm_name )   ? $transaction->farm_name   : '';
                                 $parcel_label = isset( $transaction->parcel_name ) ? $transaction->parcel_name : '';
@@ -285,11 +289,14 @@ function baykat_farm_render_dashboard() {
                                     <span class="baykat-farm-timeline-dot <?php echo $is_income ? 'is-income' : 'is-expense'; ?>" aria-hidden="true"></span>
                                     <span class="baykat-farm-dashboard-list-copy">
                                         <strong><?php echo esc_html( $transaction->description ? $transaction->description : ( $is_income ? 'Revenu' : 'Dépense' ) ); ?></strong>
+                                        <?php if ( $is_cancelled ) : ?>
+                                            <small class="baykat-finance-cancelled-label">Vente annulée</small>
+                                        <?php endif; ?>
                                         <?php if ( $meta ) : ?>
                                             <small><?php echo esc_html( $meta ); ?></small>
                                         <?php endif; ?>
                                     </span>
-                                    <span class="baykat-farm-dashboard-amount<?php echo $is_income ? ' is-income' : ' is-expense'; ?>"><?php echo esc_html( number_format( (float) $transaction->amount, 0, ',', ' ' ) ); ?></span>
+                                    <span class="baykat-farm-dashboard-amount<?php echo $is_income ? ' is-income' : ' is-expense'; ?>"><?php echo esc_html( number_format( $is_cancelled ? 0 : (float) $transaction->amount, 0, ',', ' ' ) ); ?></span>
                                 </li>
                             <?php endforeach; ?>
                         </ul>
@@ -442,6 +449,7 @@ function baykat_farm_render_dashboard() {
                     <form class="baykat-farm-form" method="post" enctype="multipart/form-data">
                         <?php wp_nonce_field( 'baykat_add_farm', '_wpnonce' ); ?>
                         <input type="hidden" name="baykat_add_farm" value="1">
+                        <p class="baykat-farm-add-form-description">Commencez par les informations essentielles. La localisation et la superficie sont facultatives et pourront être complétées plus tard.</p>
                         <div class="baykat-farm-field">
                             <label for="baykat_farm_name">Nom de la ferme</label>
                             <input type="text" name="farm_name" id="baykat_farm_name" maxlength="190" required>
@@ -483,8 +491,12 @@ function baykat_farm_render_dashboard() {
                                     <?php if ( null !== $farm->area_ha ) : ?>
                                         <span><?php echo esc_html( number_format( (float) $farm->area_ha, 3, ',', ' ' ) ); ?> ha</span>
                                     <?php endif; ?>
+                                    <p class="baykat-farm-member-role">Votre rôle : <?php echo esc_html( 'owner' === $farm->access_role ? 'Propriétaire' : ( 'manager' === $farm->access_role ? 'Gestionnaire' : 'Lecteur' ) ); ?></p>
                                     <button class="baykat-farm-open-record" type="button" data-open-farm-modal="<?php echo esc_attr( $farm->id ); ?>">Voir la ferme</button>
-                                    <?php baykat_farm_render_image_update_form( 'farm', $farm->id, $farm->image_id ? 'Changer la photo' : 'Ajouter une photo' ); ?>
+                                    <?php if ( in_array( $farm->access_role, array( 'owner', 'manager' ), true ) ) : ?>
+                                        <?php baykat_farm_render_image_update_form( 'farm', $farm->id, $farm->image_id ? 'Changer la photo' : 'Ajouter une photo' ); ?>
+                                    <?php endif; ?>
+                                    <?php if ( in_array( $farm->access_role, array( 'owner', 'manager' ), true ) ) : ?>
                                     <details class="baykat-farm-record-actions">
                                         <summary>Modifier la ferme</summary>
                                         <form class="baykat-farm-record-form" method="post">
@@ -504,12 +516,53 @@ function baykat_farm_render_dashboard() {
                                             </div>
                                             <button class="baykat-finance-button" type="submit" name="baykat_update_farm" value="1">Enregistrer les modifications</button>
                                         </form>
+                                    <?php if ( 'owner' === $farm->access_role ) : ?>
                                         <form class="baykat-farm-delete-form" method="post">
                                             <?php wp_nonce_field( 'baykat_delete_farm', '_wpnonce' ); ?>
                                             <input type="hidden" name="baykat_delete_farm_id" value="<?php echo esc_attr( $farm->id ); ?>">
                                             <button class="baykat-finance-button baykat-farm-delete-button" type="submit" name="baykat_delete_farm" value="1">Supprimer la ferme</button>
                                         </form>
+                                    <?php endif; ?>
                                     </details>
+                                    <?php endif; ?>
+                                    <?php if ( 'owner' === $farm->access_role ) : ?>
+                                        <?php $farm_members = baykat_farm_get_members( $farm->id, $user_id ); ?>
+                                        <details class="baykat-farm-record-actions baykat-farm-members">
+                                            <summary>Partager la ferme</summary>
+                                            <form class="baykat-farm-record-form" method="post">
+                                                <?php wp_nonce_field( 'baykat_share_farm', '_wpnonce' ); ?>
+                                                <input type="hidden" name="farm_id" value="<?php echo esc_attr( $farm->id ); ?>">
+                                                <div class="baykat-farm-field">
+                                                    <label for="baykat_farm_member_email_<?php echo esc_attr( $farm->id ); ?>">Adresse e-mail d’un compte WordPress existant</label>
+                                                    <input type="email" name="member_email" id="baykat_farm_member_email_<?php echo esc_attr( $farm->id ); ?>" required>
+                                                    <span class="baykat-farm-field-help">Le rôle Gestionnaire peut modifier la ferme; le rôle Lecteur peut seulement consulter ses données.</span>
+                                                </div>
+                                                <div class="baykat-farm-field">
+                                                    <label for="baykat_farm_member_role_<?php echo esc_attr( $farm->id ); ?>">Rôle</label>
+                                                    <select name="member_role" id="baykat_farm_member_role_<?php echo esc_attr( $farm->id ); ?>">
+                                                        <option value="manager">Gestionnaire — peut modifier</option>
+                                                        <option value="reader">Lecteur — consultation uniquement</option>
+                                                    </select>
+                                                </div>
+                                                <button class="baykat-finance-button" type="submit" name="baykat_share_farm" value="1">Accorder l’accès</button>
+                                            </form>
+                                            <?php if ( $farm_members ) : ?>
+                                                <ul>
+                                                    <?php foreach ( $farm_members as $member ) : ?>
+                                                        <li>
+                                                            <?php echo esc_html( $member->display_name . ' (' . $member->user_email . ') — ' . ( 'manager' === $member->role ? 'Gestionnaire' : 'Lecteur' ) ); ?>
+                                                            <form class="baykat-farm-delete-form" method="post">
+                                                                <?php wp_nonce_field( 'baykat_remove_farm_member', '_wpnonce' ); ?>
+                                                                <input type="hidden" name="farm_id" value="<?php echo esc_attr( $farm->id ); ?>">
+                                                                <input type="hidden" name="member_user_id" value="<?php echo esc_attr( $member->member_user_id ); ?>">
+                                                                <button class="baykat-finance-button baykat-farm-delete-button" type="submit" name="baykat_remove_farm_member" value="1">Retirer</button>
+                                                            </form>
+                                                        </li>
+                                                    <?php endforeach; ?>
+                                                </ul>
+                                            <?php endif; ?>
+                                        </details>
+                                    <?php endif; ?>
                                 </div>
                             </article>
                         <?php endforeach; ?>

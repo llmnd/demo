@@ -7,6 +7,304 @@ document.addEventListener('DOMContentLoaded', function () {
                 .replace(/[\u0300-\u036f]/g, '');
         }
 
+        function initializeStockMovementForm(root) {
+            const form = root.querySelector('form input[name="baykat_add_stock_movement"]');
+            if (!form) {
+                return;
+            }
+            const formElement = form.closest('form');
+            if (formElement.dataset.stockMovementReady) {
+                return;
+            }
+            formElement.dataset.stockMovementReady = 'true';
+            const sourceFarm = formElement.querySelector('[data-stock-farm-select="source"]');
+            const destinationFarm = formElement.querySelector('[data-stock-farm-select="destination"]');
+            const sourceParcel = formElement.querySelector('[name="parcel_id"]');
+            const destinationParcel = formElement.querySelector('[name="destination_parcel_id"]');
+            const movementType = formElement.querySelector('[name="movement_type"]');
+            const entryCost = formElement.querySelector('[data-stock-entry-cost]');
+            const amount = entryCost ? entryCost.querySelector('input') : null;
+            const itemName = formElement.querySelector('[name="item_name"]');
+            const unit = formElement.querySelector('[name="unit"]');
+            const quantity = formElement.querySelector('[name="quantity"]');
+            const activity = formElement.querySelector('[name="activity_id"]');
+            const prefill = formElement.querySelector('[data-stock-prefill]');
+            const prefillLabel = formElement.querySelector('[data-stock-prefill-label]');
+            const prefillHelp = formElement.querySelector('[data-stock-prefill-help]');
+            const guidance = formElement.querySelector('[data-stock-movement-guidance]');
+            const balanceMessage = formElement.querySelector('[data-stock-balance-message]');
+            const destinationHeading = formElement.querySelector('[data-stock-destination-heading]');
+            const entryHeading = formElement.querySelector('[data-stock-entry-heading]');
+            const sourceFarmLabel = formElement.querySelector('[data-stock-source-farm-label]');
+            const sourceParcelLabel = formElement.querySelector('[data-stock-source-parcel-label]');
+            const activityHelp = formElement.querySelector('[data-stock-activity-help]');
+            const submitButton = formElement.querySelector('button[type="submit"]');
+            const reducingTypes = ['exit', 'transfer', 'adjustment_negative'];
+            const descriptions = {
+                entry: 'Entrée : ajoute une quantité au stock et enregistre aussi son coût comme dépense d’intrant.',
+                exit: 'Sortie : retire du stock la quantité utilisée. Associez une activité pour expliquer l’utilisation.',
+                transfer: 'Transfert : retire la quantité du lieu de départ et l’ajoute au lieu d’arrivée.',
+                adjustment_positive: 'Ajustement positif : ajoute au stock une quantité trouvée lors d’un inventaire. Ce n’est pas un achat.',
+                adjustment_negative: 'Ajustement négatif : retire du stock une quantité manquante ou détériorée.',
+                return: 'Retour : remet en stock une quantité non utilisée. Choisissez l’activité de sortie d’origine; le serveur vérifiera la quantité retournable.'
+            };
+            const prefillOptions = prefill
+                ? Array.from(prefill.options).filter(function (option) { return option.value !== ''; })
+                : [];
+            const stockOptions = prefillOptions.filter(function (option) { return !option.dataset.returnable; });
+            const returnOptions = prefillOptions.filter(function (option) { return option.dataset.returnable; });
+            let selectedReturnOption = null;
+
+            function filterLocationOptions(farmSelect, parcelSelect) {
+                if (!farmSelect || !parcelSelect) {
+                    return;
+                }
+                Array.from(parcelSelect.options).forEach(function (option) {
+                    if (!option.value) {
+                        return;
+                    }
+                    option.hidden = option.dataset.farmId !== farmSelect.value;
+                });
+                if (parcelSelect.selectedOptions.length && parcelSelect.selectedOptions[0].hidden) {
+                    parcelSelect.value = '';
+                }
+            }
+
+            function filterRelatedOptions() {
+                const farmId = sourceFarm.value;
+                const parcelId = sourceParcel.value;
+
+                formElement.querySelectorAll('[data-stock-filter-select]').forEach(function (select) {
+                    Array.from(select.options).forEach(function (option) {
+                        if (!option.value || !option.dataset.farmId) {
+                            return;
+                        }
+                        option.hidden = !farmId
+                            || option.dataset.farmId !== farmId
+                            || (parcelId && option.dataset.parcelId !== parcelId);
+                    });
+                    if (select.selectedOptions.length && select.selectedOptions[0].hidden) {
+                        select.value = '';
+                    }
+                });
+
+                prefillOptions.forEach(function (option) {
+                    option.hidden = option.dataset.farmId !== farmId
+                        || option.dataset.parcelId !== parcelId;
+                });
+
+                if (prefill && prefill.selectedOptions.length) {
+                    const selectedOption = prefill.selectedOptions[0];
+                    const isReturnOption = Boolean(selectedOption.dataset.returnable);
+                    if (selectedOption.value && isReturnOption !== (movementType.value === 'return')) {
+                        prefill.value = '';
+                        selectedReturnOption = null;
+                    }
+                }
+                if (prefill && prefill.selectedOptions.length && prefill.selectedOptions[0].hidden) {
+                    prefill.value = '';
+                }
+                const prefillField = prefill && prefill.closest('.baykat-farm-field');
+                if (prefillField) {
+                    const relevantOptions = movementType.value === 'return' ? returnOptions : stockOptions;
+                    prefillField.hidden = !relevantOptions.some(function (option) { return !option.hidden; });
+                }
+            }
+
+            function currentBalance() {
+                const farmId = sourceFarm.value;
+                const parcelId = sourceParcel.value || '0';
+                const name = itemName.value.trim().toLocaleLowerCase();
+                const selectedUnit = unit.value.trim().toLocaleLowerCase();
+                if (!farmId || !name || !selectedUnit) {
+                    return null;
+                }
+                const option = stockOptions.find(function (stock) {
+                    return stock.dataset.farmId === farmId
+                        && (stock.dataset.parcelId || '0') === parcelId
+                        && stock.dataset.itemName.trim().toLocaleLowerCase() === name
+                        && stock.dataset.unit.trim().toLocaleLowerCase() === selectedUnit;
+                });
+                return option ? Number(option.dataset.quantity) : 0;
+            }
+
+            function validateMovement() {
+                const isTransfer = movementType.value === 'transfer';
+                const isEntry = movementType.value === 'entry';
+                const isReturn = movementType.value === 'return';
+                const isReduction = reducingTypes.includes(movementType.value);
+                const destinationFarmField = destinationFarm.closest('.baykat-farm-field');
+                const destinationParcelField = destinationParcel.closest('.baykat-farm-field');
+
+                destinationFarmField.hidden = !isTransfer;
+                destinationParcelField.hidden = !isTransfer;
+                destinationFarm.disabled = !isTransfer;
+                destinationParcel.disabled = !isTransfer;
+                destinationFarm.required = isTransfer;
+                entryCost.hidden = !isEntry;
+                entryHeading.hidden = !isEntry;
+                amount.required = isEntry;
+                amount.disabled = !isEntry;
+                activity.required = isReturn;
+                activityHelp.textContent = isReturn
+                    ? 'Obligatoire pour vérifier que la quantité retournée a bien été sortie pour cette activité.'
+                    : 'Associez une activité pour garder le contexte de l’utilisation.';
+                prefillLabel.textContent = isReturn
+                    ? 'Choisir la sortie d’origine (facultatif)'
+                    : 'Partir d’un intrant déjà en stock (facultatif)';
+                prefillHelp.textContent = isReturn
+                    ? 'Choisissez un retour proposé pour remplir automatiquement le lieu, l’intrant, l’unité, l’activité et la quantité maximale.'
+                    : 'Choisissez un stock connu pour éviter les erreurs de nom et d’unité.';
+                destinationHeading.hidden = !isTransfer;
+                sourceFarmLabel.textContent = isReduction ? 'Ferme de départ' : 'Ferme concernée';
+                sourceParcelLabel.textContent = isReduction ? 'Parcelle de départ (facultatif)' : 'Parcelle concernée (facultatif)';
+                guidance.textContent = descriptions[movementType.value] || '';
+                let stepNumber = 0;
+                formElement.querySelectorAll('[data-stock-step-label]').forEach(function (heading) {
+                    if (!heading.hidden) {
+                        stepNumber += 1;
+                        heading.textContent = stepNumber + '. ' + heading.dataset.stockStepLabel;
+                    }
+                });
+                balanceMessage.textContent = '';
+                balanceMessage.classList.remove('is-error', 'is-success');
+                quantity.setCustomValidity('');
+                quantity.removeAttribute('max');
+                destinationFarm.setCustomValidity('');
+
+                if (!isTransfer) {
+                    destinationFarm.value = '';
+                    destinationParcel.value = '';
+                }
+                if (!isEntry) {
+                    amount.value = '';
+                }
+
+                if (isTransfer && destinationFarm.value && sourceFarm.value === destinationFarm.value
+                    && (sourceParcel.value || '0') === (destinationParcel.value || '0')) {
+                    destinationFarm.setCustomValidity('La destination doit être différente de l’emplacement de départ.');
+                    balanceMessage.textContent = 'Choisissez un autre emplacement : le départ et la destination sont identiques.';
+                    balanceMessage.classList.add('is-error');
+                }
+
+                if (isReduction) {
+                    const balance = currentBalance();
+                    if (null !== balance) {
+                        const formattedBalance = balance.toLocaleString('fr-FR', { maximumFractionDigits: 3 });
+                        balanceMessage.textContent = 'Stock disponible à cet emplacement : ' + formattedBalance + ' ' + unit.value.trim() + '.';
+                        if (balance > 0) {
+                            balanceMessage.classList.add('is-success');
+                            quantity.max = balance.toFixed(3);
+                        } else if (itemName.value.trim() && unit.value.trim() && sourceFarm.value) {
+                            balanceMessage.textContent = 'Cet intrant n’est pas enregistré à cet emplacement avec cette unité. Vérifiez le nom, l’unité ou l’emplacement.';
+                            balanceMessage.classList.add('is-error');
+                        }
+
+                        const requestedQuantity = Number(quantity.value);
+                        if (quantity.value && balance <= 0) {
+                            quantity.setCustomValidity('Aucun stock correspondant n’est disponible à cet emplacement.');
+                            balanceMessage.textContent = 'Aucun stock correspondant n’est disponible à cet emplacement. Vérifiez le nom de l’intrant, son unité et la parcelle.';
+                            balanceMessage.classList.remove('is-success');
+                            balanceMessage.classList.add('is-error');
+                        } else if (quantity.value && requestedQuantity > balance + 0.0005) {
+                            quantity.setCustomValidity('La quantité demandée dépasse le stock disponible (' + formattedBalance + ' ' + unit.value.trim() + ').');
+                            balanceMessage.textContent = 'Quantité demandée supérieure au stock disponible (' + formattedBalance + ' ' + unit.value.trim() + '). Réduisez la quantité ou vérifiez l’emplacement.';
+                            balanceMessage.classList.remove('is-success');
+                            balanceMessage.classList.add('is-error');
+                        }
+                    }
+                } else {
+                    if (isReturn) {
+                        const validReturnOption = selectedReturnOption
+                            && !selectedReturnOption.hidden
+                            && selectedReturnOption.dataset.farmId === sourceFarm.value
+                            && selectedReturnOption.dataset.parcelId === (sourceParcel.value || '0')
+                            && selectedReturnOption.dataset.activityId === activity.value
+                            && selectedReturnOption.dataset.itemName.trim().toLocaleLowerCase() === itemName.value.trim().toLocaleLowerCase()
+                            && selectedReturnOption.dataset.unit.trim().toLocaleLowerCase() === unit.value.trim().toLocaleLowerCase();
+                        if (validReturnOption) {
+                            const returnableQuantity = Number(selectedReturnOption.dataset.quantity);
+                            const formattedReturnable = returnableQuantity.toLocaleString('fr-FR', { maximumFractionDigits: 3 });
+                            quantity.max = returnableQuantity.toFixed(3);
+                            balanceMessage.textContent = 'Quantité maximale retournable pour cette activité : ' + formattedReturnable + ' ' + unit.value.trim() + '.';
+                            balanceMessage.classList.add('is-success');
+                            if (quantity.value && Number(quantity.value) > returnableQuantity + 0.0005) {
+                                quantity.setCustomValidity('La quantité dépasse ce qui reste à retourner pour cette activité (' + formattedReturnable + ' ' + unit.value.trim() + ').');
+                                balanceMessage.textContent = 'La quantité dépasse ce qui reste à retourner pour cette activité (' + formattedReturnable + ' ' + unit.value.trim() + ').';
+                                balanceMessage.classList.remove('is-success');
+                                balanceMessage.classList.add('is-error');
+                            }
+                        } else if (!activity.value) {
+                            balanceMessage.textContent = 'Choisissez l’activité d’origine du retour. Utilisez la liste de stocks pour préremplir l’intrant, l’unité et l’activité.';
+                            balanceMessage.classList.add('is-error');
+                        } else if (itemName.value.trim() && unit.value.trim()) {
+                            balanceMessage.textContent = 'Vérifiez que l’intrant, l’unité et l’activité correspondent à la sortie d’origine. Choisir un élément « Retour » dans la liste affiche la quantité maximale.';
+                            balanceMessage.classList.add('is-error');
+                        }
+                    }
+                }
+
+                if (submitButton) {
+                    submitButton.disabled = Boolean(destinationFarm.validationMessage);
+                }
+            }
+
+            sourceFarm.addEventListener('change', function () {
+                filterLocationOptions(sourceFarm, sourceParcel);
+                filterRelatedOptions();
+                validateMovement();
+            });
+            destinationFarm.addEventListener('change', function () {
+                filterLocationOptions(destinationFarm, destinationParcel);
+                validateMovement();
+            });
+            sourceParcel.addEventListener('change', function () {
+                filterRelatedOptions();
+                validateMovement();
+            });
+            destinationParcel.addEventListener('change', validateMovement);
+            movementType.addEventListener('change', function () {
+                selectedReturnOption = null;
+                filterRelatedOptions();
+                validateMovement();
+            });
+            [itemName, unit, activity].forEach(function (field) {
+                field.addEventListener('input', function () {
+                    selectedReturnOption = null;
+                    validateMovement();
+                });
+                field.addEventListener('change', function () {
+                    selectedReturnOption = null;
+                    validateMovement();
+                });
+            });
+            quantity.addEventListener('input', validateMovement);
+            quantity.addEventListener('change', validateMovement);
+            if (prefill) {
+                prefill.addEventListener('change', function () {
+                    const option = prefill.selectedOptions[0];
+                    if (option && option.value) {
+                        itemName.value = option.dataset.itemName || '';
+                        unit.value = option.dataset.unit || '';
+                        selectedReturnOption = option.dataset.returnable ? option : null;
+                        if (option.dataset.returnable) {
+                            activity.value = option.dataset.activityId || '';
+                            quantity.value = option.dataset.quantity || '';
+                        } else {
+                            selectedReturnOption = null;
+                        }
+                    } else {
+                        selectedReturnOption = null;
+                    }
+                    validateMovement();
+                });
+            }
+            filterLocationOptions(sourceFarm, sourceParcel);
+            filterLocationOptions(destinationFarm, destinationParcel);
+            filterRelatedOptions();
+            validateMovement();
+        }
+
         function initializeCompactAddForms(root) {
             root.querySelectorAll('.baykat-farm-add-panel').forEach(function (panel) {
                 const nextPanel = panel.nextElementSibling;
@@ -26,6 +324,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         function initializeRecordFilters(root) {
+            initializeStockMovementForm(root);
             initializeCompactAddForms(root);
             root.querySelectorAll('.baykat-farm-record-tools').forEach(function (tools) {
                 if (tools.dataset.filterReady) {
@@ -1170,11 +1469,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const form = event.target;
 
-            if (!form.matches('.baykat-farm-form, .baykat-farm-image-update-form, .baykat-farm-record-form, .baykat-farm-delete-form, .baykat-finance-form-content, .baykat-farm-activity-finance-form')) {
+            if (!form.matches('.baykat-farm-form, .baykat-farm-image-update-form, .baykat-farm-record-form, .baykat-farm-delete-form, .baykat-finance-cancel-form, .baykat-finance-form-content, .baykat-farm-activity-finance-form')) {
                 return;
             }
 
-            if (form.matches('.baykat-farm-delete-form') && !window.confirm('Confirmer la suppression ? Cette action ne peut pas être annulée.')) {
+            if (form.matches('.baykat-farm-delete-form, .baykat-finance-cancel-form') && !window.confirm(form.dataset.confirmMessage || 'Confirmer la suppression ? Cette action ne peut pas être annulée.')) {
                 event.preventDefault();
                 return;
             }
@@ -1260,6 +1559,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         initializeImagePreviews(app);
+        initializeStockMovementForm(app);
         initializeRecordFilters(app);
         initializeDashboardModals();
         initializeMobileNavigation();

@@ -250,6 +250,12 @@
     font-size: 12px;
 }
 
+.baykat-finance-field-label {
+    color: var(--baykat-finance-ink);
+    font-size: 13px;
+    font-weight: 650;
+}
+
 .baykat-finance-button {
     display: inline-flex;
     min-height: 48px;
@@ -531,6 +537,25 @@
     font-size: 11px;
     line-height: 1.45;
 }
+.baykat-finance-cancelled-label {
+    display: block;
+    color: var(--baykat-finance-red);
+    font-size: 11px;
+    font-weight: 650;
+}
+.baykat-finance-cancel-button {
+    min-height: 34px;
+    padding: 7px 10px;
+    border: 1px solid #d8a6a1;
+    border-radius: 7px;
+    background: #fff8f7;
+    color: #8f3932;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 650;
+    cursor: pointer;
+}
+.baykat-finance-cancel-button:hover { background: #fce9e7; }
 .baykat-finance-field label span { color: var(--baykat-finance-muted, #777168); font-size: 11px; font-weight: 500; }
 .baykat-finance-field[hidden],
 .baykat-farm-field[hidden] { display: none !important; }

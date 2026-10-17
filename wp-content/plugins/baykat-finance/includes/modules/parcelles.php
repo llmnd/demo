@@ -18,6 +18,7 @@ function baykat_farm_render_parcelles( $process_actions = true ) {
         }
     }
     $farms = baykat_farm_get_user_farms( $user_id );
+    $editable_farms = baykat_farm_filter_editable_records( $farms );
     $parcels = baykat_farm_get_user_parcels( $user_id );
     $statuses = array(
         'planned'   => 'Planifiée',
@@ -31,24 +32,25 @@ function baykat_farm_render_parcelles( $process_actions = true ) {
             <div class="baykat-farm-notice baykat-farm-notice-<?php echo esc_attr( $message['type'] ); ?>" role="<?php echo 'error' === $message['type'] ? 'alert' : 'status'; ?>"><?php echo esc_html( $message['message'] ); ?></div>
         <?php endif; ?>
 
-        <?php if ( $farms ) : ?>
+        <?php if ( $editable_farms ) : ?>
             <section class="baykat-farm-panel baykat-farm-add-panel" aria-labelledby="baykat-farm-parcel-form-heading">
                 <details class="baykat-farm-add-form">
                     <summary id="baykat-farm-parcel-form-title"><span class="baykat-farm-eyebrow">Nouvelle parcelle</span><strong id="baykat-farm-parcel-form-heading">Ajouter une parcelle</strong><span class="baykat-farm-add-form-icon" aria-hidden="true">+</span></summary>
                     <form class="baykat-farm-form" method="post" enctype="multipart/form-data">
                     <?php wp_nonce_field( 'baykat_add_parcel', '_wpnonce' ); ?>
+                    <p class="baykat-farm-add-form-description">Choisissez d’abord la ferme, puis donnez un nom simple à la parcelle. Sa superficie et sa photo peuvent être ajoutées plus tard.</p>
                     <div class="baykat-farm-field">
                         <label for="baykat_parcel_farm">Ferme</label>
                         <select name="farm_id" id="baykat_parcel_farm" required>
                             <option value="">Choisir une ferme</option>
-                            <?php foreach ( $farms as $farm ) : ?>
+                            <?php foreach ( $editable_farms as $farm ) : ?>
                                 <option value="<?php echo esc_attr( $farm->id ); ?>"><?php echo esc_html( $farm->name ); ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="baykat-farm-field">
                         <label for="baykat_parcel_name">Nom de la parcelle</label>
-                        <input type="text" name="parcel_name" id="baykat_parcel_name" maxlength="190" required>
+                        <input type="text" name="parcel_name" id="baykat_parcel_name" maxlength="190" placeholder="Ex. : Champ près du puits" required>
                     </div>
                     <div class="baykat-farm-field">
                         <label for="baykat_parcel_area">Superficie (m², facultatif)</label>
@@ -67,10 +69,12 @@ function baykat_farm_render_parcelles( $process_actions = true ) {
                     </form>
                 </details>
             </section>
-        <?php else : ?>
+        <?php elseif ( ! $farms ) : ?>
             <section class="baykat-farm-panel baykat-farm-empty-state">
                 <p>Ajoutez d'abord une ferme dans la <a href="<?php echo esc_url( add_query_arg( 'module', 'vue-ensemble', get_permalink() ) ); ?>">Vue d'ensemble</a> pour pouvoir créer ses parcelles.</p>
             </section>
+        <?php else : ?>
+            <p class="baykat-farm-empty-state">Votre rôle actuel autorise uniquement la consultation des fermes partagées avec vous.</p>
         <?php endif; ?>
 
         <section class="baykat-farm-panel" aria-labelledby="baykat-farm-parcel-list-title">
@@ -98,6 +102,7 @@ function baykat_farm_render_parcelles( $process_actions = true ) {
                                     <span class="baykat-farm-status"><?php echo esc_html( isset( $statuses[ $parcel->status ] ) ? $statuses[ $parcel->status ] : $parcel->status ); ?></span>
                                 </div>
                                 <button class="baykat-farm-open-record" type="button" data-open-parcel-modal="<?php echo esc_attr( $parcel->id ); ?>">Voir la parcelle</button>
+                                <?php if ( in_array( $parcel->access_role, array( 'owner', 'manager' ), true ) ) : ?>
                                 <?php baykat_farm_render_image_update_form( 'parcel', $parcel->id, $parcel->image_id ? 'Changer la photo' : 'Ajouter une photo' ); ?>
                                 <details class="baykat-farm-record-actions">
                                     <summary>Modifier la parcelle</summary>
@@ -107,7 +112,7 @@ function baykat_farm_render_parcelles( $process_actions = true ) {
                                         <div class="baykat-farm-field">
                                             <label for="baykat_parcel_edit_farm_<?php echo esc_attr( $parcel->id ); ?>">Ferme</label>
                                             <select name="farm_id" id="baykat_parcel_edit_farm_<?php echo esc_attr( $parcel->id ); ?>" required>
-                                                <?php foreach ( $farms as $farm ) : ?>
+                                                <?php foreach ( $editable_farms as $farm ) : ?>
                                                     <option value="<?php echo esc_attr( $farm->id ); ?>" <?php selected( (int) $parcel->farm_id, (int) $farm->id ); ?>><?php echo esc_html( $farm->name ); ?></option>
                                                 <?php endforeach; ?>
                                             </select>
@@ -136,6 +141,7 @@ function baykat_farm_render_parcelles( $process_actions = true ) {
                                         <button class="baykat-finance-button baykat-farm-delete-button" type="submit" name="baykat_delete_parcel" value="1">Supprimer la parcelle</button>
                                     </form>
                                 </details>
+                                <?php endif; ?>
                             </div>
                         </article>
                     <?php endforeach; ?>

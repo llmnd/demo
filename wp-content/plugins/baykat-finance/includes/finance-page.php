@@ -97,8 +97,12 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
     // Récupérer les données financières.
     $finance_data = baykat_finance_get_user_transactions( $user_id, $transaction_category );
     $parcels = baykat_farm_get_user_parcels( $user_id );
+    $editable_parcels = baykat_farm_filter_editable_records( $parcels );
     $farms = baykat_farm_get_user_farms( $user_id );
     $activities = baykat_farm_get_user_activities( $user_id );
+    $editable_activities = baykat_farm_filter_editable_records( $activities );
+    $crops = baykat_farm_get_user_crops( $user_id );
+    $editable_crops = baykat_farm_filter_editable_records( $crops );
 
     ob_start();
     ?>
@@ -182,7 +186,11 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
 
         <div class="baykat-finance-form">
 
-            <?php if ( empty( $parcels ) ) : ?>
+            <?php if ( empty( $editable_parcels ) && ! empty( $parcels ) ) : ?>
+                <div class="baykat-farm-notice" role="status">
+                    Votre rôle actuel autorise uniquement la consultation des finances partagées avec vous.
+                </div>
+            <?php elseif ( empty( $parcels ) ) : ?>
                 <div class="baykat-finance-section-heading">
                     <span class="baykat-finance-eyebrow">Votre activité</span>
                     <h2>Ajouter une transaction</h2>
@@ -218,6 +226,7 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
                     '_wpnonce'
                 );
                 ?>
+                <p class="baykat-farm-add-form-description">Choisissez le type et le montant, puis rattachez l’opération à la parcelle concernée. La culture et l’activité sont facultatives.</p>
 
                 <div class="baykat-finance-field">
 
@@ -238,6 +247,7 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
                             Dépense
                         </option>
                     </select>
+                    <span class="baykat-finance-field-help">Un revenu augmente vos entrées; une dépense enregistre une sortie d’argent.</span>
 
                 </div>
 
@@ -276,25 +286,39 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
                     <label for="baykat_parcel_id">Parcelle de la ferme</label>
                     <select name="parcel_id" id="baykat_parcel_id" data-finance-parcel-select required>
                         <option value="">Choisir une parcelle</option>
-                        <?php foreach ( $parcels as $parcel ) : ?>
+                        <?php foreach ( $editable_parcels as $parcel ) : ?>
                             <option value="<?php echo esc_attr( $parcel->id ); ?>">
                                 <?php echo esc_html( $parcel->farm_name . ' — ' . $parcel->name ); ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
+                    <span class="baykat-finance-field-help">Les activités et cultures proposées ensuite correspondront à cette parcelle.</span>
                 </div>
 
                 <div class="baykat-finance-field">
                     <label for="baykat_activity_id">Activité associée <span>(facultatif)</span></label>
                     <select name="activity_id" id="baykat_activity_id" data-finance-activity-select>
                         <option value="">Aucune activité — lier seulement à la parcelle</option>
-                        <?php foreach ( $activities as $activity ) : ?>
+                        <?php foreach ( $editable_activities as $activity ) : ?>
                             <option value="<?php echo esc_attr( $activity->id ); ?>" data-parcel-id="<?php echo esc_attr( $activity->parcel_id ); ?>">
                                 <?php echo esc_html( $activity->title . ' — ' . $activity->farm_name . ' / ' . $activity->parcel_name ); ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
                     <span class="baykat-finance-field-help">Associez une opération pour suivre son coût et sa rentabilité.</span>
+                </div>
+
+                <div class="baykat-finance-field">
+                    <label for="baykat_crop_id">Culture concernée <span>(facultatif)</span></label>
+                    <select name="crop_id" id="baykat_crop_id" data-finance-crop-select>
+                        <option value="">Aucune culture</option>
+                        <?php foreach ( $editable_crops as $crop ) : ?>
+                            <option value="<?php echo esc_attr( $crop->id ); ?>" data-parcel-id="<?php echo esc_attr( $crop->parcel_id ); ?>">
+                                <?php echo esc_html( $crop->farm_name . ' — ' . $crop->parcel_name . ' — ' . $crop->name ); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <span class="baykat-finance-field-help">Associez une opération à une culture pour calculer sa marge.</span>
                 </div>
 
                 <div class="baykat-finance-field baykat-finance-field-description">
@@ -395,6 +419,7 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
                                         $transaction->item_name,
                                         isset( $transaction->expense_category ) ? baykat_finance_expense_category_label( $transaction->expense_category ) : '',
                                         isset( $transaction->activity_title ) ? $transaction->activity_title : '',
+                                        isset( $transaction->crop_name ) ? $transaction->crop_name : '',
                                         $transaction->amount,
                                         $transaction_amount_label,
                                         $transaction->description,
@@ -437,8 +462,14 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
                                     <?php if ( ! empty( $transaction->activity_title ) ) : ?>
                                         <small class="baykat-finance-transaction-meta">Activité : <?php echo esc_html( $transaction->activity_title ); ?></small>
                                     <?php endif; ?>
+                                    <?php if ( ! empty( $transaction->crop_name ) ) : ?>
+                                        <small class="baykat-finance-transaction-meta">Culture : <?php echo esc_html( $transaction->crop_name ); ?></small>
+                                    <?php endif; ?>
                                     <?php if ( $transaction->item_name && $transaction->description ) : ?>
                                         <small class="baykat-finance-transaction-meta"><?php echo esc_html( $transaction->description ); ?></small>
+                                    <?php endif; ?>
+                                    <?php if ( ! empty( $transaction->cancelled_at ) ) : ?>
+                                        <small class="baykat-finance-transaction-meta baykat-finance-cancelled-label">Vente annulée le <?php echo esc_html( $transaction->cancelled_at ); ?></small>
                                     <?php endif; ?>
                                 </td>
 

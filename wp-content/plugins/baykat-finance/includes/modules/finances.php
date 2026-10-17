@@ -11,12 +11,24 @@ function baykat_farm_render_finance_item_section( $category, $process_actions = 
 
     $user_id = get_current_user_id();
     $message = $process_actions
-        ? baykat_finance_process_transaction_submission( $user_id, $category )
+        ? baykat_finance_process_sale_cancellation( $user_id )
         : null;
+    if ( $process_actions && ! $message ) {
+        $message = baykat_finance_process_transaction_submission( $user_id, $category );
+    }
     $finance_data = baykat_finance_get_user_transactions( $user_id, $category );
     $parcels = baykat_farm_get_user_parcels( $user_id );
+    $editable_parcels = baykat_farm_filter_editable_records( $parcels );
     $farms = baykat_farm_get_user_farms( $user_id );
     $activities = baykat_farm_get_user_activities( $user_id );
+    $editable_activities = baykat_farm_filter_editable_records( $activities );
+    $crops = baykat_farm_get_user_crops( $user_id );
+    $editable_crops = baykat_farm_filter_editable_records( $crops );
+    $sale_crops = 'sale' === $category ? baykat_finance_get_harvestable_crops( $user_id ) : array();
+    $sale_crops_error = is_wp_error( $sale_crops );
+    if ( $sale_crops_error ) {
+        $sale_crops = array();
+    }
     $page_title = 'sale' === $category ? 'Suivi des ventes' : 'Suivi des intrants';
 
     ob_start();

@@ -98,6 +98,10 @@ function baykat_farm_shortcode() {
             'label'    => 'Stocks',
             'callback' => 'baykat_farm_render_stocks',
         ),
+        'rapports' => array(
+            'label'    => 'Rapports',
+            'callback' => 'baykat_farm_render_reports',
+        ),
     );
 
     $requested_module = isset( $_GET['module'] ) && is_string( $_GET['module'] )

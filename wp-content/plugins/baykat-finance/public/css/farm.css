@@ -903,6 +903,8 @@ body.admin-bar .baykat-farm-navigation { top: 32px; }
 
 .baykat-farm-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 17px 20px; }
 .baykat-farm-field { display: flex; min-width: 0; flex-direction: column; gap: 7px; }
+.baykat-farm-add-form-description { grid-column: 1 / -1; margin: 10px 0 18px; color: #777168; font-size: 13px; line-height: 1.55; }
+.baykat-farm-field-help { color: #777168; font-size: 12px; line-height: 1.45; }
 .baykat-farm-field-wide { grid-column: 1 / -1; }
 .baykat-farm-field label { color: #302b25; font-size: 13px; font-weight: 650; }
 .baykat-farm-field input,
@@ -923,6 +925,39 @@ body.admin-bar .baykat-farm-navigation { top: 32px; }
 .baykat-farm-field select:focus,
 .baykat-farm-field textarea:focus { border-color: #b99a64; outline: 0; box-shadow: 0 0 0 3px rgba(185,154,100,0.18); }
 .baykat-farm-form > .baykat-finance-button { grid-column: 1 / -1; }
+.baykat-stock-form-heading {
+    grid-column: 1 / -1;
+    margin: 8px 0 -4px;
+    padding-top: 15px;
+    border-top: 1px solid #eee8df;
+    color: #302b25;
+    font-size: 14px;
+    font-weight: 700;
+}
+.baykat-stock-movement-guidance,
+.baykat-stock-balance-message {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding: 11px 13px;
+    border-radius: 8px;
+    background: #f7f4ee;
+    color: #51483b;
+    font-size: 13px;
+    line-height: 1.55;
+}
+.baykat-stock-movement-guidance:empty { display: none; }
+.baykat-stock-balance-message:empty { display: none; }
+.baykat-stock-balance-message.is-success { background: #edf6ef; color: #285a34; }
+.baykat-stock-balance-message.is-error { background: #fff0ed; color: #8d2d20; }
+.baykat-stock-movement-form .baykat-farm-field[hidden],
+.baykat-stock-movement-form .baykat-stock-form-heading[hidden] { display: none !important; }
+.baykat-stock-movement-form [data-stock-destination-heading][hidden],
+.baykat-stock-movement-form [data-stock-entry-heading][hidden],
+.baykat-stock-movement-form [data-stock-destination-heading] + .baykat-farm-field[hidden],
+.baykat-stock-movement-form [data-stock-destination-heading] + .baykat-farm-field[hidden] + .baykat-farm-field[hidden],
+.baykat-stock-movement-form [data-stock-entry-cost][hidden],
+.baykat-stock-movement-form [data-stock-prefill-field][hidden] { display: none !important; }
+.baykat-stock-movement-form button:disabled { cursor: not-allowed; opacity: .55; }
 
 /* =========================================================================
    BOUTONS GÉNÉRIQUES
@@ -993,6 +1028,14 @@ body.admin-bar .baykat-farm-navigation { top: 32px; }
 .baykat-farm-image-update-form { display: grid; gap: 12px; padding-top: 10px; }
 .baykat-farm-record-actions { margin-top: 4px; border-top: 1px solid #eee9e1; }
 .baykat-farm-record-actions > summary { padding: 11px 0 2px; color: #725b31; font-size: 13px; font-weight: 650; cursor: pointer; }
+.baykat-farm-harvest-form { margin-top: 10px; }
+.baykat-farm-harvest-history { grid-column: 1 / -1; padding-top: 10px; border-top: 1px solid #eee9e1; }
+.baykat-farm-harvest-history > summary { color: #725b31; font-size: 12px; font-weight: 650; cursor: pointer; }
+.baykat-farm-harvest-history ul { display: grid; gap: 8px; margin: 10px 0 0; padding: 0; list-style: none; }
+.baykat-farm-harvest-history li { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; padding: 9px 10px; border-radius: 8px; background: #faf8f4; font-size: 12px; }
+.baykat-farm-harvest-history li strong { color: #302b25; }
+.baykat-farm-harvest-history li span { justify-self: end; color: #777168; }
+.baykat-farm-harvest-history li small { grid-column: 1 / -1; color: #777168; }
 .baykat-farm-record-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding-top: 12px; }
 .baykat-farm-record-form > .baykat-finance-button,
 .baykat-farm-delete-form > .baykat-finance-button { grid-column: 1 / -1; width: 100%; }

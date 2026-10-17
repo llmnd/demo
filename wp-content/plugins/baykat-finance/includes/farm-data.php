@@ -38,10 +38,19 @@ function baykat_farm_get_user_farms( $user_id ) {
     global $wpdb;
 
     $table = baykat_farm_table_name( 'farms' );
+    $members_table = baykat_farm_members_table_name();
 
     return $wpdb->get_results(
         $wpdb->prepare(
-            "SELECT * FROM $table WHERE user_id = %d ORDER BY name ASC",
+            "SELECT farms.*, CASE WHEN farms.user_id = %d THEN 'owner' ELSE members.role END AS access_role
+             FROM $table AS farms
+             LEFT JOIN $members_table AS members
+                ON members.farm_id = farms.id AND members.member_user_id = %d
+             WHERE farms.user_id = %d OR members.member_user_id = %d
+             ORDER BY farms.name ASC",
+            $user_id,
+            $user_id,
+            $user_id,
             $user_id
         )
     );
@@ -52,15 +61,22 @@ function baykat_farm_get_user_parcels( $user_id ) {
 
     $parcels_table = baykat_farm_table_name( 'parcels' );
     $farms_table = baykat_farm_table_name( 'farms' );
+    $members_table = baykat_farm_members_table_name();
 
     return $wpdb->get_results(
         $wpdb->prepare(
-            "SELECT parcels.*, farms.name AS farm_name
+            "SELECT parcels.*, farms.name AS farm_name,
+                    CASE WHEN farms.user_id = %d THEN 'owner' ELSE members.role END AS access_role
              FROM $parcels_table AS parcels
              INNER JOIN $farms_table AS farms
-                ON farms.id = parcels.farm_id AND farms.user_id = parcels.user_id
-             WHERE parcels.user_id = %d
+                ON farms.id = parcels.farm_id
+             LEFT JOIN $members_table AS members
+                ON members.farm_id = farms.id AND members.member_user_id = %d
+             WHERE farms.user_id = %d OR members.member_user_id = %d
              ORDER BY farms.name ASC, parcels.name ASC",
+            $user_id,
+            $user_id,
+            $user_id,
             $user_id
         )
     );
@@ -72,17 +88,24 @@ function baykat_farm_get_user_crops( $user_id ) {
     $crops_table = baykat_farm_table_name( 'crops' );
     $parcels_table = baykat_farm_table_name( 'parcels' );
     $farms_table = baykat_farm_table_name( 'farms' );
+    $members_table = baykat_farm_members_table_name();
 
     return $wpdb->get_results(
         $wpdb->prepare(
-            "SELECT crops.*, parcels.farm_id AS farm_id, parcels.name AS parcel_name, farms.name AS farm_name
+            "SELECT crops.*, parcels.farm_id AS farm_id, parcels.name AS parcel_name, farms.name AS farm_name,
+                    CASE WHEN farms.user_id = %d THEN 'owner' ELSE members.role END AS access_role
              FROM $crops_table AS crops
              INNER JOIN $parcels_table AS parcels
-                ON parcels.id = crops.parcel_id AND parcels.user_id = crops.user_id
+                ON parcels.id = crops.parcel_id
              INNER JOIN $farms_table AS farms
-                ON farms.id = parcels.farm_id AND farms.user_id = crops.user_id
-             WHERE crops.user_id = %d
+                ON farms.id = parcels.farm_id
+             LEFT JOIN $members_table AS members
+                ON members.farm_id = farms.id AND members.member_user_id = %d
+             WHERE farms.user_id = %d OR members.member_user_id = %d
              ORDER BY crops.created_at DESC",
+            $user_id,
+            $user_id,
+            $user_id,
             $user_id
         )
     );
@@ -94,48 +117,90 @@ function baykat_farm_get_user_activities( $user_id ) {
     $activities_table = baykat_farm_table_name( 'activities' );
     $parcels_table = baykat_farm_table_name( 'parcels' );
     $farms_table = baykat_farm_table_name( 'farms' );
+    $members_table = baykat_farm_members_table_name();
 
     return $wpdb->get_results(
         $wpdb->prepare(
-            "SELECT activities.*, parcels.farm_id AS farm_id, parcels.name AS parcel_name, farms.name AS farm_name
+            "SELECT activities.*, parcels.farm_id AS farm_id, parcels.name AS parcel_name, farms.name AS farm_name,
+                    CASE WHEN farms.user_id = %d THEN 'owner' ELSE members.role END AS access_role
              FROM $activities_table AS activities
              INNER JOIN $parcels_table AS parcels
-                ON parcels.id = activities.parcel_id AND parcels.user_id = activities.user_id
+                ON parcels.id = activities.parcel_id
              INNER JOIN $farms_table AS farms
-                ON farms.id = parcels.farm_id AND farms.user_id = activities.user_id
-             WHERE activities.user_id = %d
+                ON farms.id = parcels.farm_id
+             LEFT JOIN $members_table AS members
+                ON members.farm_id = farms.id AND members.member_user_id = %d
+             WHERE farms.user_id = %d OR members.member_user_id = %d
              ORDER BY activities.activity_date DESC, activities.created_at DESC",
+            $user_id,
+            $user_id,
+            $user_id,
             $user_id
         )
     );
 }
 
 function baykat_farm_user_owns_farm( $farm_id, $user_id ) {
-    global $wpdb;
-
-    $table = baykat_farm_table_name( 'farms' );
-
-    return (bool) $wpdb->get_var(
-        $wpdb->prepare(
-            "SELECT id FROM $table WHERE id = %d AND user_id = %d",
-            $farm_id,
-            $user_id
-        )
-    );
+    return baykat_farm_user_can_edit_farm( $farm_id, $user_id );
 }
 
 function baykat_farm_get_user_parcel( $parcel_id, $user_id ) {
     global $wpdb;
 
     $table = baykat_farm_table_name( 'parcels' );
+    $farms_table = baykat_farm_table_name( 'farms' );
 
     return $wpdb->get_row(
         $wpdb->prepare(
-            "SELECT * FROM $table WHERE id = %d AND user_id = %d",
+            "SELECT parcels.* FROM $table AS parcels
+             INNER JOIN $farms_table AS farms ON farms.id = parcels.farm_id
+             WHERE parcels.id = %d AND (farms.user_id = %d OR EXISTS (
+                SELECT 1 FROM " . baykat_farm_members_table_name() . " AS members
+                WHERE members.farm_id = farms.id AND members.member_user_id = %d
+             ))",
             $parcel_id,
+            $user_id,
             $user_id
         )
     );
+}
+
+function baykat_farm_get_accessible_record( $entity, $record_id, $user_id ) {
+    global $wpdb;
+
+    $farm_table = baykat_farm_table_name( 'farms' );
+    $parcel_table = baykat_farm_table_name( 'parcels' );
+    $table = baykat_farm_table_name( $entity );
+    if ( ! $table ) {
+        return null;
+    }
+
+    if ( 'farms' === $entity ) {
+        $record = $wpdb->get_row(
+            $wpdb->prepare( "SELECT farms.*, farms.id AS farm_id FROM $farm_table AS farms WHERE farms.id = %d", $record_id )
+        );
+    } elseif ( 'parcels' === $entity ) {
+        $record = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT parcels.*, parcels.farm_id FROM $parcel_table AS parcels WHERE parcels.id = %d",
+                $record_id
+            )
+        );
+    } else {
+        $record = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT records.*, parcels.farm_id
+                 FROM $table AS records
+                 INNER JOIN $parcel_table AS parcels ON parcels.id = records.parcel_id
+                 WHERE records.id = %d",
+                $record_id
+            )
+        );
+    }
+
+    return $record && baykat_farm_user_can_edit_farm( $record->farm_id, $user_id )
+        ? $record
+        : null;
 }
 
 function baykat_farm_valid_date( $date ) {
@@ -242,18 +307,11 @@ function baykat_farm_process_image_update( $user_id, $entity ) {
 
     global $wpdb;
     $table = baykat_farm_table_name( $entities[ $entity ] );
-    $record = $wpdb->get_var(
-        $wpdb->prepare(
-            "SELECT id FROM $table WHERE id = %d AND user_id = %d",
-            $record_id,
-            $user_id
-        )
-    );
+    $record = baykat_farm_get_accessible_record( $entities[ $entity ], $record_id, $user_id );
 
     if ( ! $record ) {
         return array( 'type' => 'error', 'message' => 'Cet enregistrement n’existe pas ou ne vous appartient pas.' );
     }
-
     $image_id = baykat_farm_handle_image_upload( $entity . '_image', $user_id );
 
     if ( is_wp_error( $image_id ) ) {
@@ -267,12 +325,9 @@ function baykat_farm_process_image_update( $user_id, $entity ) {
     $updated = $wpdb->update(
         $table,
         array( 'image_id' => $image_id ),
-        array(
-            'id'      => $record_id,
-            'user_id' => $user_id,
-        ),
+        array( 'id' => $record_id ),
         array( '%d' ),
-        array( '%d', '%d' )
+        array( '%d' )
     );
 
     if ( false === $updated ) {
@@ -315,17 +370,15 @@ function baykat_farm_process_record_action( $user_id, $entity ) {
 
     global $wpdb;
     $table = baykat_farm_table_name( $entities[ $entity ] );
-    $record = $wpdb->get_row(
-        $wpdb->prepare(
-            "SELECT * FROM $table WHERE id = %d AND user_id = %d",
-            $record_id,
-            $user_id
-        )
-    );
+    $record = baykat_farm_get_accessible_record( $entities[ $entity ], $record_id, $user_id );
 
     if ( ! $record ) {
         return array( 'type' => 'error', 'message' => 'Cet enregistrement n’existe pas ou ne vous appartient pas.' );
     }
+    if ( $is_delete && 'farm' === $entity && 'owner' !== baykat_farm_get_access_role( $record_id, $user_id ) ) {
+        return array( 'type' => 'error', 'message' => 'Seul le propriétaire peut supprimer la ferme.' );
+    }
+    $record_owner_id = (int) $record->user_id;
 
     if ( $is_delete ) {
         $dependency_count = 0;
@@ -334,42 +387,66 @@ function baykat_farm_process_record_action( $user_id, $entity ) {
         if ( 'farm' === $entity ) {
             $parcels_table = baykat_farm_table_name( 'parcels' );
             $transactions_table = baykat_finance_get_table_name();
+            $stock_movements_table = $wpdb->prefix . 'baykat_stock_movements';
             $dependency_count = (int) $wpdb->get_var(
                 $wpdb->prepare(
                     "SELECT
-                        (SELECT COUNT(*) FROM $parcels_table WHERE farm_id = %d AND user_id = %d)
-                        + (SELECT COUNT(*) FROM $transactions_table WHERE farm_id = %d AND user_id = %d)",
+                        (SELECT COUNT(*) FROM $parcels_table WHERE farm_id = %d)
+                        + (SELECT COUNT(*) FROM $transactions_table WHERE farm_id = %d)
+                        + (SELECT COUNT(*) FROM $stock_movements_table WHERE farm_id = %d OR destination_farm_id = %d)",
                     $record_id,
-                    $user_id,
                     $record_id,
-                    $user_id
+                    $record_id,
+                    $record_id
                 )
             );
         } elseif ( 'parcel' === $entity ) {
             $crops_table = baykat_farm_table_name( 'crops' );
             $activities_table = baykat_farm_table_name( 'activities' );
             $transactions_table = baykat_finance_get_table_name();
+            $stock_movements_table = $wpdb->prefix . 'baykat_stock_movements';
             $dependency_count = (int) $wpdb->get_var(
                 $wpdb->prepare(
                     "SELECT
-                        (SELECT COUNT(*) FROM $crops_table WHERE parcel_id = %d AND user_id = %d)
-                        + (SELECT COUNT(*) FROM $activities_table WHERE parcel_id = %d AND user_id = %d)
-                        + (SELECT COUNT(*) FROM $transactions_table WHERE parcel_id = %d AND user_id = %d)",
+                        (SELECT COUNT(*) FROM $crops_table WHERE parcel_id = %d)
+                        + (SELECT COUNT(*) FROM $activities_table WHERE parcel_id = %d)
+                        + (SELECT COUNT(*) FROM $transactions_table WHERE parcel_id = %d)
+                        + (SELECT COUNT(*) FROM $stock_movements_table WHERE parcel_id = %d OR destination_parcel_id = %d)",
                     $record_id,
-                    $user_id,
                     $record_id,
-                    $user_id,
                     $record_id,
-                    $user_id
+                    $record_id,
+                    $record_id
+                )
+            );
+        } elseif ( 'crop' === $entity ) {
+            $transactions_table = baykat_finance_get_table_name();
+            $stock_movements_table = $wpdb->prefix . 'baykat_stock_movements';
+            $harvests_table = $wpdb->prefix . 'baykat_harvests';
+            $dependency_count = (int) $wpdb->get_var(
+                $wpdb->prepare(
+                    "SELECT
+                        (SELECT COUNT(*) FROM $transactions_table WHERE crop_id = %d)
+                        + (SELECT COUNT(*) FROM $stock_movements_table WHERE crop_id = %d)
+                        + (SELECT COUNT(*) FROM $harvests_table WHERE crop_id = %d)",
+                    $record_id,
+                    $record_id,
+                    $record_id
                 )
             );
         } elseif ( 'activity' === $entity ) {
             $transactions_table = baykat_finance_get_table_name();
+            $stock_movements_table = $wpdb->prefix . 'baykat_stock_movements';
             $preserved_finance_count = (int) $wpdb->get_var(
                 $wpdb->prepare(
-                    "SELECT COUNT(*) FROM $transactions_table WHERE activity_id = %d AND user_id = %d",
-                    $record_id,
-                    $user_id
+                    "SELECT COUNT(*) FROM $transactions_table WHERE activity_id = %d",
+                    $record_id
+                )
+            );
+            $dependency_count = (int) $wpdb->get_var(
+                $wpdb->prepare(
+                    "SELECT COUNT(*) FROM $stock_movements_table WHERE activity_id = %d",
+                    $record_id
                 )
             );
         }
@@ -384,9 +461,8 @@ function baykat_farm_process_record_action( $user_id, $entity ) {
             $transactions_table = baykat_finance_get_table_name();
             $unlinked = $wpdb->query(
                 $wpdb->prepare(
-                    "UPDATE $transactions_table SET activity_id = NULL WHERE activity_id = %d AND user_id = %d",
-                    $record_id,
-                    $user_id
+                    "UPDATE $transactions_table SET activity_id = NULL WHERE activity_id = %d",
+                    $record_id
                 )
             );
             if ( false === $unlinked ) {
@@ -396,15 +472,15 @@ function baykat_farm_process_record_action( $user_id, $entity ) {
 
         $deleted = $wpdb->delete(
             $table,
-            array(
-                'id'      => $record_id,
-                'user_id' => $user_id,
-            ),
-            array( '%d', '%d' )
+            array( 'id' => $record_id ),
+            array( '%d' )
         );
 
         if ( false === $deleted ) {
             return array( 'type' => 'error', 'message' => 'La suppression a échoué. Veuillez réessayer.' );
+        }
+        if ( 'farm' === $entity ) {
+            $wpdb->delete( baykat_farm_members_table_name(), array( 'farm_id' => $record_id ), array( '%d' ) );
         }
 
         return array(
@@ -449,7 +525,7 @@ function baykat_farm_process_record_action( $user_id, $entity ) {
             ? sanitize_key( wp_unslash( $_POST['parcel_status'] ) )
             : '';
 
-        if ( ! baykat_farm_user_owns_farm( $farm_id, $user_id ) || '' === $name || strlen( $name ) > 190 || ( null !== $area && ( $area <= 0 || $area > 9999999999.99 ) ) || ! in_array( $status, array( 'planned', 'growing', 'harvested', 'paused' ), true ) ) {
+        if ( ! baykat_farm_user_owns_farm( $farm_id, $user_id ) || baykat_farm_get_owner_id_for_farm( $farm_id ) !== $record_owner_id || '' === $name || strlen( $name ) > 190 || ( null !== $area && ( $area <= 0 || $area > 9999999999.99 ) ) || ! in_array( $status, array( 'planned', 'growing', 'harvested', 'paused' ), true ) ) {
             return array( 'type' => 'error', 'message' => 'Veuillez vérifier la ferme, le nom, la superficie et le statut de la parcelle.' );
         }
 
@@ -457,9 +533,8 @@ function baykat_farm_process_record_action( $user_id, $entity ) {
             $transactions_table = baykat_finance_get_table_name();
             $transaction_count = (int) $wpdb->get_var(
                 $wpdb->prepare(
-                    "SELECT COUNT(*) FROM $transactions_table WHERE parcel_id = %d AND user_id = %d",
-                    $record_id,
-                    $user_id
+                    "SELECT COUNT(*) FROM $transactions_table WHERE parcel_id = %d",
+                    $record_id
                 )
             );
 
@@ -488,9 +563,31 @@ function baykat_farm_process_record_action( $user_id, $entity ) {
         $status = isset( $_POST['crop_status'] ) && is_string( $_POST['crop_status'] )
             ? sanitize_key( wp_unslash( $_POST['crop_status'] ) )
             : '';
+        $harvested_quantity = null === $record->harvested_quantity ? null : (float) $record->harvested_quantity;
+        $harvested_unit = (string) $record->harvested_unit;
 
-        if ( ! $parcel || '' === $name || strlen( $name ) > 190 || strlen( $variety ) > 190 || ( '' !== $planted_at && ! baykat_farm_valid_date( $planted_at ) ) || ( '' !== $expected_date && ! baykat_farm_valid_date( $expected_date ) ) || ! in_array( $status, array( 'planned', 'growing', 'harvested', 'paused' ), true ) ) {
+        if ( ! $parcel || (int) $parcel->user_id !== $record_owner_id || ! baykat_farm_user_can_edit_farm( (int) $parcel->farm_id, $user_id ) || '' === $name || strlen( $name ) > 190 || strlen( $variety ) > 190 || ( '' !== $planted_at && ! baykat_farm_valid_date( $planted_at ) ) || ( '' !== $expected_date && ! baykat_farm_valid_date( $expected_date ) ) || ! in_array( $status, array( 'planned', 'growing', 'harvested', 'paused' ), true ) ) {
             return array( 'type' => 'error', 'message' => 'Veuillez vérifier la parcelle, la culture, les dates et le statut.' );
+        }
+
+        if ( ( $harvested_quantity > 0 && ( 'harvested' !== $status || (int) $record->parcel_id !== $parcel_id ) )
+            || ( 'harvested' === $status && 'harvested' !== $record->status ) ) {
+            return array( 'type' => 'error', 'message' => 'Pour récolter une culture ou ajouter une nouvelle quantité, utilisez l’action « Enregistrer une récolte » sur sa fiche.' );
+        }
+
+        $transactions_table = baykat_finance_get_table_name();
+        $sold_quantity_value = $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COALESCE(SUM(quantity), 0) FROM $transactions_table WHERE crop_id = %d AND category = 'sale' AND type = 'income' AND cancelled_at IS NULL",
+                $record_id
+            )
+        );
+        if ( '' !== $wpdb->last_error ) {
+            return array( 'type' => 'error', 'message' => 'Impossible de vérifier les ventes liées à cette culture. Veuillez réessayer.' );
+        }
+        $sold_quantity = (float) $sold_quantity_value;
+        if ( $sold_quantity > 0 && ( (int) $record->parcel_id !== $parcel_id || 'harvested' !== $status || null === $harvested_quantity || round( $harvested_quantity, 3 ) < round( $sold_quantity, 3 ) || $record->harvested_unit !== $harvested_unit ) ) {
+            return array( 'type' => 'error', 'message' => 'Cette culture a déjà des ventes. Conservez sa parcelle, son statut récolté, son unité et une quantité au moins égale au total vendu (' . number_format( $sold_quantity, 3, ',', ' ' ) . ').' );
         }
 
         $data = array(
@@ -499,9 +596,11 @@ function baykat_farm_process_record_action( $user_id, $entity ) {
             'variety'               => $variety,
             'planted_at'            => '' === $planted_at ? null : $planted_at,
             'expected_harvest_date' => '' === $expected_date ? null : $expected_date,
+            'harvested_quantity'    => $harvested_quantity,
+            'harvested_unit'        => '' === $harvested_unit ? null : $harvested_unit,
             'status'                => $status,
         );
-        $formats = array( '%d', '%s', '%s', '%s', '%s', '%s' );
+        $formats = array( '%d', '%s', '%s', '%s', '%s', '%f', '%s', '%s' );
     } else {
         $parcel_id = baykat_farm_request_id( 'parcel_id' );
         $parcel = baykat_farm_get_user_parcel( $parcel_id, $user_id );
@@ -518,16 +617,15 @@ function baykat_farm_process_record_action( $user_id, $entity ) {
             ? sanitize_textarea_field( wp_unslash( $_POST['activity_notes'] ) )
             : '';
 
-        if ( ! $parcel || '' === $title || strlen( $title ) > 190 || ! in_array( $activity_type, array( 'sowing', 'watering', 'fertilizing', 'treatment', 'harvest', 'other' ), true ) || ! baykat_farm_valid_date( $activity_date ) ) {
+        if ( ! $parcel || ! baykat_farm_user_can_edit_farm( (int) $parcel->farm_id, $user_id ) || (int) $parcel->user_id !== $record_owner_id || '' === $title || strlen( $title ) > 190 || ! in_array( $activity_type, array( 'sowing', 'watering', 'fertilizing', 'treatment', 'harvest', 'other' ), true ) || ! baykat_farm_valid_date( $activity_date ) ) {
             return array( 'type' => 'error', 'message' => 'Veuillez vérifier la parcelle, le titre, le type et la date de l’activité.' );
         }
 
         $activity_finances_table = baykat_finance_get_table_name();
         $has_finances = (int) $wpdb->get_var(
             $wpdb->prepare(
-                "SELECT COUNT(*) FROM $activity_finances_table WHERE activity_id = %d AND user_id = %d",
-                $record_id,
-                $user_id
+                "SELECT COUNT(*) FROM $activity_finances_table WHERE activity_id = %d",
+                $record_id
             )
         );
         if ( $has_finances > 0 && (int) $record->parcel_id !== $parcel_id ) {
@@ -547,12 +645,9 @@ function baykat_farm_process_record_action( $user_id, $entity ) {
     $updated = $wpdb->update(
         $table,
         $data,
-        array(
-            'id'      => $record_id,
-            'user_id' => $user_id,
-        ),
+        array( 'id' => $record_id ),
         $formats,
-        array( '%d', '%d' )
+        array( '%d' )
     );
 
     if ( false === $updated ) {
@@ -658,7 +753,7 @@ function baykat_farm_process_parcel_submission( $user_id ) {
     $inserted = $wpdb->insert(
         baykat_farm_table_name( 'parcels' ),
         array(
-            'user_id' => $user_id,
+            'user_id' => baykat_farm_get_owner_id_for_farm( $farm_id ),
             'farm_id' => $farm_id,
             'name'    => $name,
             'area_m2' => $area,
@@ -677,6 +772,156 @@ function baykat_farm_process_parcel_submission( $user_id ) {
     }
 
     return array( 'type' => 'success', 'message' => 'Parcelle enregistrée.' );
+}
+
+function baykat_farm_get_crop_harvests( $crop_id ) {
+    global $wpdb;
+
+    $harvests_table = $wpdb->prefix . 'baykat_harvests';
+    return $wpdb->get_results(
+        $wpdb->prepare(
+            "SELECT id, recorded_by, quantity, unit, harvest_date, notes, created_at
+             FROM $harvests_table
+             WHERE crop_id = %d
+             ORDER BY harvest_date DESC, id DESC",
+            $crop_id
+        )
+    );
+}
+
+function baykat_farm_process_crop_harvest( $user_id ) {
+    if ( ! isset( $_POST['baykat_record_harvest'] ) ) {
+        return null;
+    }
+
+    check_admin_referer( 'baykat_record_harvest' );
+    $crop_id = baykat_farm_request_id( 'crop_id' );
+    $quantity_value = isset( $_POST['harvest_quantity'] ) && is_scalar( $_POST['harvest_quantity'] )
+        ? trim( (string) wp_unslash( $_POST['harvest_quantity'] ) )
+        : '';
+    $quantity = is_numeric( $quantity_value ) ? (float) $quantity_value : 0;
+    $unit = isset( $_POST['harvest_unit'] ) && is_string( $_POST['harvest_unit'] )
+        ? trim( sanitize_text_field( wp_unslash( $_POST['harvest_unit'] ) ) )
+        : '';
+    $harvest_date = isset( $_POST['harvest_date'] ) && is_string( $_POST['harvest_date'] )
+        ? sanitize_text_field( wp_unslash( $_POST['harvest_date'] ) )
+        : '';
+    $notes = isset( $_POST['harvest_notes'] ) && is_string( $_POST['harvest_notes'] )
+        ? sanitize_textarea_field( wp_unslash( $_POST['harvest_notes'] ) )
+        : '';
+
+    if ( ! $crop_id || $quantity < 0.001 || $quantity > 999999999999.999 || '' === $unit || strlen( $unit ) > 40 || ! baykat_farm_valid_date( $harvest_date ) || strlen( $notes ) > 2000 ) {
+        return array( 'type' => 'error', 'message' => 'Veuillez saisir une quantité, une unité et une date de récolte valides.' );
+    }
+
+    global $wpdb;
+    $crops_table = baykat_farm_table_name( 'crops' );
+    $parcels_table = baykat_farm_table_name( 'parcels' );
+    $harvests_table = $wpdb->prefix . 'baykat_harvests';
+    $transactions_table = baykat_finance_get_table_name();
+
+    if ( false === $wpdb->query( 'START TRANSACTION' ) ) {
+        return array( 'type' => 'error', 'message' => 'Impossible de démarrer l’enregistrement de la récolte. Veuillez réessayer.' );
+    }
+
+    $crop = $wpdb->get_row(
+        $wpdb->prepare(
+            "SELECT crops.id, crops.user_id, crops.parcel_id, crops.harvested_quantity, crops.harvested_unit,
+                    parcels.farm_id
+             FROM $crops_table AS crops
+             INNER JOIN $parcels_table AS parcels ON parcels.id = crops.parcel_id
+             WHERE crops.id = %d
+             FOR UPDATE",
+            $crop_id
+        )
+    );
+    if ( '' !== $wpdb->last_error ) {
+        $wpdb->query( 'ROLLBACK' );
+        return array( 'type' => 'error', 'message' => 'Impossible de charger cette culture. Veuillez réessayer.' );
+    }
+    if ( ! $crop ) {
+        $wpdb->query( 'ROLLBACK' );
+        return array( 'type' => 'error', 'message' => 'Cette culture n’existe pas.' );
+    }
+    if ( ! baykat_farm_user_can_edit_farm( (int) $crop->farm_id, $user_id ) ) {
+        $wpdb->query( 'ROLLBACK' );
+        return array( 'type' => 'error', 'message' => 'Votre rôle sur cette ferme ne permet pas d’enregistrer une récolte.' );
+    }
+    if ( ! empty( $crop->harvested_unit ) && strtolower( $crop->harvested_unit ) !== strtolower( $unit ) ) {
+        $wpdb->query( 'ROLLBACK' );
+        return array( 'type' => 'error', 'message' => 'Utilisez la même unité que pour les récoltes précédentes (' . $crop->harvested_unit . ').' );
+    }
+    if ( ! empty( $crop->harvested_unit ) ) {
+        $unit = $crop->harvested_unit;
+    }
+
+    $current_quantity = (float) $wpdb->get_var(
+        $wpdb->prepare(
+            "SELECT COALESCE(SUM(quantity), 0) FROM $harvests_table WHERE crop_id = %d",
+            $crop_id
+        )
+    );
+    if ( '' !== $wpdb->last_error ) {
+        $wpdb->query( 'ROLLBACK' );
+        return array( 'type' => 'error', 'message' => 'Impossible de vérifier les récoltes précédentes. Veuillez réessayer.' );
+    }
+    $sold_quantity = (float) $wpdb->get_var(
+        $wpdb->prepare(
+            "SELECT COALESCE(SUM(quantity), 0) FROM $transactions_table
+             WHERE crop_id = %d AND category = 'sale' AND type = 'income' AND cancelled_at IS NULL",
+            $crop_id
+        )
+    );
+    if ( '' !== $wpdb->last_error ) {
+        $wpdb->query( 'ROLLBACK' );
+        return array( 'type' => 'error', 'message' => 'Impossible de vérifier les récoltes et ventes précédentes. Veuillez réessayer.' );
+    }
+
+    $total_quantity = round( $current_quantity + $quantity, 3 );
+    if ( $total_quantity > 999999999999.999 ) {
+        $wpdb->query( 'ROLLBACK' );
+        return array( 'type' => 'error', 'message' => 'Le cumul des récoltes dépasse la quantité maximale autorisée.' );
+    }
+    if ( $total_quantity + 0.0005 < $sold_quantity ) {
+        $wpdb->query( 'ROLLBACK' );
+        return array( 'type' => 'error', 'message' => 'La quantité récoltée cumulée ne peut pas être inférieure aux ventes déjà enregistrées.' );
+    }
+
+    $inserted = $wpdb->insert(
+        $harvests_table,
+        array(
+            'crop_id'     => $crop_id,
+            'user_id'     => (int) $crop->user_id,
+            'recorded_by' => (int) $user_id,
+            'quantity'    => $quantity,
+            'unit'        => $unit,
+            'harvest_date' => $harvest_date,
+            'notes'       => $notes,
+        ),
+        array( '%d', '%d', '%f', '%s', '%s', '%s' )
+    );
+    if ( false === $inserted ) {
+        $wpdb->query( 'ROLLBACK' );
+        return array( 'type' => 'error', 'message' => 'La récolte n’a pas pu être ajoutée au journal. Veuillez réessayer.' );
+    }
+
+    $updated = $wpdb->update(
+        $crops_table,
+        array(
+            'harvested_quantity' => $total_quantity,
+            'harvested_unit'     => $unit,
+            'status'             => 'harvested',
+        ),
+        array( 'id' => $crop_id ),
+        array( '%f', '%s', '%s' ),
+        array( '%d' )
+    );
+    if ( false === $updated || false === $wpdb->query( 'COMMIT' ) ) {
+        $wpdb->query( 'ROLLBACK' );
+        return array( 'type' => 'error', 'message' => 'La récolte a été saisie, mais la culture n’a pas pu être mise à jour. Veuillez réessayer.' );
+    }
+
+    return array( 'type' => 'success', 'message' => 'Récolte ajoutée : ' . number_format( $quantity, 3, ',', ' ' ) . ' ' . $unit . '. Total récolté : ' . number_format( $total_quantity, 3, ',', ' ' ) . ' ' . $unit . '.' );
 }
 
 function baykat_farm_process_crop_submission( $user_id ) {
@@ -703,10 +948,11 @@ function baykat_farm_process_crop_submission( $user_id ) {
     $status = isset( $_POST['crop_status'] ) && is_string( $_POST['crop_status'] )
         ? sanitize_key( wp_unslash( $_POST['crop_status'] ) )
         : '';
-    $allowed_statuses = array( 'planned', 'growing', 'harvested', 'paused' );
+    $allowed_statuses = array( 'planned', 'growing', 'paused' );
 
     if (
         ! $parcel
+        || ! baykat_farm_user_can_edit_farm( (int) $parcel->farm_id, $user_id )
         || '' === $name
         || strlen( $name ) > 190
         || ( '' !== $variety && strlen( $variety ) > 190 )
@@ -727,16 +973,18 @@ function baykat_farm_process_crop_submission( $user_id ) {
     $inserted = $wpdb->insert(
         baykat_farm_table_name( 'crops' ),
         array(
-            'user_id'               => $user_id,
+            'user_id'               => (int) $parcel->user_id,
             'parcel_id'             => $parcel_id,
             'name'                  => $name,
             'variety'               => $variety,
             'planted_at'            => '' === $planted_at ? null : $planted_at,
             'expected_harvest_date' => '' === $expected_date ? null : $expected_date,
+            'harvested_quantity'    => null,
+            'harvested_unit'        => null,
             'status'                => $status,
             'image_id'              => $image_id,
         ),
-        array( '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%d' )
+        array( '%d', '%d', '%s', '%s', '%s', '%s', '%f', '%s', '%s', '%d' )
     );
 
     if ( false === $inserted ) {
@@ -792,6 +1040,7 @@ function baykat_farm_process_activity_submission( $user_id ) {
 
     if (
         ! $parcel
+        || ! baykat_farm_user_can_edit_farm( (int) $parcel->farm_id, $user_id )
         || '' === $title
         || strlen( $title ) > 190
         || ! in_array( $activity_type, $allowed_types, true )
@@ -818,7 +1067,7 @@ function baykat_farm_process_activity_submission( $user_id ) {
     $inserted = $wpdb->insert(
         baykat_farm_table_name( 'activities' ),
         array(
-            'user_id'       => $user_id,
+            'user_id'       => (int) $parcel->user_id,
             'parcel_id'     => $parcel_id,
             'title'         => $title,
             'activity_type' => $activity_type,
@@ -843,7 +1092,7 @@ function baykat_farm_process_activity_submission( $user_id ) {
         $finance_inserted = $wpdb->insert(
             baykat_finance_get_table_name(),
             array(
-                'user_id'          => $user_id,
+                'user_id'          => (int) $parcel->user_id,
                 'type'             => $finance_type,
                 'category'         => 'general',
                 'amount'           => $finance_amount,
@@ -860,7 +1109,7 @@ function baykat_farm_process_activity_submission( $user_id ) {
         if ( false === $finance_inserted ) {
             $activity_deleted = $wpdb->delete(
                 baykat_farm_table_name( 'activities' ),
-                array( 'id' => $activity_id, 'user_id' => $user_id ),
+                array( 'id' => $activity_id, 'user_id' => (int) $parcel->user_id ),
                 array( '%d', '%d' )
             );
             if ( $image_id ) {
@@ -881,35 +1130,5 @@ function baykat_farm_process_activity_submission( $user_id ) {
         'message' => null !== $finance_amount
             ? 'Activité et opération financière enregistrées.'
             : 'Activité enregistrée.',
-    );
-}
-
-function baykat_farm_get_stock_totals( $user_id ) {
-    global $wpdb;
-
-    $table = baykat_finance_get_table_name();
-    $farms_table = baykat_farm_table_name( 'farms' );
-    $parcels_table = baykat_farm_table_name( 'parcels' );
-
-    return $wpdb->get_results(
-        $wpdb->prepare(
-            "SELECT transactions.farm_id, transactions.parcel_id,
-                    COALESCE(farms.name, 'Ferme') AS farm_name,
-                    COALESCE(parcels.name, 'Sans parcelle') AS parcel_name,
-                    transactions.item_name, transactions.unit,
-                    SUM(transactions.quantity) AS total_quantity,
-                    SUM(transactions.amount) AS total_cost
-             FROM $table AS transactions
-             LEFT JOIN $farms_table AS farms
-                ON farms.id = transactions.farm_id AND farms.user_id = transactions.user_id
-             LEFT JOIN $parcels_table AS parcels
-                ON parcels.id = transactions.parcel_id AND parcels.user_id = transactions.user_id
-             WHERE transactions.user_id = %d AND transactions.category = %s
-             GROUP BY transactions.farm_id, farms.name, transactions.parcel_id, parcels.name,
-                      transactions.item_name, transactions.unit
-             ORDER BY farm_name ASC, parcel_name ASC, transactions.item_name ASC, transactions.unit ASC",
-            $user_id,
-            'input'
-        )
     );
 }
