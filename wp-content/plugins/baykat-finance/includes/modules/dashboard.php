@@ -364,7 +364,41 @@ function baykat_farm_render_dashboard() {
                     'location'  => $farm->location,
                     'latitude'  => (float) $farm->latitude,
                     'longitude' => (float) $farm->longitude,
+                    'can_edit'  => in_array( $farm->access_role, array( 'owner', 'manager' ), true ),
+                    'parcels'   => array(),
                 );
+
+                $farm_index = count( $map_farms ) - 1;
+                $farm_parcels = isset( $parcels_by_farm[ $farm->id ] ) ? $parcels_by_farm[ $farm->id ] : array();
+                $farm_crops   = isset( $crops_by_farm[ $farm->id ] ) ? $crops_by_farm[ $farm->id ] : array();
+
+                foreach ( $farm_parcels as $parcel ) {
+                    $boundary = isset( $parcel->boundary ) && is_string( $parcel->boundary )
+                        ? json_decode( $parcel->boundary, true )
+                        : array();
+                    if ( ! is_array( $boundary ) ) {
+                        $boundary = array();
+                    }
+
+                    $parcel_crops = array();
+                    foreach ( $farm_crops as $crop ) {
+                        if ( (int) $crop->parcel_id === (int) $parcel->id ) {
+                            $parcel_crops[] = array(
+                                'name'   => $crop->name,
+                                'status' => $crop->status,
+                            );
+                        }
+                    }
+
+                    $map_farms[ $farm_index ]['parcels'][] = array(
+                        'id'       => (int) $parcel->id,
+                        'name'     => $parcel->name,
+                        'area_m2'  => null === $parcel->area_m2 ? null : (float) $parcel->area_m2,
+                        'status'   => $parcel->status,
+                        'boundary' => $boundary,
+                        'crops'    => $parcel_crops,
+                    );
+                }
             }
             ?>
             <div class="baykat-farm-overview-map<?php echo $map_farms ? ' has-locations' : ''; ?>" data-farm-overview-map data-farms="<?php echo esc_attr( wp_json_encode( $map_farms ) ); ?>">
@@ -379,6 +413,24 @@ function baykat_farm_render_dashboard() {
                         </button>
                     </div>
                 <?php endif; ?>
+                <div class="baykat-farm-parcel-map-tools" data-parcel-map-tools hidden>
+                    <div class="baykat-farm-parcel-map-heading">
+                        <button type="button" class="baykat-farm-parcel-map-back" data-parcel-map-back aria-label="Retour à la carte des fermes">← Fermes</button>
+                        <strong data-parcel-map-farm-name></strong>
+                    </div>
+                    <label class="screen-reader-text" for="baykat-farm-parcel-map-select">Choisir une parcelle</label>
+                    <select id="baykat-farm-parcel-map-select" data-parcel-map-select>
+                        <option value="">Choisir une parcelle</option>
+                    </select>
+                    <div class="baykat-farm-parcel-map-actions">
+                        <button type="button" class="baykat-farm-parcel-map-action" data-parcel-map-draw hidden>Tracer / refaire</button>
+                        <button type="button" class="baykat-farm-parcel-map-action" data-parcel-map-finish hidden disabled>Terminer le tracé</button>
+                        <button type="button" class="baykat-farm-parcel-map-action is-subtle" data-parcel-map-cancel hidden>Annuler</button>
+                        <button type="button" class="baykat-farm-parcel-map-action is-subtle" data-parcel-map-clear hidden>Effacer</button>
+                        <button type="button" class="baykat-farm-parcel-map-action is-save" data-parcel-map-save hidden disabled>Enregistrer</button>
+                    </div>
+                    <p class="baykat-farm-parcel-map-status" data-parcel-map-status role="status">Choisissez une parcelle pour afficher son contour et ses cultures.</p>
+                </div>
                 <p class="baykat-farm-overview-map-error" data-farm-overview-map-error hidden>La carte n’a pas pu se charger. Vérifiez votre connexion puis rechargez la page.</p>
                 <div class="baykat-farm-overview-map-empty" data-farm-overview-map-empty<?php echo $map_farms ? ' hidden' : ''; ?>>
                     <span aria-hidden="true">⌖</span>

@@ -862,6 +862,70 @@ function baykat_farm_geocode_location() {
     wp_send_json_success( $results );
 }
 add_action( 'wp_ajax_baykat_farm_geocode', 'baykat_farm_geocode_location' );
+
+function baykat_farm_save_parcel_boundary() {
+    if ( ! is_user_logged_in() || ! baykat_finance_user_can_access() ) {
+        wp_send_json_error( array( 'message' => 'Vous n’êtes pas autorisé à modifier cette parcelle.' ), 403 );
+    }
+
+    check_ajax_referer( 'baykat_farm_geocode', 'nonce' );
+
+    $parcel_id = baykat_farm_request_id( 'parcel_id' );
+    $boundary_json = isset( $_POST['boundary'] ) && is_string( $_POST['boundary'] )
+        ? wp_unslash( $_POST['boundary'] )
+        : '';
+
+    if ( ! $parcel_id || strlen( $boundary_json ) > 50000 ) {
+        wp_send_json_error( array( 'message' => 'La parcelle ou son contour est invalide.' ), 400 );
+    }
+
+    $boundary = json_decode( $boundary_json, true );
+    if ( ! is_array( $boundary ) || ( $boundary && ( count( $boundary ) < 3 || count( $boundary ) > 200 ) ) ) {
+        wp_send_json_error( array( 'message' => 'Un contour doit contenir entre 3 et 200 points.' ), 400 );
+    }
+
+    $record = baykat_farm_get_accessible_record( 'parcels', $parcel_id, get_current_user_id() );
+    if ( ! $record || ! baykat_farm_user_can_edit_farm( (int) $record->farm_id, get_current_user_id() ) ) {
+        wp_send_json_error( array( 'message' => 'Vous n’avez pas les droits nécessaires pour modifier cette parcelle.' ), 403 );
+    }
+
+    $normalized_boundary = array();
+    foreach ( $boundary as $point ) {
+        if ( ! is_array( $point ) || ! isset( $point[0], $point[1] ) || ! is_numeric( $point[0] ) || ! is_numeric( $point[1] ) ) {
+            wp_send_json_error( array( 'message' => 'Le contour contient des coordonnées invalides.' ), 400 );
+        }
+
+        $latitude  = (float) $point[0];
+        $longitude = (float) $point[1];
+        if ( $latitude < -90 || $latitude > 90 || $longitude < -180 || $longitude > 180 ) {
+            wp_send_json_error( array( 'message' => 'Le contour contient des coordonnées hors limites.' ), 400 );
+        }
+
+        $normalized_boundary[] = array( $latitude, $longitude );
+    }
+
+    global $wpdb;
+    $updated = $wpdb->update(
+        baykat_farm_table_name( 'parcels' ),
+        array( 'boundary' => $normalized_boundary ? wp_json_encode( $normalized_boundary ) : null ),
+        array( 'id' => $parcel_id ),
+        array( '%s' ),
+        array( '%d' )
+    );
+
+    if ( false === $updated ) {
+        wp_send_json_error( array( 'message' => 'Le contour de la parcelle n’a pas pu être enregistré.' ), 500 );
+    }
+
+    wp_send_json_success(
+        array(
+            'boundary' => $normalized_boundary,
+            'message'  => $normalized_boundary ? 'Contour de la parcelle enregistré.' : 'Contour de la parcelle supprimé.',
+        )
+    );
+}
+add_action( 'wp_ajax_baykat_farm_save_parcel_boundary', 'baykat_farm_save_parcel_boundary' );
+
 function baykat_farm_process_parcel_submission( $user_id ) {
     if ( ! isset( $_POST['baykat_add_parcel'] ) ) {
         return null;

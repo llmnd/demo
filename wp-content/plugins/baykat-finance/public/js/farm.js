@@ -51,6 +51,7 @@ document.addEventListener('DOMContentLoaded', function () {
             overviewTiles.addTo(map);
 
             const bounds = [];
+            const farmMarkersLayer = L.layerGroup().addTo(map);
             farms.forEach(function (farm) {
                 const position = [Number(farm.latitude), Number(farm.longitude)];
                 const farmIcon = L.divIcon({
@@ -67,12 +68,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     title: farm.name,
                     alt: 'Ferme : ' + farm.name,
                     riseOnHover: true
-                }).addTo(map);
+                }).addTo(farmMarkersLayer);
                 const popup = document.createElement('div');
                 const name = document.createElement('strong');
                 const location = document.createElement('span');
                 const tooltip = document.createElement('span');
                 const openButton = document.createElement('button');
+                const parcelsButton = document.createElement('button');
 
                 name.textContent = farm.name;
                 location.textContent = farm.location || 'Localisation non renseignée';
@@ -80,8 +82,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 openButton.className = 'baykat-farm-map-popup-link';
                 openButton.dataset.openFarmModal = String(farm.id);
                 openButton.textContent = 'Voir la ferme';
+                parcelsButton.type = 'button';
+                parcelsButton.className = 'baykat-farm-map-popup-link';
+                parcelsButton.dataset.exploreFarmParcels = String(farm.id);
+                parcelsButton.textContent = 'Explorer les parcelles';
                 tooltip.textContent = farm.name;
-                popup.append(name, location, openButton);
+                popup.append(name, location, parcelsButton, openButton);
                 marker.bindPopup(popup);
                 marker.bindTooltip(tooltip, {
                     permanent: true,
@@ -103,8 +109,465 @@ document.addEventListener('DOMContentLoaded', function () {
 
             fitFarmBounds();
             const resetButton = container.querySelector('[data-reset-farm-map]');
+            const parcelTools = container.querySelector('[data-parcel-map-tools]');
+            const parcelSelect = container.querySelector('[data-parcel-map-select]');
+            const farmName = container.querySelector('[data-parcel-map-farm-name]');
+            const parcelStatus = container.querySelector('[data-parcel-map-status]');
+            const drawButton = container.querySelector('[data-parcel-map-draw]');
+            const finishButton = container.querySelector('[data-parcel-map-finish]');
+            const cancelButton = container.querySelector('[data-parcel-map-cancel]');
+            const clearButton = container.querySelector('[data-parcel-map-clear]');
+            const saveButton = container.querySelector('[data-parcel-map-save]');
+            const backButton = container.querySelector('[data-parcel-map-back]');
+            const parcelLayers = L.featureGroup().addTo(map);
+            let activeFarm = null;
+            let activeParcel = null;
+            let currentBoundary = [];
+            let isDrawing = false;
+            let isDirty = false;
+            let isSaving = false;
+            let parcelPolygon = null;
+            const parcelColors = {
+                growing: '#56834e',
+                planned: '#b39a58',
+                harvested: '#b47b45',
+                paused: '#78806a'
+            };
+
+            function setParcelStatus(message, isError) {
+                if (parcelStatus) {
+                    parcelStatus.textContent = message;
+                    parcelStatus.classList.toggle('is-error', Boolean(isError));
+                }
+            }
+
+            function selectedCropColor(parcel) {
+                const growingCrop = parcel.crops.find(function (crop) { return crop.status === 'growing'; });
+                if (growingCrop) {
+                    return parcelColors.growing;
+                }
+                const currentCrop = parcel.crops.find(function (crop) { return parcelColors[crop.status]; });
+                return currentCrop ? parcelColors[currentCrop.status] : parcelColors[parcel.status] || '#829071';
+            }
+
+            function makeParcelPopup(parcel) {
+                const popup = document.createElement('div');
+                const title = document.createElement('strong');
+                const area = document.createElement('span');
+                title.textContent = parcel.name;
+                area.textContent = parcel.area_m2 === null
+                    ? 'Superficie non renseignée'
+                    : Number(parcel.area_m2).toLocaleString('fr-FR') + ' m²';
+                popup.append(title, area);
+
+                const cropNames = parcel.crops.map(function (crop) { return crop.name; });
+                if (cropNames.length) {
+                    const crops = document.createElement('span');
+                    crops.textContent = 'Cultures : ' + cropNames.join(', ');
+                    popup.appendChild(crops);
+                } else {
+                    const emptyCrops = document.createElement('span');
+                    emptyCrops.textContent = 'Aucune culture enregistrée';
+                    popup.appendChild(emptyCrops);
+                }
+
+                const openButton = document.createElement('button');
+                openButton.type = 'button';
+                openButton.className = 'baykat-farm-map-popup-link';
+                openButton.dataset.openParcelModal = String(parcel.id);
+                openButton.textContent = 'Voir la parcelle';
+                popup.appendChild(openButton);
+                return popup;
+            }
+
+            function parcelTooltip(parcel) {
+                const tooltip = document.createElement('span');
+                const cropNames = parcel.crops.map(function (crop) { return crop.name; });
+                tooltip.textContent = parcel.name + (cropNames.length ? ' · ' + cropNames.join(', ') : '');
+                return tooltip;
+            }
+
+            function updateParcelTools() {
+                if (!parcelTools) {
+                    return;
+                }
+                const canEdit = Boolean(activeFarm && activeFarm.can_edit && activeParcel);
+                if (parcelSelect) {
+                    parcelSelect.disabled = isSaving;
+                }
+                if (backButton) {
+                    backButton.disabled = isSaving;
+                }
+                if (cancelButton) {
+                    cancelButton.disabled = isSaving;
+                }
+                if (drawButton) {
+                    drawButton.hidden = !canEdit || isDrawing;
+                    drawButton.disabled = !canEdit;
+                }
+                if (finishButton) {
+                    finishButton.hidden = !canEdit || !isDrawing;
+                    finishButton.disabled = currentBoundary.length < 3;
+                }
+                if (cancelButton) {
+                    cancelButton.hidden = !canEdit || ( !isDirty && !isDrawing );
+                }
+                if (clearButton) {
+                    clearButton.hidden = !canEdit || !currentBoundary.length || isDrawing;
+                }
+                if (saveButton) {
+                    saveButton.hidden = !canEdit || !isDirty || isDrawing;
+                    saveButton.disabled = !canEdit || !isDirty || isSaving;
+                }
+            }
+
+            function renderParcelBoundary() {
+                parcelLayers.clearLayers();
+                parcelPolygon = null;
+                if (!activeFarm) {
+                    updateParcelTools();
+                    return;
+                }
+
+                activeFarm.parcels.forEach(function (parcel) {
+                    const isSelected = activeParcel && String(parcel.id) === String(activeParcel.id);
+                    const boundary = isSelected ? currentBoundary : parcel.boundary;
+                    const coordinates = boundary.map(function (point) {
+                        return [Number(point[0]), Number(point[1])];
+                    });
+                    const color = selectedCropColor(parcel);
+
+                    if (isSelected && isDrawing) {
+                        if (coordinates.length > 1) {
+                            L.polyline(coordinates, {
+                                color: color,
+                                weight: 3,
+                                dashArray: '6 7',
+                                lineCap: 'round'
+                            }).addTo(parcelLayers);
+                        }
+                        coordinates.forEach(function (position) {
+                            L.circleMarker(position, {
+                                radius: 5,
+                                color: '#fff',
+                                weight: 2,
+                                fillColor: color,
+                                fillOpacity: 1
+                            }).addTo(parcelLayers);
+                        });
+                        return;
+                    }
+
+                    if (coordinates.length < 3) {
+                        return;
+                    }
+
+                    const polygon = L.polygon(coordinates, {
+                        color: color,
+                        weight: isSelected ? 3 : 2,
+                        opacity: .95,
+                        fillColor: color,
+                        fillOpacity: isSelected ? .5 : .3
+                    }).addTo(parcelLayers);
+                    polygon.bindPopup(makeParcelPopup(parcel));
+                    polygon.bindTooltip(parcelTooltip(parcel), {
+                        permanent: true,
+                        direction: 'center',
+                        className: 'baykat-farm-parcel-tooltip'
+                    });
+
+                    if (isSelected) {
+                        parcelPolygon = polygon;
+                    }
+
+                    if (isSelected && activeFarm.can_edit) {
+                        coordinates.forEach(function (position, index) {
+                            const vertexIcon = L.divIcon({
+                                className: 'baykat-farm-parcel-vertex',
+                                html: '<span></span>',
+                                iconSize: [16, 16],
+                                iconAnchor: [8, 8]
+                            });
+                            const vertex = L.marker(position, {
+                                icon: vertexIcon,
+                                draggable: true,
+                                bubblingMouseEvents: false,
+                                keyboard: true,
+                                title: 'Déplacer un sommet du contour'
+                            }).addTo(parcelLayers);
+                            vertex.on('drag', function (event) {
+                                currentBoundary[index] = [
+                                    event.target.getLatLng().lat,
+                                    event.target.getLatLng().lng
+                                ];
+                                if (parcelPolygon) {
+                                    parcelPolygon.setLatLngs(currentBoundary);
+                                }
+                            });
+                            vertex.on('dragend', function () {
+                                isDirty = true;
+                                setParcelStatus('Contour modifié. Enregistrez pour conserver les changements.');
+                                updateParcelTools();
+                            });
+                        });
+                    }
+                });
+                updateParcelTools();
+            }
+
+            function chooseParcel(parcelId) {
+                activeParcel = activeFarm.parcels.find(function (parcel) {
+                    return String(parcel.id) === String(parcelId);
+                }) || null;
+                currentBoundary = activeParcel ? activeParcel.boundary.map(function (point) {
+                    return [Number(point[0]), Number(point[1])];
+                }) : [];
+                isDrawing = false;
+                isDirty = false;
+                renderParcelBoundary();
+
+                if (!activeParcel) {
+                    setParcelStatus('Choisissez une parcelle pour afficher son contour et ses cultures.');
+                } else if (!activeParcel.boundary.length) {
+                    setParcelStatus(activeFarm.can_edit
+                        ? 'Aucun contour enregistré. Cliquez sur « Tracer » puis placez les points sur la carte.'
+                        : 'Le contour de cette parcelle n’a pas encore été dessiné.');
+                } else {
+                    const crops = activeParcel.crops.map(function (crop) { return crop.name; });
+                    setParcelStatus(
+                        activeParcel.name
+                        + (activeParcel.area_m2 === null ? '' : ' · ' + Number(activeParcel.area_m2).toLocaleString('fr-FR') + ' m²')
+                        + (crops.length ? ' · Cultures : ' + crops.join(', ') : ' · Aucune culture enregistrée')
+                        + (activeFarm.can_edit ? ' · Déplacez les points pour ajuster le contour.' : '')
+                    );
+                }
+                if (activeParcel && currentBoundary.length >= 3) {
+                    const selectedBounds = L.latLngBounds(currentBoundary);
+                    if (selectedBounds.isValid()) {
+                        map.fitBounds(selectedBounds, { padding: [42, 42], maxZoom: 18 });
+                    }
+                }
+            }
+
+            function returnToFarms() {
+                if (isDirty || isDrawing) {
+                    if (!window.confirm('Les modifications du contour ne sont pas enregistrées. Quitter sans les conserver ?')) {
+                        return;
+                    }
+                }
+                activeFarm = null;
+                activeParcel = null;
+                currentBoundary = [];
+                isDrawing = false;
+                isDirty = false;
+                parcelLayers.clearLayers();
+                map.doubleClickZoom.enable();
+                farmMarkersLayer.addTo(map);
+                parcelTools.hidden = true;
+                if (resetButton) {
+                    resetButton.hidden = false;
+                }
+                map.closePopup();
+                fitFarmBounds();
+            }
+
+            function exploreFarm(farmId) {
+                const farm = farms.find(function (item) { return String(item.id) === String(farmId); });
+                if (!farm || !parcelTools || !parcelSelect) {
+                    return;
+                }
+                if (isDirty || isDrawing) {
+                    if (!window.confirm('Les modifications du contour ne sont pas enregistrées. Changer de ferme ?')) {
+                        return;
+                    }
+                }
+
+                activeFarm = farm;
+                activeParcel = null;
+                currentBoundary = [];
+                isDrawing = false;
+                isDirty = false;
+                parcelLayers.clearLayers();
+                farmMarkersLayer.remove();
+                map.doubleClickZoom.enable();
+                parcelTools.hidden = false;
+                if (resetButton) {
+                    resetButton.hidden = true;
+                }
+                farmName.textContent = farm.name;
+                parcelSelect.replaceChildren();
+                const placeholder = document.createElement('option');
+                placeholder.value = '';
+                placeholder.textContent = 'Choisir une parcelle';
+                parcelSelect.appendChild(placeholder);
+                farm.parcels.forEach(function (parcel) {
+                    const option = document.createElement('option');
+                    option.value = String(parcel.id);
+                    option.textContent = parcel.name;
+                    parcelSelect.appendChild(option);
+                });
+                parcelSelect.value = '';
+                renderParcelBoundary();
+                updateParcelTools();
+
+                if (farm.parcels.length) {
+                    const mappedCount = farm.parcels.filter(function (parcel) { return parcel.boundary.length >= 3; }).length;
+                    setParcelStatus(
+                        mappedCount
+                            ? mappedCount + ' parcelle' + (mappedCount > 1 ? 's' : '') + ' affichée' + (mappedCount > 1 ? 's' : '') + '. Choisissez une parcelle pour voir ses détails ou ajuster son contour.'
+                            : (farm.can_edit
+                                ? 'Aucun contour n’est encore tracé. Choisissez une parcelle pour dessiner son contour et visualiser ses cultures.'
+                                : 'Aucun contour n’est encore disponible pour les parcelles de cette ferme.')
+                    );
+                    if (parcelLayers.getBounds().isValid()) {
+                        map.fitBounds(parcelLayers.getBounds(), { padding: [42, 42], maxZoom: 17 });
+                    }
+                } else {
+                    setParcelStatus('Cette ferme ne contient pas encore de parcelles.');
+                }
+                map.setView([Number(farm.latitude), Number(farm.longitude)], 17);
+                window.requestAnimationFrame(function () {
+                    map.invalidateSize();
+                });
+            }
+
+            if (parcelTools) {
+                parcelSelect.addEventListener('change', function () {
+                    if (isDirty || isDrawing) {
+                        parcelSelect.value = activeParcel ? String(activeParcel.id) : '';
+                        setParcelStatus('Enregistrez ou annulez le contour avant de changer de parcelle.', true);
+                        return;
+                    }
+                    chooseParcel(parcelSelect.value);
+                });
+
+                drawButton.addEventListener('click', function () {
+                    if (!activeParcel || !activeFarm.can_edit) {
+                        return;
+                    }
+                    if (currentBoundary.length && !window.confirm('Le nouveau tracé remplacera le contour actuel. Continuer ?')) {
+                        return;
+                    }
+                    currentBoundary = [];
+                    isDrawing = true;
+                    isDirty = false;
+                    map.doubleClickZoom.disable();
+                    renderParcelBoundary();
+                    setParcelStatus('Cliquez sur la carte pour placer les sommets du contour, puis terminez le tracé.');
+                });
+
+                finishButton.addEventListener('click', function () {
+                    if (currentBoundary.length < 3) {
+                        setParcelStatus('Ajoutez au moins 3 points pour fermer un contour.', true);
+                        return;
+                    }
+                    isDrawing = false;
+                    isDirty = true;
+                    map.doubleClickZoom.enable();
+                    renderParcelBoundary();
+                    setParcelStatus('Contour prêt. Enregistrez-le pour le conserver.');
+                });
+
+                cancelButton.addEventListener('click', function () {
+                    if (isDirty && !window.confirm('Annuler les modifications non enregistrées ?')) {
+                        return;
+                    }
+                    chooseParcel(activeParcel ? activeParcel.id : '');
+                });
+
+                clearButton.addEventListener('click', function () {
+                    if (!activeParcel || !currentBoundary.length) {
+                        return;
+                    }
+                    if (!window.confirm('Effacer le contour de cette parcelle ? Enregistrez ensuite pour confirmer.')) {
+                        return;
+                    }
+                    currentBoundary = [];
+                    isDrawing = false;
+                    isDirty = true;
+                    renderParcelBoundary();
+                    setParcelStatus('Contour effacé. Enregistrez pour confirmer la suppression.');
+                });
+
+                saveButton.addEventListener('click', async function () {
+                    if (!activeParcel || !isDirty || isDrawing || isSaving) {
+                        return;
+                    }
+                    if (!window.baykatFarmMapConfig || !window.baykatFarmMapConfig.ajaxUrl || !window.baykatFarmMapConfig.nonce) {
+                        setParcelStatus('La configuration de sauvegarde est indisponible. Rechargez la page avant de réessayer.', true);
+                        return;
+                    }
+                    isSaving = true;
+                    updateParcelTools();
+                    saveButton.disabled = true;
+                    saveButton.textContent = 'Enregistrement…';
+                    const request = new URLSearchParams({
+                        action: 'baykat_farm_save_parcel_boundary',
+                        nonce: window.baykatFarmMapConfig.nonce,
+                        parcel_id: String(activeParcel.id),
+                        boundary: JSON.stringify(currentBoundary)
+                    });
+
+                    try {
+                        const response = await fetch(window.baykatFarmMapConfig.ajaxUrl, {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                            body: request.toString()
+                        });
+                        const payload = await response.json();
+                        if (!response.ok || !payload.success) {
+                            throw new Error(payload.data && payload.data.message
+                                ? payload.data.message
+                                : 'Le contour n’a pas pu être enregistré.');
+                        }
+
+                        activeParcel.boundary = payload.data.boundary;
+                        currentBoundary = payload.data.boundary.map(function (point) {
+                            return [Number(point[0]), Number(point[1])];
+                        });
+                        isDirty = false;
+                        renderParcelBoundary();
+                        setParcelStatus(payload.data.message);
+                    } catch (error) {
+                        setParcelStatus(error.message || 'Une erreur est survenue pendant l’enregistrement du contour.', true);
+                    } finally {
+                        isSaving = false;
+                        saveButton.textContent = 'Enregistrer';
+                        updateParcelTools();
+                    }
+                });
+
+                backButton.addEventListener('click', returnToFarms);
+                L.DomEvent.disableClickPropagation(parcelTools);
+                L.DomEvent.disableScrollPropagation(parcelTools);
+                map.on('click', function (event) {
+                    if (!isDrawing || !activeFarm || !activeFarm.can_edit) {
+                        return;
+                    }
+                    if (currentBoundary.length >= 200) {
+                        setParcelStatus('Le contour est limité à 200 points.', true);
+                        return;
+                    }
+                    currentBoundary.push([event.latlng.lat, event.latlng.lng]);
+                    renderParcelBoundary();
+                    setParcelStatus(currentBoundary.length + ' point' + (currentBoundary.length > 1 ? 's' : '') + ' placé' + (currentBoundary.length > 1 ? 's' : '') + '. Continuez ou terminez le tracé.');
+                });
+
+                container.addEventListener('click', function (event) {
+                    const exploreButton = event.target.closest('[data-explore-farm-parcels]');
+                    if (exploreButton && container.contains(exploreButton)) {
+                        exploreFarm(exploreButton.dataset.exploreFarmParcels);
+                    }
+                });
+            }
+
             if (resetButton) {
                 resetButton.addEventListener('click', function () {
+                    if (activeFarm) {
+                        returnToFarms();
+                        return;
+                    }
                     map.closePopup();
                     fitFarmBounds();
                 });
