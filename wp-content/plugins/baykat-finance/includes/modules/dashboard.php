@@ -207,10 +207,6 @@ function baykat_farm_render_dashboard() {
                     <button class="baykat-farm-stats-button" type="button" data-open-stats-modal>
                         <span aria-hidden="true">▦</span> Statistiques &amp; gestion
                     </button>
-                    <a class="baykat-farm-cta-ghost" href="#baykat-workspace-parcels" data-open-management-target="baykat-workspace-parcels">
-                        Gérer mes parcelles
-                        <span aria-hidden="true">→</span>
-                    </a>
                 </div>
             </div>
 
