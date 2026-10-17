@@ -374,6 +374,12 @@ function baykat_farm_render_dashboard() {
             ?>
             <div class="baykat-farm-overview-map<?php echo $map_farms ? ' has-locations' : ''; ?>" data-farm-overview-map data-farms="<?php echo esc_attr( wp_json_encode( $map_farms ) ); ?>">
                 <div class="baykat-farm-overview-map-canvas" data-farm-overview-map-canvas aria-label="Carte des emplacements de vos fermes"></div>
+                <?php if ( $map_farms ) : ?>
+                    <div class="baykat-farm-map-toolbar">
+                        <span class="baykat-farm-map-count"><span aria-hidden="true"></span><?php echo esc_html( number_format_i18n( count( $map_farms ) ) . ' ferme' . ( count( $map_farms ) > 1 ? 's' : '' ) . ' localisée' . ( count( $map_farms ) > 1 ? 's' : '' ) ); ?></span>
+                        <button type="button" class="baykat-farm-map-reset" data-reset-farm-map><span aria-hidden="true">↗</span> Vue d’ensemble</button>
+                    </div>
+                <?php endif; ?>
                 <p class="baykat-farm-overview-map-error" data-farm-overview-map-error hidden>La carte n’a pas pu se charger. Vérifiez votre connexion puis rechargez la page.</p>
                 <div class="baykat-farm-overview-map-empty" data-farm-overview-map-empty<?php echo $map_farms ? ' hidden' : ''; ?>>
                     <span aria-hidden="true">⌖</span>
@@ -382,6 +388,18 @@ function baykat_farm_render_dashboard() {
                     <a href="#baykat-workspace-farms" data-open-management-target="baykat-workspace-farms">Positionner une ferme <span aria-hidden="true">→</span></a>
                 </div>
             </div>
+            <?php if ( $map_farms ) : ?>
+                <nav class="baykat-farm-map-farm-list" aria-label="Accès rapide aux fermes sur la carte">
+                    <?php foreach ( $map_farms as $index => $map_farm ) : ?>
+                        <button type="button" class="baykat-farm-map-farm-chip" data-focus-farm="<?php echo esc_attr( $map_farm['id'] ); ?>" aria-pressed="false">
+                            <span><?php echo esc_html( sprintf( '%02d', $index + 1 ) ); ?></span>
+                            <strong><?php echo esc_html( $map_farm['name'] ); ?></strong>
+                            <small><?php echo esc_html( $map_farm['location'] ? $map_farm['location'] : 'Localisation non renseignée' ); ?></small>
+                            <b aria-hidden="true">↗</b>
+                        </button>
+                    <?php endforeach; ?>
+                </nav>
+            <?php endif; ?>
             <p class="baykat-farm-map-disclaimer">La carte localise les fermes. Les limites des parcelles ne sont pas encore géolocalisées.</p>
             <div class="baykat-farm-showcase-grid">
                 <?php foreach ( array_slice( $farms, 0, 3 ) as $farm ) :

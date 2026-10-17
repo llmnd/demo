@@ -50,6 +50,8 @@ document.addEventListener('DOMContentLoaded', function () {
             overviewTiles.addTo(map);
 
             const bounds = [];
+            const farmMarkers = new Map();
+            const farmPositions = new Map();
             farms.forEach(function (farm) {
                 const position = [Number(farm.latitude), Number(farm.longitude)];
                 const farmIcon = L.divIcon({
@@ -70,6 +72,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const popup = document.createElement('div');
                 const name = document.createElement('strong');
                 const location = document.createElement('span');
+                const tooltip = document.createElement('span');
                 const openButton = document.createElement('button');
 
                 name.textContent = farm.name;
@@ -78,9 +81,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 openButton.className = 'baykat-farm-map-popup-link';
                 openButton.dataset.openFarmModal = String(farm.id);
                 openButton.textContent = 'Voir la ferme';
+                tooltip.textContent = farm.name;
                 popup.append(name, location, openButton);
                 marker.bindPopup(popup);
-                marker.bindTooltip(farm.name, {
+                marker.bindTooltip(tooltip, {
                     permanent: true,
                     direction: 'top',
                     offset: [0, -3],
@@ -88,11 +92,52 @@ document.addEventListener('DOMContentLoaded', function () {
                     className: 'baykat-farm-map-tooltip'
                 });
                 bounds.push(position);
+                farmMarkers.set(String(farm.id), marker);
+                farmPositions.set(String(farm.id), position);
             });
 
-            if (bounds.length > 1) {
-                map.fitBounds(bounds, { padding: [32, 32], maxZoom: 14 });
+            function fitFarmBounds() {
+                if (bounds.length > 1) {
+                    map.fitBounds(bounds, { padding: [48, 48], maxZoom: 14 });
+                } else {
+                    map.setView(bounds[0], 14);
+                }
             }
+
+            fitFarmBounds();
+
+            container.addEventListener('click', function (event) {
+                const focusButton = event.target.closest('[data-focus-farm]');
+                if (focusButton && container.contains(focusButton)) {
+                    const farmId = focusButton.dataset.focusFarm;
+                    const marker = farmMarkers.get(farmId);
+                    const position = farmPositions.get(farmId);
+                    if (!marker || !position) {
+                        return;
+                    }
+
+                    container.querySelectorAll('[data-focus-farm]').forEach(function (button) {
+                        button.setAttribute('aria-pressed', String(button === focusButton));
+                    });
+                    map.flyTo(position, Math.max(map.getZoom(), 15), { duration: 0.75 });
+                    marker.openPopup();
+                    return;
+                }
+
+                if (event.target.closest('[data-reset-farm-map]')) {
+                    container.querySelectorAll('[data-focus-farm]').forEach(function (button) {
+                        button.setAttribute('aria-pressed', 'false');
+                    });
+                    map.closePopup();
+                    fitFarmBounds();
+                }
+            });
+
+            map.on('click', function () {
+                container.querySelectorAll('[data-focus-farm]').forEach(function (button) {
+                    button.setAttribute('aria-pressed', 'false');
+                });
+            });
         });
 
         root.querySelectorAll('[data-farm-location-picker]').forEach(function (canvas) {

@@ -688,6 +688,43 @@ body.admin-bar .baykat-farm-navigation { top: 32px; }
     height: 100%;
 }
 .baykat-farm-overview-map:not(.has-locations) .baykat-farm-overview-map-canvas { display: none; }
+.baykat-farm-map-toolbar {
+    position: absolute;
+    z-index: 500;
+    top: 14px;
+    right: 14px;
+    left: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    pointer-events: none;
+}
+.baykat-farm-map-count,
+.baykat-farm-map-reset {
+    display: inline-flex;
+    min-height: 38px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 13px;
+    border: 1px solid rgba(230,224,211,.9);
+    border-radius: 11px;
+    background: rgba(255,253,247,.94);
+    color: #403729;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    box-shadow: 0 3px 12px rgba(48,43,37,.12);
+    backdrop-filter: blur(10px);
+}
+.baykat-farm-map-count { pointer-events: auto; }
+.baykat-farm-map-count > span { width: 7px; height: 7px; border-radius: 50%; background: #658452; box-shadow: 0 0 0 3px rgba(101,132,82,.15); }
+.baykat-farm-map-reset { pointer-events: auto; cursor: pointer; transition: background-color 150ms ease, transform 150ms ease; }
+.baykat-farm-map-reset:hover { transform: translateY(-1px); background: #fff; }
+.baykat-farm-map-reset:focus-visible,
+.baykat-farm-map-farm-chip:focus-visible { outline: 3px solid rgba(185,154,100,.6); outline-offset: 2px; }
+.baykat-farm-map-reset > span { color: #80643b; font-size: 15px; }
 .baykat-farm-overview-map-empty {
     position: absolute;
     inset: 0;
@@ -853,6 +890,39 @@ body.admin-bar .baykat-farm-navigation { top: 32px; }
 .baykat-farm-overview-map .leaflet-popup-content > div { display: grid; gap: 2px; }
 .baykat-farm-overview-map .leaflet-popup-content > div > span { max-width: 220px; color: #777168; font-size: 11px; }
 .baykat-farm-overview-map .leaflet-popup-content > div > button { justify-self: start; }
+.baykat-farm-map-farm-list {
+    display: flex;
+    gap: 10px;
+    margin-top: -3px;
+    padding: 2px 2px 8px;
+    overflow-x: auto;
+    scrollbar-color: #d4c8b3 transparent;
+    scrollbar-width: thin;
+}
+.baykat-farm-map-farm-chip {
+    display: grid;
+    min-width: 205px;
+    grid-template-columns: 30px minmax(0, 1fr) 16px;
+    grid-template-rows: auto auto;
+    align-items: center;
+    gap: 3px 10px;
+    padding: 11px 13px;
+    border: 1px solid #e9e4dc;
+    border-radius: 13px;
+    background: #fff;
+    color: #302b25;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    box-shadow: 0 3px 12px rgba(48,43,37,.035);
+    transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+.baykat-farm-map-farm-chip:hover { transform: translateY(-2px); border-color: #d6c29e; box-shadow: 0 7px 18px rgba(48,43,37,.075); }
+.baykat-farm-map-farm-chip[aria-pressed="true"] { border-color: #9a8153; background: #faf7f0; box-shadow: 0 0 0 2px rgba(185,154,100,.13); }
+.baykat-farm-map-farm-chip > span { display: grid; width: 28px; height: 28px; grid-row: 1 / 3; place-items: center; border-radius: 9px; background: #edf0e8; color: #536b46; font-size: 10px; font-weight: 800; }
+.baykat-farm-map-farm-chip > strong { overflow: hidden; font-size: 12px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+.baykat-farm-map-farm-chip > small { overflow: hidden; color: #898277; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.baykat-farm-map-farm-chip > b { grid-column: 3; grid-row: 1 / 3; color: #947747; font-size: 15px; font-weight: 500; text-align: center; }
 
 .baykat-farm-card-image-placeholder {
     display: grid;
@@ -1869,6 +1939,7 @@ body.baykat-farm-login-page .baykat-farm-app.baykat-farm-login {
     .baykat-farm-dashboard-list { min-height: 0; padding: 18px; }
     .baykat-farm-showcase-intro > span { display: none; }
     .baykat-farm-showcase-intro { gap: 0; }
+    .baykat-farm-overview-map { height: clamp(270px, 65vw, 380px); }
 }
 @media (max-width: 540px) {
     .baykat-farm-overview-block { padding: 16px; border-radius: 15px; }
@@ -1881,6 +1952,10 @@ body.baykat-farm-login-page .baykat-farm-app.baykat-farm-login {
     .baykat-farm-stats-grid strong { font-size: 21px; }
     .baykat-farm-stats-farms li { align-items: flex-start; flex-direction: column; gap: 4px; }
     .baykat-farm-stats-farms li span { text-align: left; }
+    .baykat-farm-map-toolbar { top: 10px; right: 10px; left: 10px; }
+    .baykat-farm-map-count,
+    .baykat-farm-map-reset { min-height: 35px; padding: 0 10px; font-size: 10px; }
+    .baykat-farm-map-farm-chip { min-width: 180px; }
 }
 
 @media (max-width: 640px) {
