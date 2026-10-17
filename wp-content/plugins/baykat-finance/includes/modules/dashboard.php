@@ -371,7 +371,12 @@ function baykat_farm_render_dashboard() {
                 <div class="baykat-farm-overview-map-canvas" data-farm-overview-map-canvas aria-label="Carte des emplacements de vos fermes"></div>
                 <?php if ( count( $map_farms ) > 1 ) : ?>
                     <div class="baykat-farm-map-toolbar">
-                        <button type="button" class="baykat-farm-map-reset" data-reset-farm-map><span aria-hidden="true">↗</span> Vue d’ensemble</button>
+                        <button type="button" class="baykat-farm-map-reset" data-reset-farm-map>
+                            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <path d="M8 4H4v4m0-4 6 6m6 10h4v-4m0 4-6-6"></path>
+                            </svg>
+                            <span>Vue d’ensemble</span>
+                        </button>
                     </div>
                 <?php endif; ?>
                 <p class="baykat-farm-overview-map-error" data-farm-overview-map-error hidden>La carte n’a pas pu se charger. Vérifiez votre connexion puis rechargez la page.</p>

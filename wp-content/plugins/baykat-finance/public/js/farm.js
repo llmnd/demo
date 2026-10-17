@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 [farms[0].latitude, farms[0].longitude],
                 13
             );
+            map.attributionControl.setPrefix(false);
             const overviewTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
                 maxZoom: 19
@@ -132,6 +133,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 hasPosition ? [initialLatitude, initialLongitude] : [0, 0],
                 hasPosition ? 15 : 2
             );
+            map.attributionControl.setPrefix(false);
             const pickerTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
                 maxZoom: 19

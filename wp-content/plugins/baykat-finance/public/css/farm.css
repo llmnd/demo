@@ -628,25 +628,25 @@ body.admin-bar .baykat-farm-navigation { top: 32px; }
 .baykat-farm-map-toolbar {
     position: absolute;
     z-index: 500;
-    right: 12px;
-    bottom: 12px;
+    top: 16px;
+    right: 16px;
     display: flex;
     align-items: center;
     pointer-events: none;
 }
 .baykat-farm-map-reset {
     display: inline-flex;
-    min-height: 34px;
+    min-height: 40px;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 0 11px;
+    padding: 0 14px;
     border: 1px solid rgba(230,224,211,.86);
     border-radius: 9px;
     background: rgba(255,253,247,.9);
     color: #514839;
     font: inherit;
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 650;
     box-shadow: 0 2px 8px rgba(48,43,37,.1);
     backdrop-filter: blur(8px);
@@ -654,7 +654,9 @@ body.admin-bar .baykat-farm-navigation { top: 32px; }
 .baykat-farm-map-reset { pointer-events: auto; cursor: pointer; transition: background-color 150ms ease, transform 150ms ease; }
 .baykat-farm-map-reset:hover { transform: translateY(-1px); background: #fff; }
 .baykat-farm-map-reset:focus-visible { outline: 3px solid rgba(185,154,100,.6); outline-offset: 2px; }
-.baykat-farm-map-reset > span { color: #80643b; font-size: 13px; }
+.baykat-farm-map-reset > svg { width: 17px; height: 17px; flex: 0 0 auto; stroke: #80643b; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
+.baykat-farm-overview-map .leaflet-control-attribution { padding: 2px 5px; border-radius: 5px 0 0; background: rgba(255,253,247,.78); color: #625b51; font-size: 9px; line-height: 1.35; }
+.baykat-farm-overview-map .leaflet-control-attribution a { color: #536b46; }
 .baykat-farm-overview-map-empty {
     position: absolute;
     inset: 0;
@@ -1832,8 +1834,10 @@ body.baykat-farm-login-page .baykat-farm-app.baykat-farm-login {
     .baykat-farm-stats-grid strong { font-size: 21px; }
     .baykat-farm-stats-farms li { align-items: flex-start; flex-direction: column; gap: 4px; }
     .baykat-farm-stats-farms li span { text-align: left; }
-    .baykat-farm-map-toolbar { right: 9px; bottom: 9px; }
-    .baykat-farm-map-reset { min-height: 32px; padding: 0 9px; font-size: 9px; }
+    .baykat-farm-map-toolbar { top: auto; right: 9px; bottom: 9px; }
+    .baykat-farm-map-reset { min-height: 34px; gap: 6px; padding: 0 9px; font-size: 10px; }
+    .baykat-farm-map-reset > svg { width: 14px; height: 14px; }
+    .baykat-farm-overview-map .leaflet-control-attribution { font-size: 8px; }
 }
 
 @media (max-width: 640px) {
