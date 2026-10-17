@@ -50,8 +50,6 @@ document.addEventListener('DOMContentLoaded', function () {
             overviewTiles.addTo(map);
 
             const bounds = [];
-            const farmMarkers = new Map();
-            const farmPositions = new Map();
             farms.forEach(function (farm) {
                 const position = [Number(farm.latitude), Number(farm.longitude)];
                 const farmIcon = L.divIcon({
@@ -92,8 +90,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     className: 'baykat-farm-map-tooltip'
                 });
                 bounds.push(position);
-                farmMarkers.set(String(farm.id), marker);
-                farmPositions.set(String(farm.id), position);
             });
 
             function fitFarmBounds() {
@@ -105,39 +101,13 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             fitFarmBounds();
-
-            container.addEventListener('click', function (event) {
-                const focusButton = event.target.closest('[data-focus-farm]');
-                if (focusButton && container.contains(focusButton)) {
-                    const farmId = focusButton.dataset.focusFarm;
-                    const marker = farmMarkers.get(farmId);
-                    const position = farmPositions.get(farmId);
-                    if (!marker || !position) {
-                        return;
-                    }
-
-                    container.querySelectorAll('[data-focus-farm]').forEach(function (button) {
-                        button.setAttribute('aria-pressed', String(button === focusButton));
-                    });
-                    map.flyTo(position, Math.max(map.getZoom(), 15), { duration: 0.75 });
-                    marker.openPopup();
-                    return;
-                }
-
-                if (event.target.closest('[data-reset-farm-map]')) {
-                    container.querySelectorAll('[data-focus-farm]').forEach(function (button) {
-                        button.setAttribute('aria-pressed', 'false');
-                    });
+            const resetButton = container.querySelector('[data-reset-farm-map]');
+            if (resetButton) {
+                resetButton.addEventListener('click', function () {
                     map.closePopup();
                     fitFarmBounds();
-                }
-            });
-
-            map.on('click', function () {
-                container.querySelectorAll('[data-focus-farm]').forEach(function (button) {
-                    button.setAttribute('aria-pressed', 'false');
                 });
-            });
+            }
         });
 
         root.querySelectorAll('[data-farm-location-picker]').forEach(function (canvas) {
