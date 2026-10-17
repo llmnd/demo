@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', function () {
             );
             map.attributionControl.setPrefix(false);
             const overviewTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
                 maxZoom: 19
             });
             overviewTiles.on('tileerror', function () {
@@ -135,7 +135,7 @@ document.addEventListener('DOMContentLoaded', function () {
             );
             map.attributionControl.setPrefix(false);
             const pickerTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
                 maxZoom: 19
             });
             pickerTiles.on('tileerror', function () {
