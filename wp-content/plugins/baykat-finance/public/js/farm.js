@@ -182,8 +182,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
             function parcelTooltip(parcel) {
                 const tooltip = document.createElement('span');
-                const cropNames = parcel.crops.map(function (crop) { return crop.name; });
-                tooltip.textContent = parcel.name + (cropNames.length ? ' · ' + cropNames.join(', ') : '');
+                const parcelName = parcel.name.trim();
+                const parcelNameKey = parcelName.toLocaleLowerCase('fr-FR');
+                const cropNames = parcel.crops
+                    .map(function (crop) { return crop.name.trim(); })
+                    .filter(function (name, index, names) {
+                        return name
+                            && name.toLocaleLowerCase('fr-FR') !== parcelNameKey
+                            && names.findIndex(function (candidate) {
+                                return candidate.toLocaleLowerCase('fr-FR') === name.toLocaleLowerCase('fr-FR');
+                            }) === index;
+                    });
+                tooltip.textContent = parcelName + (cropNames.length ? ' · ' + cropNames.join(', ') : '');
                 return tooltip;
             }
 

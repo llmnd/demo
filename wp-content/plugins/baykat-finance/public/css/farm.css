@@ -2181,10 +2181,10 @@ body.baykat-farm-login-page .baykat-farm-app.baykat-farm-login {
 @media (max-width: 640px) {
     .baykat-farm-app {
         box-sizing: border-box;
-        width: 100%;
-        max-width: 100%;
+        width: 100vw;
+        max-width: 100vw;
         margin-right: 0 !important;
-        margin-left: 0 !important;
+        margin-left: calc(50% - 50vw) !important;
         padding-right: 12px;
         padding-left: 12px;
     }
