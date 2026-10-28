@@ -79,9 +79,15 @@ function baykat_farm_render_archives() {
                         <?php foreach ( $records as $record ) : ?>
                             <?php
                             $type = 'Fermes' === $label ? 'farm' : ( 'Parcelles' === $label ? 'parcel' : 'campaign' );
-                            $description = isset( $record->farm_name )
-                                ? $record->farm_name . ' — ' . $record->name
-                                : ( isset( $record->crop_name ) ? $record->crop_name . ( 'simulation' === $record->campaign_type ? ' — Simulation' : ' — ' . $record->farm_name . ' / ' . $record->parcel_name ) : $record->name );
+                            if ( 'campaign' === $type ) {
+                                $description = $record->crop_name . ( 'simulation' === $record->campaign_type
+                                    ? ' — Simulation'
+                                    : ' — ' . $record->farm_name . ' / ' . $record->parcel_name );
+                            } elseif ( 'parcel' === $type ) {
+                                $description = $record->farm_name . ' — ' . $record->name;
+                            } else {
+                                $description = $record->name;
+                            }
                             ?>
                             <li>
                                 <span><strong><?php echo esc_html( $description ); ?></strong><small>Archivé le <?php echo esc_html( $record->archived_at ); ?></small></span>

@@ -47,11 +47,15 @@ function baykat_farm_campaign_stock_get_summary( $campaign_id, $harvest_id = 0 )
     $events_table = baykat_farm_campaign_stock_event_table_name();
     $campaigns_table = baykat_farm_campaign_table_name();
     $transactions_table = baykat_finance_get_table_name();
-    $harvest_filter = '';
+    $harvest_record_filter = '';
+    $harvest_event_filter = '';
+    $allocation_harvest_filter = '';
     $harvest_args = array( (int) $campaign_id );
 
     if ( $harvest_id ) {
-        $harvest_filter = ' AND harvest_id = %d';
+        $harvest_record_filter = ' AND id = %d';
+        $harvest_event_filter = ' AND harvest_id = %d';
+        $allocation_harvest_filter = ' AND allocations.harvest_id = %d';
         $harvest_args[] = (int) $harvest_id;
     }
 
@@ -64,7 +68,7 @@ function baykat_farm_campaign_stock_get_summary( $campaign_id, $harvest_id = 0 )
                     END) AS unit_count,
                     MIN(unit) AS unit
              FROM $harvests_table
-             WHERE campaign_id = %d$harvest_filter",
+             WHERE campaign_id = %d$harvest_record_filter",
             $harvest_args
         )
     );
@@ -178,7 +182,7 @@ function baykat_farm_campaign_stock_get_summary( $campaign_id, $harvest_id = 0 )
                     END
                 ), 0) AS allocated_quantity
              FROM $events_table
-             WHERE campaign_id = %d$harvest_filter",
+             WHERE campaign_id = %d$harvest_event_filter",
             $harvest_args
         )
     );
@@ -201,7 +205,7 @@ function baykat_farm_campaign_stock_get_summary( $campaign_id, $harvest_id = 0 )
             ), 0) AS commercialization_allocated_quantity
              FROM " . baykat_farm_campaign_allocation_table_name() . " AS allocations
              WHERE allocations.campaign_id = %d
-                AND allocations.destination_type = 'commercialization'$harvest_filter",
+                AND allocations.destination_type = 'commercialization'$allocation_harvest_filter",
             $harvest_args
         )
     );
@@ -1164,12 +1168,28 @@ function baykat_farm_render_campaigns() {
         }
         $campaigns = array();
     }
+    $simulations = array_values(
+        array_filter(
+            $campaigns,
+            function ( $campaign ) {
+                return 'simulation' === $campaign->campaign_type;
+            }
+        )
+    );
+    $campaigns = array_values(
+        array_filter(
+            $campaigns,
+            function ( $campaign ) {
+                return 'real' === $campaign->campaign_type;
+            }
+        )
+    );
     ?>
     <div class="baykat-farm-content">
         <header class="baykat-farm-section-heading">
             <span class="baykat-farm-eyebrow">Planifier et suivre</span>
             <h2>Campagnes</h2>
-            <p>Suivez la production puis la commercialisation. Les simulations restent des prévisions, séparées des données réelles.</p>
+            <p>Une campagne correspond à une culture, une parcelle et une saison. Suivez d’abord la production, puis le stock récolté et sa commercialisation.</p>
         </header>
         <?php if ( $message ) : ?>
             <div class="baykat-farm-notice baykat-farm-notice-<?php echo esc_attr( $message['type'] ); ?>" role="<?php echo 'error' === $message['type'] ? 'alert' : 'status'; ?>"><?php echo esc_html( $message['message'] ); ?></div>
@@ -1177,14 +1197,15 @@ function baykat_farm_render_campaigns() {
 
         <section class="baykat-farm-panel baykat-farm-add-panel" aria-labelledby="baykat-campaign-create-title">
             <details class="baykat-farm-add-form">
-                <summary id="baykat-campaign-create-title"><span class="baykat-farm-eyebrow">Nouvelle planification</span><strong>Créer une campagne ou une simulation</strong><span class="baykat-farm-add-form-icon" aria-hidden="true">+</span></summary>
+                <summary id="baykat-campaign-create-title"><span class="baykat-farm-eyebrow">Commencer un suivi</span><strong>Créer une campagne</strong><span class="baykat-farm-add-form-icon" aria-hidden="true">+</span></summary>
+                <p class="baykat-campaign-form-intro">Choisissez une campagne réelle pour suivre une culture sur une parcelle, ou une simulation pour tester un projet avant de disposer d’une ferme.</p>
                 <form class="baykat-farm-form" method="post">
                     <?php wp_nonce_field( 'baykat_add_campaign', '_wpnonce' ); ?>
                     <div class="baykat-farm-field baykat-farm-field-wide">
                         <label for="baykat_campaign_type">Type</label>
                         <select name="campaign_type" id="baykat_campaign_type" required>
-                            <option value="simulation">Simulation — prévisions uniquement</option>
-                            <option value="real">Campagne réelle</option>
+                            <option value="simulation">Simulation — tester un projet</option>
+                            <option value="real">Campagne réelle — suivre une production</option>
                         </select>
                     </div>
                     <div class="baykat-farm-field">
@@ -1253,27 +1274,18 @@ function baykat_farm_render_campaigns() {
         </section>
 
         <section class="baykat-farm-panel" aria-labelledby="baykat-campaign-list-title">
-            <header class="baykat-farm-panel-heading"><span class="baykat-farm-eyebrow">Suivi des phases</span><h3 id="baykat-campaign-list-title">Mes campagnes</h3></header>
+            <header class="baykat-farm-panel-heading">
+                <div><span class="baykat-farm-eyebrow">Votre activité agricole</span><h3 id="baykat-campaign-list-title">Mes campagnes réelles</h3></div>
+                <?php if ( $campaigns ) : ?><span class="baykat-campaign-count"><?php echo esc_html( count( $campaigns ) . ( 1 === count( $campaigns ) ? ' suivi' : ' suivis' ) ); ?></span><?php endif; ?>
+            </header>
             <?php if ( $campaigns ) : ?>
                 <div class="baykat-campaign-grid">
                     <?php foreach ( $campaigns as $campaign ) : ?>
                         <?php
-                        $is_simulation = 'simulation' === $campaign->campaign_type;
-                        $campaign_harvests = $is_simulation
-                            ? array()
-                            : baykat_farm_get_campaign_harvests( (int) $campaign->id );
-                        $stock_summary = $is_simulation
-                            ? null
-                            : baykat_farm_campaign_stock_get_summary( (int) $campaign->id );
-                        $allocations = $is_simulation
-                            ? array()
-                            : baykat_farm_campaign_get_allocations( (int) $campaign->id );
-                        $stock_events = $is_simulation
-                            ? array()
-                            : baykat_farm_campaign_get_stock_events( (int) $campaign->id );
-                        $projected_harvest = $is_simulation ? (float) $campaign->area_ha * (float) $campaign->expected_yield_kg_ha : null;
-                        $projected_revenue = $is_simulation ? $projected_harvest * (float) $campaign->expected_price_per_kg : null;
-                        $projected_result = $is_simulation ? $projected_revenue - (float) $campaign->expected_cost : null;
+                        $campaign_harvests = baykat_farm_get_campaign_harvests( (int) $campaign->id );
+                        $stock_summary = baykat_farm_campaign_stock_get_summary( (int) $campaign->id );
+                        $allocations = baykat_farm_campaign_get_allocations( (int) $campaign->id );
+                        $stock_events = baykat_farm_campaign_get_stock_events( (int) $campaign->id );
                         $actual_income = (float) $campaign->actual_income;
                         $actual_expenses = (float) $campaign->actual_expenses;
                         $production_expenses = (float) $campaign->production_expenses;
@@ -1294,66 +1306,74 @@ function baykat_farm_render_campaigns() {
                             && (float) $campaign->harvested_kg > 0
                                 ? number_format_i18n( $production_expenses / (float) $campaign->harvested_kg, 2 ) . ' FCFA/kg'
                                 : 'Non disponible';
+                        $matching_simulations = array_values(
+                            array_filter(
+                                $simulations,
+                                function ( $simulation ) use ( $campaign ) {
+                                    return ( (int) $campaign->source_simulation_id > 0 && (int) $campaign->source_simulation_id === (int) $simulation->id )
+                                        || ( ! empty( $campaign->crop_reference_id ) && (int) $campaign->crop_reference_id === (int) $simulation->crop_reference_id )
+                                        || ( 0 === strcasecmp( trim( $campaign->crop_name ), trim( $simulation->crop_name ) ) );
+                                }
+                            )
+                        );
                         ?>
                         <article class="baykat-campaign-card">
-                            <header>
-                                <span class="baykat-farm-eyebrow"><?php echo $is_simulation ? 'SIMULATION · PRÉVISIONS UNIQUEMENT' : 'CAMPAGNE RÉELLE'; ?></span>
+                            <header class="baykat-campaign-card-heading">
+                                <span class="baykat-campaign-type">Campagne réelle</span>
                                 <h4><?php echo esc_html( $campaign->crop_name ); ?></h4>
-                                <p><?php echo esc_html( $campaign->variety ? $campaign->variety : 'Variété non renseignée' ); ?> · <?php echo esc_html( baykat_farm_format_quantity( $campaign->area_ha, 4 ) ); ?> ha</p>
-                                <?php if ( ! $is_simulation ) : ?>
-                                    <p><?php echo esc_html( $campaign->farm_name . ' — ' . $campaign->parcel_name ); ?></p>
-                                <?php endif; ?>
+                                <p class="baykat-campaign-context"><?php echo esc_html( $campaign->variety ? 'Variété ' . $campaign->variety : 'Variété non précisée' ); ?> <span aria-hidden="true">·</span> <?php echo esc_html( baykat_farm_format_quantity( $campaign->area_ha, 4 ) ); ?> ha</p>
+                                <p class="baykat-campaign-context"><?php echo esc_html( $campaign->farm_name . ' / ' . $campaign->parcel_name ); ?></p>
                             </header>
-                            <?php if ( $is_simulation ) : ?>
-                                <div class="baykat-campaign-forecast">
-                                    <div><span>Récolte estimée</span><strong><?php echo esc_html( baykat_farm_format_quantity( $projected_harvest, 3 ) ); ?> kg</strong></div>
-                                    <div><span>Recettes estimées</span><strong><?php echo esc_html( number_format_i18n( $projected_revenue, 0 ) ); ?> FCFA</strong></div>
-                                    <div><span>Résultat prévisionnel</span><strong><?php echo esc_html( number_format_i18n( $projected_result, 0 ) ); ?> FCFA</strong></div>
-                                </div>
-                                <p class="baykat-campaign-dashboard-note">Simulation uniquement : les prévisions ne créent ni récolte réelle ni stock disponible.</p>
-                                <?php if ( $editable_farms && $parcels ) : ?>
-                                    <details class="baykat-campaign-convert">
-                                        <summary>Créer la campagne réelle à partir de cette planification</summary>
-                                        <form method="post" class="baykat-farm-form">
-                                            <?php wp_nonce_field( 'baykat_create_from_simulation', '_wpnonce' ); ?>
-                                            <input type="hidden" name="source_simulation_id" value="<?php echo esc_attr( $campaign->id ); ?>">
-                                            <input type="hidden" name="campaign_type" value="real">
-                                            <label>Ferme
-                                                <select name="campaign_farm_id" data-campaign-farm required>
-                                                    <option value="">Choisir une ferme</option>
-                                                    <?php foreach ( $editable_farms as $farm ) : ?>
-                                                        <option value="<?php echo esc_attr( $farm->id ); ?>"><?php echo esc_html( $farm->name ); ?></option>
-                                                    <?php endforeach; ?>
-                                                </select>
-                                            </label>
-                                            <label>Parcelle
-                                                <select name="campaign_parcel_id" data-campaign-parcel required>
-                                                    <option value="">Choisir une parcelle</option>
-                                                    <?php foreach ( $parcels as $parcel ) : ?>
-                                                        <option value="<?php echo esc_attr( $parcel->id ); ?>" data-farm-id="<?php echo esc_attr( $parcel->farm_id ); ?>"><?php echo esc_html( $parcel->farm_name . ' — ' . $parcel->name ); ?></option>
-                                                    <?php endforeach; ?>
-                                                </select>
-                                            </label>
-                                            <button class="baykat-finance-button" type="submit" name="baykat_create_from_simulation" value="1">Créer sans reprendre les prévisions comme données réelles</button>
-                                        </form>
-                                    </details>
-                                <?php endif; ?>
+                            <?php if ( $matching_simulations ) : ?>
+                                <?php
+                                $comparable_simulation_id = (int) $campaign->source_simulation_id;
+                                if ( ! $comparable_simulation_id ) {
+                                    $comparable_simulation_id = (int) $matching_simulations[0]->id;
+                                }
+                                ?>
+                                <button
+                                    class="baykat-campaign-compare-button"
+                                    type="button"
+                                    data-open-campaign-comparison="<?php echo esc_attr( $campaign->id ); ?>"
+                                    data-source-simulation-id="<?php echo esc_attr( $comparable_simulation_id ); ?>"
+                                    data-campaign-name="<?php echo esc_attr( $campaign->crop_name ); ?>"
+                                    data-campaign-crop-name="<?php echo esc_attr( $campaign->crop_name ); ?>"
+                                    data-campaign-crop-reference="<?php echo esc_attr( (int) $campaign->crop_reference_id ); ?>"
+                                    data-campaign-area="<?php echo esc_attr( (float) $campaign->area_ha ); ?>"
+                                    data-campaign-harvest="<?php echo esc_attr( $actual_harvest ); ?>"
+                                    data-campaign-yield="<?php echo esc_attr( $has_consistent_harvest && 'kg' === $harvest_unit ? (float) $campaign->harvested_kg / (float) $campaign->area_ha : '' ); ?>"
+                                    data-campaign-expenses="<?php echo esc_attr( $actual_expenses ); ?>"
+                                    data-campaign-income="<?php echo esc_attr( $actual_income ); ?>"
+                                    data-campaign-result="<?php echo esc_attr( $actual_result ); ?>"
+                                >Comparer au prévisionnel</button>
                             <?php else : ?>
-                                <div class="baykat-campaign-dashboard">
-                                    <div><span>Culture · ferme · parcelle</span><strong><?php echo esc_html( $campaign->crop_name . ' · ' . $campaign->farm_name . ' · ' . $campaign->parcel_name ); ?></strong></div>
-                                    <div><span>Superficie cultivée</span><strong><?php echo esc_html( baykat_farm_format_quantity( $campaign->area_ha, 4 ) ); ?> ha</strong></div>
-                                    <div><span>Récolte enregistrée</span><strong><?php echo esc_html( $actual_harvest ); ?></strong></div>
-                                    <div><span>Rendement réel</span><strong><?php echo esc_html( $actual_yield ); ?></strong></div>
-                                    <div><span>Coût total suivi</span><strong><?php echo esc_html( number_format_i18n( $actual_expenses, 0 ) ); ?> FCFA</strong></div>
-                                    <div><span>Coût de production par kg</span><strong><?php echo esc_html( $production_cost_per_kg ); ?></strong></div>
-                                    <div><span>Revenus rattachés</span><strong><?php echo esc_html( number_format_i18n( $actual_income, 0 ) ); ?> FCFA</strong></div>
-                                    <div><span>Résultat simplifié</span><strong><?php echo esc_html( number_format_i18n( $actual_result, 0 ) ); ?> FCFA</strong></div>
-                                    <div><span>Marge sur revenus</span><strong><?php echo null === $actual_margin ? 'Non disponible' : esc_html( number_format_i18n( $actual_margin, 1 ) . ' %' ); ?></strong></div>
-                                    <div><span>Suivi</span><strong><?php echo esc_html( (int) $campaign->activity_count . ' activité(s) · ' . (int) $campaign->transaction_count . ' opération(s)' ); ?></strong></div>
+                                <button class="baykat-campaign-compare-button" type="button" data-create-comparison-simulation>Créer une simulation pour comparer</button>
+                            <?php endif; ?>
+                                <div class="baykat-campaign-overview">
+                                    <div class="baykat-campaign-overview-heading">
+                                        <div><span class="baykat-farm-eyebrow">Données clés de production</span><strong><?php echo esc_html( baykat_farm_format_quantity( $campaign->area_ha, 4 ) ); ?> ha cultivés</strong></div>
+                                        <span class="baykat-campaign-status baykat-campaign-status-<?php echo esc_attr( $campaign->production_status ); ?>"><?php echo esc_html( baykat_farm_campaign_status_label( $campaign->production_status ) ); ?></span>
+                                    </div>
+                                    <div class="baykat-campaign-dashboard">
+                                        <div><span>Surface cultivée</span><strong><?php echo esc_html( baykat_farm_format_quantity( $campaign->area_ha, 4 ) ); ?> ha</strong></div>
+                                        <div><span>Récolte enregistrée</span><strong><?php echo esc_html( $actual_harvest ); ?></strong></div>
+                                        <div><span>Rendement obtenu</span><strong><?php echo esc_html( $actual_yield ); ?></strong></div>
+                                        <div><span>Résultat simplifié</span><strong><?php echo esc_html( number_format_i18n( $actual_result, 0 ) ); ?> FCFA</strong></div>
+                                    </div>
                                 </div>
-                                <p class="baykat-campaign-dashboard-note">Résultat simplifié — ce n’est pas un bénéfice comptable. Les montants comprennent uniquement les opérations rattachées à cette campagne; les dépenses de commercialisation sont exclues du coût de production par kg. Unités converties uniquement si l’équivalence kilogramme est connue.</p>
+                                <details class="baykat-campaign-more">
+                                    <summary>Voir le détail financier et les indicateurs</summary>
+                                    <div class="baykat-campaign-dashboard">
+                                        <div><span>Dépenses totales suivies</span><strong><?php echo esc_html( number_format_i18n( $actual_expenses, 0 ) ); ?> FCFA</strong></div>
+                                        <div><span>Coût de production par kg</span><strong><?php echo esc_html( $production_cost_per_kg ); ?></strong></div>
+                                        <div><span>Revenus enregistrés</span><strong><?php echo esc_html( number_format_i18n( $actual_income, 0 ) ); ?> FCFA</strong></div>
+                                        <div><span>Marge sur revenus</span><strong><?php echo null === $actual_margin ? 'Non disponible' : esc_html( number_format_i18n( $actual_margin, 1 ) . ' %' ); ?></strong></div>
+                                        <div><span>Éléments suivis</span><strong><?php echo esc_html( (int) $campaign->activity_count . ' activité(s) · ' . (int) $campaign->transaction_count . ' opération(s)' ); ?></strong></div>
+                                    </div>
+                                    <p class="baykat-campaign-dashboard-note">Le résultat est un indicateur simplifié, pas un bénéfice comptable. Les calculs utilisent uniquement les opérations rattachées à cette campagne. Les dépenses de commercialisation sont exclues du coût de production par kg.</p>
+                                </details>
                                 <section class="baykat-campaign-stock" aria-label="Stock récolté et allocations">
-                                    <h5>Stock récolté et allocations</h5>
+                                    <div class="baykat-campaign-section-heading"><div><span class="baykat-farm-eyebrow">Après la récolte</span><h5>Stock et destinations</h5></div><p>Une réservation met du stock de côté; elle ne constitue pas une vente.</p></div>
                                     <?php if ( is_wp_error( $stock_summary ) ) : ?>
                                         <div class="baykat-farm-notice baykat-farm-notice-error" role="alert"><?php echo esc_html( $stock_summary->get_error_message() ); ?></div>
                                     <?php elseif ( is_wp_error( $campaign_harvests ) ) : ?>
@@ -1372,14 +1392,16 @@ function baykat_farm_render_campaigns() {
                                         </div>
                                     <?php else : ?>
                                         <div class="baykat-campaign-stock-grid">
-                                            <div><span>Total récolté</span><strong><?php echo esc_html( baykat_farm_format_quantity( $stock_summary['harvested_quantity'] ) . ' ' . $stock_summary['unit'] ); ?></strong></div>
-                                            <div><span>Alloué à la commercialisation</span><strong><?php echo esc_html( baykat_farm_format_quantity( $stock_summary['commercialization_allocated_quantity'] ) . ' ' . $stock_summary['unit'] ); ?></strong></div>
-                                            <div><span>Alloué à d’autres destinations</span><strong><?php echo esc_html( baykat_farm_format_quantity( max( 0, $stock_summary['allocated_quantity'] - $stock_summary['commercialization_allocated_quantity'] ) ) . ' ' . $stock_summary['unit'] ); ?></strong></div>
-                                            <div><span>Total vendu enregistré</span><strong><?php echo esc_html( baykat_farm_format_quantity( $stock_summary['sold_quantity'] ) . ' ' . $stock_summary['unit'] ); ?></strong></div>
-                                            <div><span>Ventes manuelles historiques non annulées</span><strong><?php echo esc_html( baykat_farm_format_quantity( $stock_summary['manual_sales_quantity'] ) . ' ' . $stock_summary['unit'] ); ?></strong></div>
-                                            <div><span>Pertes et autres sorties nettes</span><strong><?php echo esc_html( baykat_farm_format_quantity( $stock_summary['net_physical_adjustments'] ) . ' ' . $stock_summary['unit'] ); ?></strong></div>
+                                            <div><span>Récolté au total</span><strong><?php echo esc_html( baykat_farm_format_quantity( $stock_summary['harvested_quantity'] ) . ' ' . $stock_summary['unit'] ); ?></strong></div>
+                                            <div class="baykat-campaign-stock-available"><span>Libre et disponible</span><strong><?php echo esc_html( baykat_farm_format_quantity( $stock_summary['available_quantity'] ) . ' ' . $stock_summary['unit'] ); ?></strong></div>
+                                            <div><span>Réservé pour la commercialisation</span><strong><?php echo esc_html( baykat_farm_format_quantity( $stock_summary['commercialization_allocated_quantity'] ) . ' ' . $stock_summary['unit'] ); ?></strong></div>
+                                            <div><span>Réservé pour autre destination</span><strong><?php echo esc_html( baykat_farm_format_quantity( max( 0, $stock_summary['allocated_quantity'] - $stock_summary['commercialization_allocated_quantity'] ) ) . ' ' . $stock_summary['unit'] ); ?></strong></div>
+                                            <div><span>Vendu / sorties de vente enregistrées</span><strong><?php echo esc_html( baykat_farm_format_quantity( $stock_summary['sold_quantity'] ) . ' ' . $stock_summary['unit'] ); ?></strong></div>
+                                            <div><span>Sorties nettes (pertes incluses)</span><strong><?php echo esc_html( baykat_farm_format_quantity( $stock_summary['net_physical_adjustments'] ) . ' ' . $stock_summary['unit'] ); ?></strong></div>
                                             <div><span>Stock physique restant</span><strong><?php echo esc_html( baykat_farm_format_quantity( $stock_summary['physical_quantity'] ) . ' ' . $stock_summary['unit'] ); ?></strong></div>
-                                            <div><span>Disponible non réservé</span><strong><?php echo esc_html( baykat_farm_format_quantity( $stock_summary['available_quantity'] ) . ' ' . $stock_summary['unit'] ); ?></strong></div>
+                                            <?php if ( (float) $stock_summary['manual_sales_quantity'] > 0 ) : ?>
+                                                <div><span>Anciennes ventes manuelles (non annulées)</span><strong><?php echo esc_html( baykat_farm_format_quantity( $stock_summary['manual_sales_quantity'] ) . ' ' . $stock_summary['unit'] ); ?></strong></div>
+                                            <?php endif; ?>
                                         </div>
                                         <?php if ( ! is_wp_error( $campaign_harvests ) && (float) $stock_summary['manual_sales_quantity'] > 0 && count( $campaign_harvests ) > 1 ) : ?>
                                             <p class="baykat-campaign-dashboard-note">Les ventes manuelles historiques sont rattachées à la campagne, pas à une récolte précise. Elles sont déduites une seule fois du stock total de la campagne et ne sont pas attribuées rétroactivement à un lot.</p>
@@ -1388,9 +1410,10 @@ function baykat_farm_render_campaigns() {
                                             <div class="baykat-farm-notice baykat-farm-notice-error" role="alert"><?php echo esc_html( $campaign_harvests->get_error_message() ); ?></div>
                                         <?php elseif ( baykat_farm_user_can_edit_farm( (int) $campaign->farm_id, $user_id ) ) : ?>
                                             <details class="baykat-campaign-stock-action">
-                                                <summary>Réserver une quantité pour la commercialisation ou une autre destination</summary>
+                                                <summary>Réserver du stock</summary>
+                                                <p class="baykat-campaign-action-help">Indiquez le lot récolté, la quantité et sa destination. Une réservation n’est pas une annonce ni une vente.</p>
                                                 <?php if ( 'completed' !== $campaign->production_status || 'in_progress' !== $campaign->commercialization_status ) : ?>
-                                                    <p class="baykat-farm-empty-state">Terminez Production et démarrez Commercialisation pour créer des allocations réelles.</p>
+                                                    <p class="baykat-farm-empty-state">Pour réserver du stock, terminez d’abord la production, puis passez la commercialisation à « En cours ».</p>
                                                 <?php elseif ( ! is_wp_error( $campaign_harvests ) && $campaign_harvests && (float) $stock_summary['available_quantity'] > 0 ) : ?>
                                                     <form method="post" class="baykat-farm-form">
                                                         <?php wp_nonce_field( 'baykat_create_campaign_allocation', '_wpnonce' ); ?>
@@ -1424,7 +1447,7 @@ function baykat_farm_render_campaigns() {
                                                             <label for="baykat_allocation_notes_<?php echo esc_attr( $campaign->id ); ?>">Notes (facultatif)</label>
                                                             <textarea name="stock_notes" id="baykat_allocation_notes_<?php echo esc_attr( $campaign->id ); ?>" maxlength="2000" rows="2"></textarea>
                                                         </div>
-                                                        <button class="baykat-finance-button" type="submit" name="baykat_create_campaign_allocation" value="1">Enregistrer la réservation</button>
+                                                        <button class="baykat-finance-button" type="submit" name="baykat_create_campaign_allocation" value="1">Confirmer la réservation</button>
                                                     </form>
                                                 <?php else : ?>
                                                     <p class="baykat-farm-empty-state">Aucun stock récolté libre à réserver.</p>
@@ -1432,7 +1455,8 @@ function baykat_farm_render_campaigns() {
                                             </details>
                                             <?php if ( ! is_wp_error( $campaign_harvests ) && $campaign_harvests && (float) $stock_summary['physical_quantity'] > 0 ) : ?>
                                                 <details class="baykat-campaign-stock-action">
-                                                    <summary>Enregistrer une perte ou une autre sortie physique</summary>
+                                                    <summary>Déclarer une perte ou une sortie</summary>
+                                                    <p class="baykat-campaign-action-help">À utiliser seulement si une quantité a réellement quitté le stock (perte, détérioration ou autre motif). Un motif est obligatoire.</p>
                                                     <form method="post" class="baykat-farm-form">
                                                         <?php wp_nonce_field( 'baykat_record_campaign_stock_adjustment', '_wpnonce' ); ?>
                                                         <input type="hidden" name="campaign_id" value="<?php echo esc_attr( $campaign->id ); ?>">
@@ -1461,7 +1485,7 @@ function baykat_farm_render_campaigns() {
                                                             <label for="baykat_stock_event_notes_<?php echo esc_attr( $campaign->id ); ?>">Motif obligatoire</label>
                                                             <textarea name="stock_notes" id="baykat_stock_event_notes_<?php echo esc_attr( $campaign->id ); ?>" maxlength="2000" rows="2" required></textarea>
                                                         </div>
-                                                        <button class="baykat-finance-button" type="submit" name="baykat_record_campaign_stock_adjustment" value="1">Enregistrer la sortie physique</button>
+                                                        <button class="baykat-finance-button" type="submit" name="baykat_record_campaign_stock_adjustment" value="1">Confirmer la sortie du stock</button>
                                                     </form>
                                                 </details>
                                             <?php endif; ?>
@@ -1469,28 +1493,34 @@ function baykat_farm_render_campaigns() {
                                         <?php if ( is_wp_error( $allocations ) ) : ?>
                                             <div class="baykat-farm-notice baykat-farm-notice-error" role="alert"><?php echo esc_html( $allocations->get_error_message() ); ?></div>
                                         <?php elseif ( $allocations ) : ?>
-                                            <div class="baykat-campaign-allocation-list">
-                                                <h6>Allocations enregistrées</h6>
-                                                <?php foreach ( $allocations as $allocation ) : ?>
-                                                    <article>
-                                                        <div>
-                                                            <strong><?php echo esc_html( 'commercialization' === $allocation->destination_type ? 'Commercialisation' : ( $allocation->destination_label ? $allocation->destination_label : 'Autre destination' ) ); ?></strong>
-                                                            <span><?php echo esc_html( ( $allocation->harvest_date ? $allocation->harvest_date : 'Date non renseignée' ) . ' · Réservé : ' . baykat_farm_format_quantity( $allocation->quantity ) . ' ' . $stock_summary['unit'] . ' · Restant : ' . baykat_farm_format_quantity( $allocation->remaining_quantity ) . ' ' . $stock_summary['unit'] ); ?></span>
-                                                            <?php if ( $allocation->notes ) : ?><p><?php echo esc_html( $allocation->notes ); ?></p><?php endif; ?>
-                                                        </div>
-                                                        <?php if ( $allocation->remaining_quantity > 0.0005 && baykat_farm_user_can_edit_farm( (int) $campaign->farm_id, $user_id ) ) : ?>
-                                                            <form method="post" class="baykat-campaign-release-form">
-                                                                <?php wp_nonce_field( 'baykat_release_campaign_allocation', '_wpnonce' ); ?>
-                                                                <input type="hidden" name="allocation_id" value="<?php echo esc_attr( $allocation->id ); ?>">
-                                                                <input type="hidden" name="stock_action_key" value="<?php echo esc_attr( wp_generate_uuid4() ); ?>">
-                                                                <label for="baykat_release_quantity_<?php echo esc_attr( $allocation->id ); ?>">Quantité à libérer (<?php echo esc_html( $stock_summary['unit'] ); ?>)</label>
-                                                                <input type="number" name="stock_quantity" id="baykat_release_quantity_<?php echo esc_attr( $allocation->id ); ?>" min="0.001" max="<?php echo esc_attr( $allocation->remaining_quantity ); ?>" step="0.001" value="<?php echo esc_attr( $allocation->remaining_quantity ); ?>" required>
-                                                                <button class="baykat-finance-button" type="submit" name="baykat_release_campaign_allocation" value="1">Libérer la réservation</button>
-                                                            </form>
-                                                        <?php endif; ?>
-                                                    </article>
-                                                <?php endforeach; ?>
-                                            </div>
+                                            <details class="baykat-campaign-allocation-disclosure">
+                                                <summary>Voir les allocations enregistrées <span><?php echo esc_html( count( $allocations ) ); ?></span></summary>
+                                                <div class="baykat-campaign-allocation-list">
+                                                    <?php foreach ( $allocations as $allocation ) : ?>
+                                                        <article>
+                                                            <div>
+                                                                <strong><?php echo esc_html( 'commercialization' === $allocation->destination_type ? 'Commercialisation' : ( $allocation->destination_label ? $allocation->destination_label : 'Autre destination' ) ); ?></strong>
+                                                                <span><?php echo esc_html( ( $allocation->harvest_date ? $allocation->harvest_date : 'Date non renseignée' ) . ' · Réservé : ' . baykat_farm_format_quantity( $allocation->quantity ) . ' ' . $stock_summary['unit'] . ' · Restant : ' . baykat_farm_format_quantity( $allocation->remaining_quantity ) . ' ' . $stock_summary['unit'] ); ?></span>
+                                                                <?php if ( $allocation->notes ) : ?><p><?php echo esc_html( $allocation->notes ); ?></p><?php endif; ?>
+                                                            </div>
+                                                            <?php if ( $allocation->remaining_quantity > 0.0005 && baykat_farm_user_can_edit_farm( (int) $campaign->farm_id, $user_id ) ) : ?>
+                                                                <details class="baykat-campaign-release">
+                                                                    <summary>Modifier ou libérer cette réservation</summary>
+                                                                    <p class="baykat-campaign-action-help">Libérer une quantité la rend de nouveau disponible. Cela ne modifie pas le stock physique et n’enregistre pas une vente.</p>
+                                                                    <form method="post" class="baykat-campaign-release-form">
+                                                                        <?php wp_nonce_field( 'baykat_release_campaign_allocation', '_wpnonce' ); ?>
+                                                                        <input type="hidden" name="allocation_id" value="<?php echo esc_attr( $allocation->id ); ?>">
+                                                                        <input type="hidden" name="stock_action_key" value="<?php echo esc_attr( wp_generate_uuid4() ); ?>">
+                                                                        <label for="baykat_release_quantity_<?php echo esc_attr( $allocation->id ); ?>">Quantité à libérer (<?php echo esc_html( $stock_summary['unit'] ); ?>)</label>
+                                                                        <input type="number" name="stock_quantity" id="baykat_release_quantity_<?php echo esc_attr( $allocation->id ); ?>" min="0.001" max="<?php echo esc_attr( $allocation->remaining_quantity ); ?>" step="0.001" placeholder="Maximum : <?php echo esc_attr( baykat_farm_format_quantity( $allocation->remaining_quantity ) ); ?>" required>
+                                                                        <button class="baykat-finance-button" type="submit" name="baykat_release_campaign_allocation" value="1">Confirmer la libération</button>
+                                                                    </form>
+                                                                </details>
+                                                            <?php endif; ?>
+                                                        </article>
+                                                    <?php endforeach; ?>
+                                                </div>
+                                            </details>
                                         <?php endif; ?>
                                         <?php if ( is_wp_error( $stock_events ) ) : ?>
                                             <div class="baykat-farm-notice baykat-farm-notice-error" role="alert"><?php echo esc_html( $stock_events->get_error_message() ); ?></div>
@@ -1524,8 +1554,9 @@ function baykat_farm_render_campaigns() {
                                     <div class="baykat-farm-notice baykat-farm-notice-error" role="alert"><?php echo esc_html( $campaign_harvests->get_error_message() ); ?></div>
                                 <?php else : ?>
                                     <details class="baykat-campaign-harvest">
-                                        <summary>Journal des récoltes (<?php echo esc_html( count( $campaign_harvests ) ); ?>)</summary>
+                                        <summary>Récoltes <span><?php echo esc_html( count( $campaign_harvests ) . ( 1 === count( $campaign_harvests ) ? ' lot enregistré' : ' lots enregistrés' ) ); ?></span></summary>
                                         <?php if ( baykat_farm_user_can_edit_farm( (int) $campaign->farm_id, $user_id ) ) : ?>
+                                            <p class="baykat-campaign-action-help">Chaque enregistrement correspond à un lot récolté. Le total de ces lots alimente le stock de la campagne.</p>
                                             <form method="post" class="baykat-farm-form">
                                                 <?php wp_nonce_field( 'baykat_record_harvest', '_wpnonce' ); ?>
                                                 <input type="hidden" name="campaign_id" value="<?php echo esc_attr( $campaign->id ); ?>">
@@ -1563,12 +1594,21 @@ function baykat_farm_render_campaigns() {
                                         <?php endif; ?>
                                     </details>
                                 <?php endif; ?>
-                                <div class="baykat-campaign-phases">
+                                <section class="baykat-campaign-phase-section" aria-label="Étapes de la campagne">
+                                    <div class="baykat-campaign-section-heading"><div><span class="baykat-farm-eyebrow">Parcours de la campagne</span><h5>Deux étapes</h5></div><p>La commercialisation s’ouvre après la production.</p></div>
+                                    <div class="baykat-campaign-phases">
                                     <?php foreach ( array( 'production' => 'Production', 'commercialization' => 'Commercialisation' ) as $phase => $label ) : ?>
                                         <?php $phase_status = 'production' === $phase ? $campaign->production_status : $campaign->commercialization_status; ?>
-                                        <div>
-                                            <span><?php echo esc_html( $label ); ?></span>
+                                        <div class="baykat-campaign-phase-card baykat-campaign-phase-<?php echo esc_attr( $phase_status ); ?>">
+                                            <span class="baykat-campaign-phase-step"><?php echo 'production' === $phase ? 'Étape 1' : 'Étape 2'; ?></span>
+                                            <h6><?php echo esc_html( $label ); ?></h6>
                                             <strong><?php echo esc_html( baykat_farm_campaign_status_label( $phase_status ) ); ?></strong>
+                                            <p class="baykat-campaign-phase-description"><?php echo 'production' === $phase ? 'Activités, dépenses et récoltes.' : 'Réservation du stock et suivi de sa mise en vente.'; ?></p>
+                                            <?php if ( 'commercialization' === $phase && 'completed' !== $campaign->production_status ) : ?>
+                                                <p class="baykat-campaign-dashboard-note">La commercialisation sera activable après la fin de la production.</p>
+                                            <?php elseif ( 'commercialization' === $phase ) : ?>
+                                                <p class="baykat-campaign-dashboard-note">Statut géré ici; pas encore synchronisé avec les annonces ou ventes BAYKAT.</p>
+                                            <?php endif; ?>
                                             <?php if ( baykat_farm_user_can_edit_farm( (int) $campaign->farm_id, $user_id ) && ( 'production' === $phase || 'completed' === $campaign->production_status ) ) : ?>
                                                 <form method="post">
                                                     <?php wp_nonce_field( 'baykat_update_campaign_phase', '_wpnonce' ); ?>
@@ -1584,8 +1624,8 @@ function baykat_farm_render_campaigns() {
                                             <?php endif; ?>
                                         </div>
                                     <?php endforeach; ?>
-                                </div>
-                            <?php endif; ?>
+                                    </div>
+                                </section>
                             <?php baykat_farm_render_archive_action( 'campaign', (int) $campaign->id, 'archive', 'Archiver la campagne' ); ?>
                         </article>
                     <?php endforeach; ?>
@@ -1595,6 +1635,85 @@ function baykat_farm_render_campaigns() {
             <?php endif; ?>
         </section>
     </div>
+    <?php if ( $simulations ) : ?>
+        <dialog class="baykat-campaign-comparison" data-campaign-comparison-dialog aria-labelledby="baykat-campaign-comparison-title">
+            <div class="baykat-campaign-comparison-content">
+                <header class="baykat-campaign-comparison-heading">
+                    <div>
+                        <span class="baykat-farm-eyebrow">Analyse de campagne</span>
+                        <h2 id="baykat-campaign-comparison-title">Réel et prévisionnel</h2>
+                        <p data-comparison-campaign-title></p>
+                    </div>
+                    <button class="baykat-campaign-comparison-close" type="button" data-close-campaign-comparison aria-label="Fermer la comparaison">&times;</button>
+                </header>
+                <label class="baykat-campaign-comparison-select-label" for="baykat-campaign-comparison-select">Simulation à comparer</label>
+                <select id="baykat-campaign-comparison-select" data-comparison-simulation-select>
+                    <?php foreach ( $simulations as $simulation ) : ?>
+                        <?php
+                        $forecast_harvest = (float) $simulation->area_ha * (float) $simulation->expected_yield_kg_ha;
+                        $forecast_income  = $forecast_harvest * (float) $simulation->expected_price_per_kg;
+                        $forecast_result  = $forecast_income - (float) $simulation->expected_cost;
+                        ?>
+                        <option
+                            value="<?php echo esc_attr( $simulation->id ); ?>"
+                            data-crop-name="<?php echo esc_attr( $simulation->crop_name ); ?>"
+                            data-crop-reference="<?php echo esc_attr( (int) $simulation->crop_reference_id ); ?>"
+                            data-area="<?php echo esc_attr( (float) $simulation->area_ha ); ?>"
+                            data-harvest="<?php echo esc_attr( $forecast_harvest ); ?>"
+                            data-yield="<?php echo esc_attr( (float) $simulation->expected_yield_kg_ha ); ?>"
+                            data-expenses="<?php echo esc_attr( (float) $simulation->expected_cost ); ?>"
+                            data-income="<?php echo esc_attr( $forecast_income ); ?>"
+                            data-result="<?php echo esc_attr( $forecast_result ); ?>"
+                        ><?php echo esc_html( $simulation->crop_name . ' · ' . baykat_farm_format_quantity( $simulation->area_ha, 4 ) . ' ha' . ( $simulation->planned_start_date ? ' · ' . $simulation->planned_start_date : '' ) ); ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <div class="baykat-campaign-comparison-table-wrap">
+                    <table class="baykat-campaign-comparison-table">
+                        <thead>
+                            <tr><th scope="col">Indicateur</th><th scope="col">Réel enregistré</th><th scope="col">Prévisionnel</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><th scope="row">Surface</th><td data-comparison-real-area></td><td data-comparison-forecast-area></td></tr>
+                            <tr><th scope="row">Récolte totale</th><td data-comparison-real-harvest></td><td data-comparison-forecast-harvest></td></tr>
+                            <tr><th scope="row">Rendement</th><td data-comparison-real-yield></td><td data-comparison-forecast-yield></td></tr>
+                            <tr><th scope="row">Dépenses suivies</th><td data-comparison-real-expenses></td><td data-comparison-forecast-expenses></td></tr>
+                            <tr><th scope="row">Recettes</th><td data-comparison-real-income></td><td data-comparison-forecast-income></td></tr>
+                            <tr><th scope="row">Résultat simplifié</th><td data-comparison-real-result></td><td data-comparison-forecast-result></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="baykat-campaign-comparison-note">Les données réelles reflètent les opérations enregistrées à ce jour. Le prévisionnel reprend les hypothèses de la simulation. Le résultat est un indicateur simplifié, pas un résultat comptable.</p>
+                <?php if ( $editable_farms && $parcels ) : ?>
+                    <details class="baykat-campaign-comparison-convert">
+                        <summary>Transformer cette simulation en campagne réelle</summary>
+                        <p>Choisissez la ferme et la parcelle. Les chiffres prévisionnels resteront des hypothèses et ne seront pas enregistrés comme récoltes ou dépenses réelles.</p>
+                        <form method="post" class="baykat-farm-form">
+                            <?php wp_nonce_field( 'baykat_create_from_simulation', '_wpnonce' ); ?>
+                            <input type="hidden" name="source_simulation_id" value="" data-comparison-source-simulation>
+                            <input type="hidden" name="campaign_type" value="real">
+                            <label>Ferme
+                                <select name="campaign_farm_id" data-comparison-farm required>
+                                    <option value="">Choisir une ferme</option>
+                                    <?php foreach ( $editable_farms as $farm ) : ?>
+                                        <option value="<?php echo esc_attr( $farm->id ); ?>"><?php echo esc_html( $farm->name ); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </label>
+                            <label>Parcelle
+                                <select name="campaign_parcel_id" data-comparison-parcel required>
+                                    <option value="">Choisir une parcelle</option>
+                                    <?php foreach ( $parcels as $parcel ) : ?>
+                                        <option value="<?php echo esc_attr( $parcel->id ); ?>" data-farm-id="<?php echo esc_attr( $parcel->farm_id ); ?>"><?php echo esc_html( $parcel->farm_name . ' — ' . $parcel->name ); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </label>
+                            <button class="baykat-finance-button" type="submit" name="baykat_create_from_simulation" value="1">Créer la campagne réelle</button>
+                        </form>
+                    </details>
+                <?php endif; ?>
+            </div>
+        </dialog>
+    <?php endif; ?>
     <script>
     (() => {
         const typeSelect = document.getElementById("baykat_campaign_type");

@@ -812,6 +812,184 @@ document.addEventListener('DOMContentLoaded', function () {
                 .replace(/[\u0300-\u036f]/g, '');
         }
 
+        function initializeCampaignComparison() {
+            if (app.dataset.campaignComparisonReady) {
+                return;
+            }
+
+            app.dataset.campaignComparisonReady = 'true';
+            let comparisonTrigger = null;
+            const numberFormatter = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 });
+            const currencyFormatter = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
+
+            function formatArea(value) {
+                return value ? numberFormatter.format(Number(value)) + ' ha' : 'Non disponible';
+            }
+
+            function formatQuantity(value) {
+                return value !== '' && Number.isFinite(Number(value))
+                    ? numberFormatter.format(Number(value)) + ' kg'
+                    : 'Non disponible';
+            }
+
+            function formatCurrency(value) {
+                return value !== '' && Number.isFinite(Number(value))
+                    ? currencyFormatter.format(Number(value)) + ' FCFA'
+                    : 'Non disponible';
+            }
+
+            function updateComparison(dialog) {
+                const trigger = comparisonTrigger;
+                const simulationSelect = dialog.querySelector('[data-comparison-simulation-select]');
+                const simulation = simulationSelect && simulationSelect.selectedOptions[0];
+                if (!trigger || !simulation) {
+                    return;
+                }
+
+                const campaignTitle = dialog.querySelector('[data-comparison-campaign-title]');
+                if (campaignTitle) {
+                    campaignTitle.textContent = trigger.dataset.campaignName || '';
+                }
+
+                const actualValues = {
+                    area: formatArea(trigger.dataset.campaignArea),
+                    harvest: trigger.dataset.campaignHarvest || 'Non disponible',
+                    yield: trigger.dataset.campaignYield !== ''
+                        ? formatQuantity(trigger.dataset.campaignYield) + '/ha'
+                        : 'Non disponible',
+                    expenses: formatCurrency(trigger.dataset.campaignExpenses),
+                    income: formatCurrency(trigger.dataset.campaignIncome),
+                    result: formatCurrency(trigger.dataset.campaignResult)
+                };
+                const forecastValues = {
+                    area: formatArea(simulation.dataset.area),
+                    harvest: formatQuantity(simulation.dataset.harvest),
+                    yield: formatQuantity(simulation.dataset.yield) + '/ha',
+                    expenses: formatCurrency(simulation.dataset.expenses),
+                    income: formatCurrency(simulation.dataset.income),
+                    result: formatCurrency(simulation.dataset.result)
+                };
+
+                Object.keys(actualValues).forEach(function (key) {
+                    const actualCell = dialog.querySelector('[data-comparison-real-' + key + ']');
+                    const forecastCell = dialog.querySelector('[data-comparison-forecast-' + key + ']');
+                    if (actualCell) {
+                        actualCell.textContent = actualValues[key];
+                    }
+                    if (forecastCell) {
+                        forecastCell.textContent = forecastValues[key];
+                    }
+                });
+
+                const sourceSimulation = dialog.querySelector('[data-comparison-source-simulation]');
+                if (sourceSimulation) {
+                    sourceSimulation.value = simulation.value;
+                }
+            }
+
+            app.addEventListener('click', function (event) {
+                const openButton = event.target.closest('[data-open-campaign-comparison]');
+                if (openButton) {
+                    const dialog = app.querySelector('[data-campaign-comparison-dialog]');
+                    const simulationSelect = dialog && dialog.querySelector('[data-comparison-simulation-select]');
+                    if (!dialog || !simulationSelect) {
+                        return;
+                    }
+
+                    comparisonTrigger = openButton;
+                    const preferredId = openButton.dataset.sourceSimulationId;
+                    const cropName = normalizeSearchText(openButton.dataset.campaignCropName || '');
+                    const availableOptions = Array.from(simulationSelect.options).filter(function (option) {
+                        const linkedSimulation = option.value === preferredId;
+                        const sameReference = openButton.dataset.campaignCropReference
+                            && option.dataset.cropReference === openButton.dataset.campaignCropReference;
+                        const sameName = normalizeSearchText(option.dataset.cropName || '') === cropName;
+                        option.hidden = !linkedSimulation && !sameReference && !sameName;
+                        return !option.hidden;
+                    });
+                    let preferredOption = Array.from(simulationSelect.options).find(function (option) {
+                        return !option.hidden && option.value === preferredId;
+                    });
+                    if (!preferredOption) {
+                        preferredOption = availableOptions.find(function (option) {
+                            return openButton.dataset.campaignCropReference
+                                && option.dataset.cropReference === openButton.dataset.campaignCropReference;
+                        });
+                    }
+                    if (!preferredOption) {
+                        preferredOption = availableOptions.find(function (option) {
+                            return normalizeSearchText(option.dataset.cropName || '') === cropName;
+                        });
+                    }
+                    if (!preferredOption) {
+                        return;
+                    }
+                    simulationSelect.value = preferredOption.value;
+                    updateComparison(dialog);
+                    if (!dialog.open) {
+                        dialog.showModal();
+                    }
+                    const closeButton = dialog.querySelector('[data-close-campaign-comparison]');
+                    if (closeButton) {
+                        closeButton.focus();
+                    }
+                    return;
+                }
+
+                const createSimulationButton = event.target.closest('[data-create-comparison-simulation]');
+                if (createSimulationButton) {
+                    const typeSelect = app.querySelector('#baykat_campaign_type');
+                    const formDetails = typeSelect && typeSelect.closest('details');
+                    if (formDetails) {
+                        formDetails.open = true;
+                    }
+                    if (typeSelect) {
+                        typeSelect.value = 'simulation';
+                        typeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                        typeSelect.focus();
+                        typeSelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    return;
+                }
+
+                const closeButton = event.target.closest('[data-close-campaign-comparison]');
+                const dialog = event.target.closest('[data-campaign-comparison-dialog]');
+                if (closeButton || (dialog && event.target === dialog)) {
+                    if (dialog && dialog.open) {
+                        dialog.close();
+                        if (comparisonTrigger && comparisonTrigger.isConnected) {
+                            comparisonTrigger.focus();
+                        }
+                    }
+                }
+            });
+
+            app.addEventListener('change', function (event) {
+                const dialog = event.target.closest('[data-campaign-comparison-dialog]');
+                if (!dialog) {
+                    return;
+                }
+                if (event.target.matches('[data-comparison-simulation-select]')) {
+                    updateComparison(dialog);
+                    return;
+                }
+                if (event.target.matches('[data-comparison-farm]')) {
+                    const parcelSelect = dialog.querySelector('[data-comparison-parcel]');
+                    if (!parcelSelect) {
+                        return;
+                    }
+                    Array.from(parcelSelect.options).forEach(function (option) {
+                        if (option.value) {
+                            option.hidden = option.dataset.farmId !== event.target.value;
+                        }
+                    });
+                    if (parcelSelect.selectedOptions[0] && parcelSelect.selectedOptions[0].hidden) {
+                        parcelSelect.value = '';
+                    }
+                }
+            });
+        }
+
         function initializeStockMovementForm(root) {
             const form = root.querySelector('form input[name="baykat_add_stock_movement"]');
             if (!form) {
@@ -2395,6 +2573,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         initializeImagePreviews(app);
+        initializeCampaignComparison();
         initializeStockMovementForm(app);
         initializeRecordFilters(app);
         initializeDashboardModals();
