@@ -123,6 +123,8 @@ Les charges sont en **jours ouvrés estimatifs par demande**. Elles se chevauche
 **Commercialisation :** cette catégorie entre dans le résultat, mais pas dans le coût de production par kg.  
 **Unités :** une conversion n’est appliquée que si elle est explicitement fiable et validée ; sinon l’indicateur concerné est « Non disponible ».
 
+**Présentation du bilan PDF :** les recettes, dépenses et opérations annulées sont présentées séparément ; les opérations annulées sont exclues des totaux. Un total nul signifie « aucune valeur enregistrée » et ne prouve pas l’absence de coûts réels. Le bilan de campagne rapproche la récolte du stock physique par les ventes, pertes, autres sorties et retours, sans confondre les quantités allouées avec le stock physique. Les dates d’activité, de récolte et de transaction reprennent leurs dates d’opération enregistrées ; pour les événements de stock, le PDF indique explicitement qu’il s’agit de la date de saisie.
+
 ## 6. Lots, budget et délais indicatifs
 
 | Lot | Demandes incluses | Forfait estimatif | Charge estimative | Critères de recette proposés |

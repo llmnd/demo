@@ -125,7 +125,8 @@ function baykat_farm_render_dashboard() {
         return 'real' === $campaign->campaign_type;
     } );
     $growing_campaigns = array_filter( $real_campaigns, function ( $campaign ) {
-        return 'in_progress' === $campaign->production_status;
+        return 'in_progress' === $campaign->production_status
+            || 'in_progress' === $campaign->commercialization_status;
     } );
 
     $today = current_time( 'Y-m-d' );
@@ -455,7 +456,10 @@ function baykat_farm_render_dashboard() {
                 <?php foreach ( array_slice( $farms, 0, 3 ) as $farm ) :
                     $farm_parcels = isset( $parcels_by_farm[ $farm->id ] ) ? $parcels_by_farm[ $farm->id ] : array();
                     $farm_campaigns = isset( $campaigns_by_farm[ $farm->id ] ) ? $campaigns_by_farm[ $farm->id ] : array();
-                    $growing = count( array_filter( $farm_campaigns, function ( $campaign ) { return 'in_progress' === $campaign->production_status; } ) );
+                    $growing = count( array_filter( $farm_campaigns, function ( $campaign ) {
+                        return 'in_progress' === $campaign->production_status
+                            || 'in_progress' === $campaign->commercialization_status;
+                    } ) );
                 ?>
                     <article class="baykat-farm-showcase-card">
                         <a class="baykat-farm-showcase-link" href="#baykat-workspace-farms" data-open-farm-modal="<?php echo esc_attr( $farm->id ); ?>" aria-label="<?php echo esc_attr( 'Voir les informations de ' . $farm->name ); ?>">
@@ -740,7 +744,10 @@ function baykat_farm_render_dashboard() {
                                 <?php foreach ( $farms as $farm ) :
                                     $farm_parcels = isset( $parcels_by_farm[ $farm->id ] ) ? $parcels_by_farm[ $farm->id ] : array();
                                     $farm_campaigns = array_filter( $real_campaigns, function ( $campaign ) use ( $farm ) { return (int) $campaign->farm_id === (int) $farm->id; } );
-                                    $farm_growing = count( array_filter( $farm_campaigns, function ( $campaign ) { return 'in_progress' === $campaign->production_status; } ) );
+                                    $farm_growing = count( array_filter( $farm_campaigns, function ( $campaign ) {
+                                        return 'in_progress' === $campaign->production_status
+                                            || 'in_progress' === $campaign->commercialization_status;
+                                    } ) );
                                 ?>
                                     <li><strong><?php echo esc_html( $farm->name ); ?></strong><span><?php echo esc_html( baykat_farm_format_quantity( $farm->area_ha ) ); ?> ha · <?php echo esc_html( number_format_i18n( count( $farm_parcels ) ) ); ?> parcelles · <?php echo esc_html( number_format_i18n( $farm_growing ) ); ?> campagnes en cours</span></li>
                                 <?php endforeach; ?>

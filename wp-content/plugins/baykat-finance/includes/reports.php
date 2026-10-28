@@ -142,6 +142,10 @@ function baykat_farm_report_pdf_escape_text( $text ) {
         return new WP_Error( 'report_pdf_encoding_failed', 'Impossible d’encoder le texte du bilan PDF.' );
     }
 
+    return baykat_farm_report_pdf_escape_encoded_text( $encoded );
+}
+
+function baykat_farm_report_pdf_escape_encoded_text( $encoded ) {
     return str_replace(
         array( '\\', '(', ')' ),
         array( '\\\\', '\\(', '\\)' ),
@@ -150,27 +154,66 @@ function baykat_farm_report_pdf_escape_text( $text ) {
 }
 
 function baykat_farm_report_build_pdf( $title, $subtitle, $sections ) {
-    $lines = array();
+    $blocks = array();
     foreach ( $sections as $section ) {
-        $lines[] = array( 'text' => $section['heading'], 'heading' => true );
+        $blocks[] = array(
+            'type' => 'heading',
+            'text' => baykat_farm_report_pdf_escape_text( $section['heading'] ),
+            'height' => 24,
+        );
+        if ( is_wp_error( $blocks[ count( $blocks ) - 1 ]['text'] ) ) {
+            return $blocks[ count( $blocks ) - 1 ]['text'];
+        }
+        if ( ! empty( $section['metrics'] ) ) {
+            foreach ( array_chunk( $section['metrics'], 2 ) as $metric_row ) {
+                $encoded_metrics = array();
+                foreach ( $metric_row as $metric ) {
+                    $label = iconv( 'UTF-8', 'Windows-1252//TRANSLIT', (string) $metric['label'] );
+                    $value = iconv( 'UTF-8', 'Windows-1252//TRANSLIT', (string) $metric['value'] );
+                    if ( false === $label || false === $value ) {
+                        return new WP_Error( 'report_pdf_encoding_failed', 'Impossible d’encoder les indicateurs du bilan PDF.' );
+                    }
+                    $encoded_metrics[] = array(
+                        'label' => baykat_farm_report_pdf_escape_encoded_text( $label ),
+                        'value' => baykat_farm_report_pdf_escape_encoded_text( $value ),
+                    );
+                }
+                $blocks[] = array( 'type' => 'metrics', 'metrics' => $encoded_metrics, 'height' => 48 );
+            }
+        }
         foreach ( $section['lines'] as $line ) {
-            $encoded_line = baykat_farm_report_pdf_escape_text( $line );
-            if ( is_wp_error( $encoded_line ) ) {
-                return $encoded_line;
+            $encoded_line = iconv( 'UTF-8', 'Windows-1252//TRANSLIT', (string) $line );
+            if ( false === $encoded_line ) {
+                return new WP_Error( 'report_pdf_encoding_failed', 'Impossible d’encoder le contenu du bilan PDF.' );
             }
             $wrapped_lines = '' === $encoded_line
                 ? array( '' )
                 : explode( "\n", wordwrap( $encoded_line, 92, "\n", true ) );
             foreach ( $wrapped_lines as $wrapped_line ) {
-                    $lines[] = array( 'text' => $wrapped_line, 'heading' => false );
+                $blocks[] = array(
+                    'type' => 'line',
+                    'text' => baykat_farm_report_pdf_escape_encoded_text( $wrapped_line ),
+                    'height' => '' === $wrapped_line ? 4 : 14,
+                );
             }
         }
-        $lines[] = array( 'text' => '', 'heading' => false );
     }
 
-    $pages = array_chunk( $lines, 48 );
-    if ( ! $pages ) {
-        $pages = array( array() );
+    $pages = array( array() );
+    $page_index = 0;
+    $remaining_height = 624;
+    foreach ( $blocks as $block_index => $block ) {
+        $required_height = $block['height'];
+        if ( 'heading' === $block['type'] && isset( $blocks[ $block_index + 1 ] ) ) {
+            $required_height += $blocks[ $block_index + 1 ]['height'];
+        }
+        if ( $required_height > $remaining_height && $pages[ $page_index ] ) {
+            $pages[] = array();
+            $page_index++;
+            $remaining_height = 624;
+        }
+        $pages[ $page_index ][] = $block;
+        $remaining_height -= $block['height'];
     }
     $objects = array(
         1 => '<< /Type /Catalog /Pages 2 0 R >>',
@@ -184,39 +227,50 @@ function baykat_farm_report_build_pdf( $title, $subtitle, $sections ) {
         $page_id = $next_id++;
         $stream_id = $next_id++;
         $page_ids[] = $page_id;
-        $stream = "BT\n/F2 18 Tf\n48 800 Td\n";
         $escaped_title = baykat_farm_report_pdf_escape_text( $title );
         $escaped_subtitle = baykat_farm_report_pdf_escape_text( $subtitle );
         if ( is_wp_error( $escaped_title ) || is_wp_error( $escaped_subtitle ) ) {
             return new WP_Error( 'report_pdf_encoding_failed', 'Impossible d’encoder le titre du bilan PDF.' );
         }
-        $subtitle_lines = explode( "\n", wordwrap( $escaped_subtitle, 92, "\n", true ) );
-        $stream .= '(' . $escaped_title . ") Tj\nET\nBT\n/F1 9 Tf\n48 782 Td\n12 TL\n";
+        $subtitle_encoded = iconv( 'UTF-8', 'Windows-1252//TRANSLIT', (string) $subtitle );
+        if ( false === $subtitle_encoded ) {
+            return new WP_Error( 'report_pdf_encoding_failed', 'Impossible d’encoder le sous-titre du bilan PDF.' );
+        }
+        $subtitle_lines = explode( "\n", wordwrap( $subtitle_encoded, 84, "\n", true ) );
+        $stream = "q\n0.12 0.25 0.22 rg\n0 757 595 85 re f\nQ\n";
+        $stream .= "BT\n1 1 1 rg\n/F2 20 Tf\n42 806 Td\n(" . $escaped_title . ") Tj\nET\n";
+        $stream .= "BT\n0.88 0.92 0.88 rg\n/F2 9 Tf\n487 812 Td\n(BAYKAT) Tj\nET\n";
+        $stream .= "BT\n0.88 0.92 0.88 rg\n/F1 9 Tf\n42 782 Td\n12 TL\n";
         foreach ( $subtitle_lines as $subtitle_line ) {
-            $stream .= '(' . $subtitle_line . ") Tj\nT*\n";
+            $stream .= '(' . baykat_farm_report_pdf_escape_encoded_text( $subtitle_line ) . ") Tj\nT*\n";
         }
         $stream .= "ET\n";
-        $y = 758;
+        $stream .= "q\n0.77 0.62 0.35 rg\n42 748 511 2 re f\nQ\n";
+        $y = 733;
 
         foreach ( $page_lines as $line ) {
-            if ( $line['heading'] ) {
-                $escaped_heading = baykat_farm_report_pdf_escape_text( $line['text'] );
-                if ( is_wp_error( $escaped_heading ) ) {
-                    return $escaped_heading;
+            if ( 'heading' === $line['type'] ) {
+                $stream .= "q\n0.92 0.95 0.92 rg\n42 " . ( $y - 16 ) . " 511 20 re f\nQ\n";
+                $stream .= "BT\n0.12 0.25 0.22 rg\n/F2 10 Tf\n51 " . ( $y - 10 ) . " Td\n(" . $line['text'] . ") Tj\nET\n";
+            } elseif ( 'metrics' === $line['type'] ) {
+                $column_width = 247;
+                foreach ( $line['metrics'] as $metric_index => $metric ) {
+                    $x = 42 + ( $metric_index * 264 );
+                    $stream .= "q\n0.97 0.97 0.95 rg\n0.84 0.87 0.83 RG\n1 w\n$x " . ( $y - 40 ) . " $column_width 42 re B\nQ\n";
+                    $stream .= "BT\n0.37 0.40 0.37 rg\n/F1 8 Tf\n" . ( $x + 10 ) . " " . ( $y - 13 ) . " Td\n(" . $metric['label'] . ") Tj\nET\n";
+                    $stream .= "BT\n0.12 0.25 0.22 rg\n/F2 11 Tf\n" . ( $x + 10 ) . " " . ( $y - 31 ) . " Td\n(" . $metric['value'] . ") Tj\nET\n";
                 }
-                $stream .= "BT\n/F2 11 Tf\n48 $y Td\n(" . $escaped_heading . ") Tj\nET\n";
-                $y -= 17;
-                continue;
+            } elseif ( '' !== $line['text'] ) {
+                $stream .= "BT\n0.18 0.20 0.18 rg\n/F1 9 Tf\n50 " . ( $y - 10 ) . " Td\n(" . $line['text'] . ") Tj\nET\n";
             }
-            if ( '' !== $line['text'] ) {
-                $stream .= "BT\n/F1 9 Tf\n48 $y Td\n(" . $line['text'] . ") Tj\nET\n";
-            }
-            $y -= '' === $line['text'] ? 2 : 13;
+            $y -= $line['height'];
         }
 
         $page_number = $page_index + 1;
         $page_count = count( $pages );
-        $stream .= "BT\n/F1 8 Tf\n48 30 Td\n(Page $page_number / $page_count) Tj\nET\n";
+        $stream .= "q\n0.84 0.87 0.83 RG\n0.6 w\n42 43 m\n553 43 l\nS\nQ\n";
+        $stream .= "BT\n0.42 0.44 0.42 rg\n/F1 8 Tf\n42 28 Td\n(Rapport de suivi agricole - resultat simplifie) Tj\nET\n";
+        $stream .= "BT\n0.42 0.44 0.42 rg\n/F1 8 Tf\n520 28 Td\n($page_number / $page_count) Tj\nET\n";
         $objects[ $page_id ] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ' . $stream_id . ' 0 R >>';
         $objects[ $stream_id ] = '<< /Length ' . strlen( $stream ) . " >>\nstream\n" . $stream . 'endstream';
     }
@@ -298,6 +352,7 @@ function baykat_farm_export_campaign_pdf() {
     $activities_table = baykat_farm_table_name( 'activities' );
     $harvests_table = $wpdb->prefix . 'baykat_harvests';
     $transactions_table = baykat_finance_get_table_name();
+    $stock_events_table = baykat_farm_campaign_stock_event_table_name();
     $activities = $wpdb->get_results(
         $wpdb->prepare(
             "SELECT activity_date, title, activity_type, notes
@@ -325,6 +380,17 @@ function baykat_farm_export_campaign_pdf() {
             $campaign_id
         )
     );
+    $stock_events = $wpdb->get_results(
+        $wpdb->prepare(
+            "SELECT events.event_type, events.quantity, events.notes, events.created_at, harvests.unit
+             FROM $stock_events_table AS events
+             LEFT JOIN $harvests_table AS harvests ON harvests.id = events.harvest_id
+             WHERE events.campaign_id = %d
+                AND events.event_type IN ('sale', 'loss', 'other_out', 'return')
+             ORDER BY events.created_at ASC, events.id ASC",
+            $campaign_id
+        )
+    );
     if ( '' !== $wpdb->last_error ) {
         wp_die( esc_html__( 'Impossible de charger toutes les données du bilan de campagne.', 'baykat-finance' ), '', array( 'response' => 500 ) );
     }
@@ -335,7 +401,9 @@ function baykat_farm_export_campaign_pdf() {
     }
     $income = 0;
     $expenses = 0;
-    $transaction_lines = array();
+    $income_lines = array();
+    $expense_lines = array();
+    $cancelled_lines = array();
     foreach ( (array) $transactions as $transaction ) {
         $is_cancelled = ! empty( $transaction->cancelled_at );
         if ( ! $is_cancelled && 'income' === $transaction->type ) {
@@ -347,16 +415,93 @@ function baykat_farm_export_campaign_pdf() {
             ? 'Recette'
             : baykat_finance_expense_category_label( $transaction->expense_category );
         $detail = $transaction->item_name ? $transaction->item_name : $transaction->description;
-        $transaction_lines[] = sprintf(
-            '%s · %s · %s · %s FCFA%s',
+        $line = sprintf(
+            '%s · %s · %s · %s FCFA',
             $transaction->operation_date ? $transaction->operation_date : 'Date non renseignée',
             $label,
             $detail ? $detail : 'Sans détail',
-            number_format_i18n( (float) $transaction->amount, 0 ),
-            $is_cancelled ? ' · Annulée' : ''
+            number_format_i18n( (float) $transaction->amount, 0 )
         );
+        if ( $is_cancelled ) {
+            $cancelled_lines[] = $line . ' · Annulée, exclue des totaux';
+        } elseif ( 'income' === $transaction->type ) {
+            $income_lines[] = $line;
+        } elseif ( 'expense' === $transaction->type ) {
+            $expense_lines[] = $line;
+        }
     }
     $result = $income - $expenses;
+    $production_expenses = (float) $campaign->production_expenses;
+    $harvest_unit = baykat_farm_normalize_unit( $campaign->harvested_unit );
+    $has_consistent_harvest = (int) $campaign->harvest_count > 0
+        && 1 === (int) $campaign->harvest_unit_count
+        && '' !== $harvest_unit;
+    $harvested_kg = (float) $campaign->harvested_kg;
+    $area_ha = (float) $campaign->area_ha;
+    $production_cost_per_kg = $has_consistent_harvest && 'kg' === $harvest_unit && $harvested_kg > 0
+        ? number_format_i18n( $production_expenses / $harvested_kg, 2 ) . ' FCFA/kg'
+        : 'Non disponible';
+    $yield_per_ha = $has_consistent_harvest && 'kg' === $harvest_unit && $area_ha > 0
+        ? baykat_farm_format_quantity( $harvested_kg / $area_ha ) . ' kg/ha'
+        : 'Non disponible';
+    $margin = $income > 0 ? number_format_i18n( ( $result / $income ) * 100, 1 ) . ' %' : 'Non disponible';
+    $indicator_limitations = array();
+    if ( ! $has_consistent_harvest ) {
+        $indicator_limitations[] = 'Les indicateurs par kg et le rendement sont indisponibles : aucune récolte homogène exploitable.';
+    } elseif ( 'kg' !== $harvest_unit ) {
+        $indicator_limitations[] = 'Les indicateurs par kg et le rendement sont indisponibles : la récolte n’est pas exprimée en kg.';
+    } elseif ( $area_ha <= 0 ) {
+        $indicator_limitations[] = 'Le rendement est indisponible : la surface cultivée n’est pas renseignée.';
+    }
+    if ( $has_consistent_harvest && 'kg' === $harvest_unit && $harvested_kg <= 0 ) {
+        $indicator_limitations[] = 'Le coût de production par kg est indisponible sans quantité récoltée positive.';
+    }
+    if ( $income <= 0 ) {
+        $indicator_limitations[] = 'La marge est indisponible sans recette enregistrée.';
+    }
+    $stock_event_lines = array();
+    $stock_event_labels = array(
+        'sale' => 'Vente/sortie',
+        'loss' => 'Perte',
+        'other_out' => 'Autre sortie',
+        'return' => 'Retour en stock',
+    );
+    foreach ( (array) $stock_events as $stock_event ) {
+        $stock_event_lines[] = sprintf(
+            '%s · %s · %s %s%s',
+            $stock_event->created_at ? 'Saisie le ' . $stock_event->created_at : 'Date de saisie inconnue',
+            isset( $stock_event_labels[ $stock_event->event_type ] ) ? $stock_event_labels[ $stock_event->event_type ] : $stock_event->event_type,
+            baykat_farm_format_quantity( $stock_event->quantity ),
+            $stock_event->unit ? baykat_farm_normalize_unit( $stock_event->unit ) : 'unité non précisée',
+            $stock_event->notes ? ' · ' . $stock_event->notes : ''
+        );
+    }
+    $stock_unit = $stock['unit'] ? ' ' . $stock['unit'] : '';
+    $stock_units_are_consistent = (int) $stock['unit_count'] <= 1;
+    $stock_reconciliation_lines = array();
+    if ( ! $stock_units_are_consistent ) {
+        $stock_reconciliation_lines[] = 'Rapprochement numérique indisponible : la campagne contient plusieurs unités non convertibles entre elles. Les mouvements détaillés indiquent leur unité propre.';
+    } else {
+        $stock_difference = (float) $stock['harvested_quantity'] - (float) $stock['physical_quantity'];
+        $stock_reconciliation_lines[] = 'Calcul : récolté ' . baykat_farm_format_quantity( $stock['harvested_quantity'] ) . $stock_unit
+            . ' − ventes ' . baykat_farm_format_quantity( $stock['sold_quantity'] ) . $stock_unit
+            . ' − pertes ' . baykat_farm_format_quantity( $stock['loss_quantity'] ) . $stock_unit
+            . ' − autres sorties ' . baykat_farm_format_quantity( $stock['other_out_quantity'] ) . $stock_unit
+            . ' + retours ' . baykat_farm_format_quantity( $stock['returned_quantity'] ) . $stock_unit
+            . ' = stock physique ' . baykat_farm_format_quantity( $stock['physical_quantity'] ) . $stock_unit . '.';
+        $stock_reconciliation_lines[] = 'Ventes manuelles historiques imputées : ' . baykat_farm_format_quantity( $stock['manual_sales_quantity'] ) . $stock_unit . '.';
+    }
+    if ( ! $stock['consistent'] && $stock_units_are_consistent ) {
+        $stock_reconciliation_lines[] = 'Attention : le stock présente une incohérence ou des ventes historiques ambiguës ; l’écart ne peut pas être confirmé comme entièrement expliqué.';
+    } elseif ( $stock_units_are_consistent && abs( $stock_difference ) > 0.0005 ) {
+        $difference_label = ( $stock_difference < 0 ? '−' : '' ) . baykat_farm_format_quantity( abs( $stock_difference ) );
+        $stock_reconciliation_lines[] = 'Écart net récolte moins stock physique expliqué par les mouvements enregistrés : ' . $difference_label . $stock_unit . '.';
+    } elseif ( $stock_units_are_consistent && $stock['consistent'] ) {
+        $stock_reconciliation_lines[] = 'Aucun écart entre la récolte enregistrée et le stock physique.';
+    }
+    if ( $stock['legacy_ambiguous_sales'] > 0 ) {
+        $stock_reconciliation_lines[] = 'Ventes anciennes non attribuées avec certitude : ' . (int) $stock['legacy_ambiguous_sales'] . '. Elles ne sont pas déduites d’un lot précis.';
+    }
     $harvest_lines = array();
     foreach ( (array) $harvests as $harvest ) {
         $harvest_lines[] = sprintf(
@@ -379,7 +524,7 @@ function baykat_farm_export_campaign_pdf() {
     foreach ( (array) $activities as $activity ) {
         $activity_lines[] = sprintf(
             '%s · %s (%s)%s',
-            $activity->activity_date,
+            $activity->activity_date ? $activity->activity_date : 'Date non renseignée',
             $activity->title,
             isset( $activity_types[ $activity->activity_type ] ) ? $activity_types[ $activity->activity_type ] : $activity->activity_type,
             $activity->notes ? ' · ' . $activity->notes : ''
@@ -401,32 +546,53 @@ function baykat_farm_export_campaign_pdf() {
                 'Ferme : ' . $campaign->farm_name,
                 'Parcelle : ' . $campaign->parcel_name,
                 'Culture : ' . $campaign->crop_name . ( $campaign->variety ? ' · Variété : ' . $campaign->variety : '' ),
-                'Surface : ' . baykat_farm_format_quantity( $campaign->area_ha, 4 ) . ' ha',
+                'Surface : ' . ( $area_ha > 0 ? baykat_farm_format_quantity( $area_ha, 4 ) . ' ha' : 'Non renseignée' ),
                 'Début : ' . ( $campaign->planned_start_date ? $campaign->planned_start_date : 'Non renseigné' )
                     . ' · Récolte prévue : ' . ( $campaign->planned_harvest_date ? $campaign->planned_harvest_date : 'Non renseignée' ),
-                'Opérations enregistrées : ' . ( $operation_dates ? reset( $operation_dates ) . ' à ' . end( $operation_dates ) : 'Aucune date renseignée' ),
+                'Dates réelles renseignées (activités, récoltes, finances) : ' . ( $operation_dates ? reset( $operation_dates ) . ' à ' . end( $operation_dates ) : 'Aucune date renseignée' ),
                 'Statut de production : ' . $campaign_status
                     . ' · Commercialisation : ' . baykat_farm_report_commercialization_status_label( $campaign->commercialization_status ),
             ),
         ),
         array(
-            'heading' => 'INDICATEURS DE CAMPAGNE',
-            'lines' => array(
-                'Récolte enregistrée : ' . baykat_farm_format_quantity( $stock['harvested_quantity'] ) . ( $stock['unit'] ? ' ' . $stock['unit'] : '' ),
-                'Quantité physique disponible : ' . baykat_farm_format_quantity( $stock['physical_quantity'] ) . ( $stock['unit'] ? ' ' . $stock['unit'] : '' ),
-                'Quantité réservée/allouée : ' . baykat_farm_format_quantity( $stock['allocated_quantity'] ) . ( $stock['unit'] ? ' ' . $stock['unit'] : '' ),
-                'Disponible : ' . baykat_farm_format_quantity( $stock['available_quantity'] ) . ( $stock['unit'] ? ' ' . $stock['unit'] : '' ),
-                'Recettes enregistrées : ' . number_format_i18n( $income, 0 ) . ' FCFA',
-                'Dépenses enregistrées : ' . number_format_i18n( $expenses, 0 ) . ' FCFA',
-                'Résultat simplifié : ' . number_format_i18n( $result, 0 ) . ' FCFA',
+            'heading' => 'INDICATEURS ÉCONOMIQUES',
+            'metrics' => array(
+                array( 'label' => 'Coût total suivi', 'value' => number_format_i18n( $expenses, 0 ) . ' FCFA' ),
+                array( 'label' => 'Coût de production par kg', 'value' => $production_cost_per_kg ),
+                array( 'label' => 'Rendement', 'value' => $yield_per_ha ),
+                array( 'label' => 'Recettes enregistrées', 'value' => number_format_i18n( $income, 0 ) . ' FCFA' ),
+                array( 'label' => 'Résultat simplifié', 'value' => number_format_i18n( $result, 0 ) . ' FCFA' ),
+                array( 'label' => 'Marge sur recettes', 'value' => $margin ),
+            ),
+            'lines' => array(),
+        ),
+        array(
+            'heading' => 'SITUATION ET RAPPROCHEMENT DU STOCK',
+            'metrics' => array(
+                array( 'label' => 'Récolte enregistrée', 'value' => $stock_units_are_consistent ? baykat_farm_format_quantity( $stock['harvested_quantity'] ) . $stock_unit : 'Non disponible (unités mixtes)' ),
+                array( 'label' => 'Stock physique restant', 'value' => $stock_units_are_consistent ? baykat_farm_format_quantity( $stock['physical_quantity'] ) . $stock_unit : 'Non disponible (unités mixtes)' ),
+                array( 'label' => 'Quantité réservée/allouée', 'value' => $stock_units_are_consistent ? baykat_farm_format_quantity( $stock['allocated_quantity'] ) . $stock_unit : 'Non disponible (unités mixtes)' ),
+                array( 'label' => 'Disponible après réservations', 'value' => $stock_units_are_consistent ? baykat_farm_format_quantity( $stock['available_quantity'] ) . $stock_unit : 'Non disponible (unités mixtes)' ),
+            ),
+            'lines' => array_merge(
+                $stock_reconciliation_lines,
+                $stock_event_lines ? array( 'Mouvements physiques détaillés (date de saisie, pas nécessairement date de l’opération) :' ) : array( 'Aucun événement de stock détaillé enregistré ; les ventes manuelles historiques sont récapitulées séparément.' ),
+                $stock_event_lines
             ),
         ),
         array( 'heading' => 'ACTIVITÉS ET TRAVAUX', 'lines' => $activity_lines ? $activity_lines : array( 'Aucune activité enregistrée.' ) ),
         array( 'heading' => 'RÉCOLTES', 'lines' => $harvest_lines ? $harvest_lines : array( 'Aucune récolte enregistrée.' ) ),
-        array( 'heading' => 'RECETTES ET DÉPENSES', 'lines' => $transaction_lines ? $transaction_lines : array( 'Aucune opération financière enregistrée.' ) ),
+        array( 'heading' => 'RECETTES ENREGISTRÉES', 'lines' => $income_lines ? $income_lines : array( 'Aucune recette enregistrée : 0 FCFA enregistré dans le suivi.' ) ),
+        array( 'heading' => 'DÉPENSES ENREGISTRÉES', 'lines' => $expense_lines ? $expense_lines : array( 'Aucune dépense enregistrée : 0 FCFA enregistré dans le suivi.' ) ),
+        array( 'heading' => 'OPÉRATIONS ANNULÉES', 'lines' => $cancelled_lines ? $cancelled_lines : array( 'Aucune opération annulée.' ) ),
         array(
             'heading' => 'NOTE DE LECTURE',
-            'lines' => array( 'Le résultat simplifié correspond aux recettes moins les dépenses enregistrées. Il ne constitue pas un bénéfice comptable. Les ventes BAYKAT non intégrées et les anciennes opérations sans date réelle ne sont pas reconstituées dans ce bilan.' ),
+            'lines' => array(
+                'Les montants et ratios reflètent uniquement les transactions enregistrées et non annulées pour cette campagne. Un total nul signifie qu’aucune valeur n’a été enregistrée ; il ne prouve pas l’absence de coûts réels.',
+                'Le coût de production par kg exclut les dépenses de commercialisation. Le rendement est calculé uniquement si la récolte est exprimée en kg et la surface est renseignée. Les indicateurs sans données suffisantes sont marqués « Non disponible ».',
+                $indicator_limitations ? implode( ' ', $indicator_limitations ) : 'Les données disponibles permettent le calcul des indicateurs affichés.',
+                'Le résultat simplifié correspond aux recettes moins les dépenses enregistrées ; il ne constitue pas un bénéfice comptable. Les ventes BAYKAT non intégrées ne sont pas incluses. Les dates affichées sont les dates d’opération saisies ; la date de saisie des mouvements de stock est identifiée séparément.',
+            ),
         ),
     );
     $today = current_time( 'Y-m-d' );
@@ -505,7 +671,9 @@ function baykat_farm_export_farm_pdf() {
     }
     $income = 0;
     $expenses = 0;
-    $transaction_lines = array();
+    $income_lines = array();
+    $expense_lines = array();
+    $cancelled_lines = array();
     foreach ( (array) $transactions as $transaction ) {
         $is_cancelled = ! empty( $transaction->cancelled_at );
         if ( ! $is_cancelled && 'income' === $transaction->type ) {
@@ -513,14 +681,20 @@ function baykat_farm_export_farm_pdf() {
         } elseif ( ! $is_cancelled && 'expense' === $transaction->type ) {
             $expenses += (float) $transaction->amount;
         }
-        $transaction_lines[] = sprintf(
-            '%s · %s · %s · %s FCFA%s',
+        $line = sprintf(
+            '%s · %s · %s · %s FCFA',
             $transaction->operation_date ? $transaction->operation_date : 'Date non renseignée',
             'income' === $transaction->type ? 'Recette' : baykat_finance_expense_category_label( $transaction->expense_category ),
             $transaction->item_name ? $transaction->item_name : ( $transaction->description ? $transaction->description : 'Sans détail' ),
-            number_format_i18n( (float) $transaction->amount, 0 ),
-            $is_cancelled ? ' · Annulée' : ''
+            number_format_i18n( (float) $transaction->amount, 0 )
         );
+        if ( $is_cancelled ) {
+            $cancelled_lines[] = $line . ' · Annulée, exclue des totaux';
+        } elseif ( 'income' === $transaction->type ) {
+            $income_lines[] = $line;
+        } elseif ( 'expense' === $transaction->type ) {
+            $expense_lines[] = $line;
+        }
     }
     $activity_types = array(
         'sowing' => 'Semis',
@@ -534,7 +708,7 @@ function baykat_farm_export_farm_pdf() {
     foreach ( (array) $activities as $activity ) {
         $activity_lines[] = sprintf(
             '%s · %s · %s · %s%s',
-            $activity->activity_date,
+            $activity->activity_date ? $activity->activity_date : 'Date non renseignée',
             $activity->parcel_name,
             isset( $activity_types[ $activity->activity_type ] ) ? $activity_types[ $activity->activity_type ] : $activity->activity_type,
             $activity->title,
@@ -565,15 +739,31 @@ function baykat_farm_export_farm_pdf() {
         $campaign_harvest = 1 === (int) $campaign_stock['unit_count']
             ? baykat_farm_format_quantity( $campaign_stock['harvested_quantity'] ) . ' ' . $campaign_stock['unit']
             : 'Unités mixtes ou quantité non disponible';
+        $campaign_unit = baykat_farm_normalize_unit( $campaign->harvested_unit );
+        $has_consistent_harvest = (int) $campaign->harvest_count > 0
+            && 1 === (int) $campaign->harvest_unit_count
+            && '' !== $campaign_unit;
+        $campaign_cost_per_kg = $has_consistent_harvest && 'kg' === $campaign_unit && (float) $campaign->harvested_kg > 0
+            ? number_format_i18n( (float) $campaign->production_expenses / (float) $campaign->harvested_kg, 2 ) . ' FCFA/kg'
+            : 'Non disponible';
+        $campaign_yield = $has_consistent_harvest && 'kg' === $campaign_unit && (float) $campaign->area_ha > 0
+            ? baykat_farm_format_quantity( (float) $campaign->harvested_kg / (float) $campaign->area_ha ) . ' kg/ha'
+            : 'Non disponible';
+        $campaign_margin = (float) $campaign->actual_income > 0
+            ? number_format_i18n( ( ( (float) $campaign->actual_income - (float) $campaign->actual_expenses ) / (float) $campaign->actual_income ) * 100, 1 ) . ' %'
+            : 'Non disponible';
         $campaign_lines[] = sprintf(
-            '%s · %s · %s · Récolte : %s · Recettes : %s FCFA · Dépenses : %s FCFA · Résultat simplifié : %s FCFA',
+            '%s · %s · %s · Récolte : %s · Coût de production : %s · Rendement : %s · Recettes : %s FCFA · Dépenses : %s FCFA · Résultat simplifié : %s FCFA · Marge : %s',
             $campaign->crop_name,
             $campaign->parcel_name,
             baykat_farm_campaign_status_label( $campaign->production_status ),
             $campaign_harvest,
+            $campaign_cost_per_kg,
+            $campaign_yield,
             number_format_i18n( (float) $campaign->actual_income, 0 ),
             number_format_i18n( (float) $campaign->actual_expenses, 0 ),
-            number_format_i18n( (float) $campaign->actual_income - (float) $campaign->actual_expenses, 0 )
+            number_format_i18n( (float) $campaign->actual_income - (float) $campaign->actual_expenses, 0 ),
+            $campaign_margin
         );
     }
     $operation_dates = array_filter(
@@ -597,17 +787,20 @@ function baykat_farm_export_farm_pdf() {
         ),
         array(
             'heading' => 'SYNTHÈSE FINANCIÈRE',
-            'lines' => array(
-                'Recettes enregistrées : ' . number_format_i18n( $income, 0 ) . ' FCFA',
-                'Dépenses enregistrées : ' . number_format_i18n( $expenses, 0 ) . ' FCFA',
-                'Résultat simplifié : ' . number_format_i18n( $income - $expenses, 0 ) . ' FCFA',
+            'metrics' => array(
+                array( 'label' => 'Recettes enregistrées', 'value' => number_format_i18n( $income, 0 ) . ' FCFA' ),
+                array( 'label' => 'Dépenses enregistrées', 'value' => number_format_i18n( $expenses, 0 ) . ' FCFA' ),
+                array( 'label' => 'Résultat simplifié', 'value' => number_format_i18n( $income - $expenses, 0 ) . ' FCFA' ),
             ),
+            'lines' => array( 'Les montants n’incluent que les opérations enregistrées et non annulées.' ),
         ),
         array( 'heading' => 'CAMPAGNES RÉELLES', 'lines' => $campaign_lines ? $campaign_lines : array( 'Aucune campagne réelle enregistrée pour cette ferme.' ) ),
         array( 'heading' => 'ACTIVITÉS ET TRAVAUX', 'lines' => $activity_lines ? $activity_lines : array( 'Aucune activité enregistrée.' ) ),
         array( 'heading' => 'RÉCOLTES', 'lines' => $harvest_lines ? $harvest_lines : array( 'Aucune récolte rattachée à une campagne réelle.' ) ),
-        array( 'heading' => 'JOURNAL FINANCIER', 'lines' => $transaction_lines ? $transaction_lines : array( 'Aucune opération financière enregistrée.' ) ),
-        array( 'heading' => 'NOTE DE LECTURE', 'lines' => array( 'Le résultat simplifié correspond aux recettes moins les dépenses enregistrées. Il ne constitue pas un bénéfice comptable. Les ventes BAYKAT non intégrées et les anciennes opérations sans date réelle ne sont pas reconstituées dans ce bilan.' ) ),
+        array( 'heading' => 'RECETTES ENREGISTRÉES', 'lines' => $income_lines ? $income_lines : array( 'Aucune recette enregistrée : 0 FCFA enregistré dans le suivi.' ) ),
+        array( 'heading' => 'DÉPENSES ENREGISTRÉES', 'lines' => $expense_lines ? $expense_lines : array( 'Aucune dépense enregistrée : 0 FCFA enregistré dans le suivi.' ) ),
+        array( 'heading' => 'OPÉRATIONS ANNULÉES', 'lines' => $cancelled_lines ? $cancelled_lines : array( 'Aucune opération annulée.' ) ),
+        array( 'heading' => 'NOTE DE LECTURE', 'lines' => array( 'Le résultat simplifié correspond aux recettes moins les dépenses enregistrées ; il ne constitue pas un bénéfice comptable. Un total nul signifie qu’aucune valeur n’a été enregistrée, et ne prouve pas l’absence de coûts réels. Les ventes BAYKAT non intégrées ne sont pas incluses. Les indicateurs de campagne sans données suffisantes sont marqués « Non disponible ».' ) ),
     );
     baykat_farm_report_download_pdf(
         'bilan-ferme-' . $farm_id . '-' . $today . '.pdf',
