@@ -812,6 +812,137 @@ document.addEventListener('DOMContentLoaded', function () {
                 .replace(/[\u0300-\u036f]/g, '');
         }
 
+        function initializeCampaignQuotePreview() {
+            if (app.dataset.campaignQuoteReady) {
+                return;
+            }
+
+            app.dataset.campaignQuoteReady = 'true';
+            const numberFormatter = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 });
+            const currencyFormatter = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
+
+            function formatCurrency(value) {
+                return currencyFormatter.format(value) + ' FCFA';
+            }
+
+            function listLines(value) {
+                return value.split(/\r\n|\r|\n/)
+                    .map(function (line) { return line.trim(); })
+                    .filter(Boolean);
+            }
+
+            function normalizeItem(value) {
+                return normalizeSearchText(value).replace(/\s+/g, ' ').trim();
+            }
+
+            function updatePreview() {
+                const form = app.querySelector('#baykat_campaign_type')?.form;
+                const preview = form && form.querySelector('[data-simulation-quote-preview]');
+                const typeSelect = form && form.querySelector('#baykat_campaign_type');
+                if (!form || !preview || !typeSelect) {
+                    return;
+                }
+
+                if (typeSelect.value !== 'simulation') {
+                    preview.hidden = true;
+                    return;
+                }
+
+                const area = Number(form.querySelector('[name="campaign_area_ha"]')?.value);
+                const yieldPerHectare = Number(form.querySelector('[name="expected_yield_kg_ha"]')?.value);
+                const cost = Number(form.querySelector('[name="expected_cost"]')?.value);
+                const price = Number(form.querySelector('[name="expected_price_per_kg"]')?.value);
+                const availableFunds = Number(form.querySelector('[name="expected_available_funds"]')?.value);
+                const validInputs = Number.isFinite(area) && area > 0
+                    && Number.isFinite(yieldPerHectare) && yieldPerHectare > 0
+                    && Number.isFinite(cost) && cost >= 0
+                    && Number.isFinite(price) && price > 0
+                    && Number.isFinite(availableFunds) && availableFunds >= 0;
+                if (!validInputs) {
+                    preview.hidden = true;
+                    return;
+                }
+
+                const harvest = area * yieldPerHectare;
+                const revenue = harvest * price;
+                const result = revenue - cost;
+                const fundingGap = Math.max(0, cost - availableFunds);
+                const breakEvenPrice = cost / harvest;
+                const breakEvenYield = cost / (area * price);
+                preview.hidden = false;
+
+                const values = {
+                    harvest: numberFormatter.format(harvest) + ' kg',
+                    revenue: formatCurrency(revenue),
+                    result: formatCurrency(result),
+                    fundingGap: formatCurrency(fundingGap),
+                    breakEvenPrice: numberFormatter.format(breakEvenPrice) + ' FCFA/kg',
+                    breakEvenYield: numberFormatter.format(breakEvenYield) + ' kg/ha'
+                };
+                Object.keys(values).forEach(function (key) {
+                    const target = preview.querySelector('[data-quote-' + key.replace(/[A-Z]/g, function (letter) {
+                        return '-' + letter.toLowerCase();
+                    }) + ']');
+                    if (target) {
+                        target.textContent = values[key];
+                    }
+                });
+
+                const analysis = preview.querySelector('[data-quote-analysis]');
+                if (analysis) {
+                    const financialMessage = fundingGap > 0
+                        ? 'Il manque ' + formatCurrency(fundingGap) + ' pour couvrir le budget déclaré.'
+                        : 'Les fonds déclarés couvrent le budget estimé.';
+                    const profitabilityMessage = result >= 0
+                        ? 'Selon les hypothèses saisies, les recettes dépasseraient les coûts déclarés de ' + formatCurrency(result) + '.'
+                        : 'Selon les hypothèses saisies, les coûts dépasseraient les recettes de ' + formatCurrency(Math.abs(result)) + '. Pour atteindre le seuil d’équilibre sans changer les autres paramètres, le prix ou le rendement devrait atteindre l’un des seuils indiqués ci-dessous.';
+                    analysis.textContent = profitabilityMessage + ' ' + financialMessage + ' Les résultats ne comprennent que les coûts que vous avez saisis.';
+                }
+
+                const neededItems = listLines(form.querySelector('[name="expected_tools_needed"]')?.value || '');
+                const availableItems = new Set(
+                    listLines(form.querySelector('[name="expected_tools_available"]')?.value || '')
+                        .map(normalizeItem)
+                );
+                const missingItems = neededItems.filter(function (item) {
+                    return !availableItems.has(normalizeItem(item));
+                });
+                const toolsSummary = preview.querySelector('[data-quote-tools-summary]');
+                const missingList = preview.querySelector('[data-quote-tools-missing]');
+                if (toolsSummary) {
+                    toolsSummary.textContent = neededItems.length
+                        ? missingItems.length
+                            ? missingItems.length + ' élément(s) déclaré(s) comme nécessaire(s) ne figurent pas dans votre liste des ressources disponibles.'
+                            : 'Tous les éléments déclarés comme nécessaires figurent dans votre liste des ressources disponibles.'
+                        : 'Aucun besoin matériel n’a été renseigné. La simulation ne peut pas déduire les outils nécessaires de la culture seule.';
+                }
+                if (missingList) {
+                    missingList.replaceChildren();
+                    missingItems.forEach(function (item) {
+                        const listItem = document.createElement('li');
+                        listItem.textContent = item;
+                        missingList.appendChild(listItem);
+                    });
+                }
+            }
+
+            app.addEventListener('input', function (event) {
+                if (event.target.closest('#baykat_campaign_type')) {
+                    return;
+                }
+                if (event.target.closest('.baykat-farm-add-form form')) {
+                    updatePreview();
+                }
+            });
+            app.addEventListener('change', function (event) {
+                if (event.target.matches('#baykat_campaign_type')) {
+                    updatePreview();
+                }
+            });
+            document.addEventListener('baykat:farm-module-loaded', updatePreview);
+            updatePreview();
+        }
+
         function initializeCampaignComparison() {
             if (app.dataset.campaignComparisonReady) {
                 return;
@@ -859,15 +990,21 @@ document.addEventListener('DOMContentLoaded', function () {
                         : 'Non disponible',
                     expenses: formatCurrency(trigger.dataset.campaignExpenses),
                     income: formatCurrency(trigger.dataset.campaignIncome),
-                    result: formatCurrency(trigger.dataset.campaignResult)
+                    result: formatCurrency(trigger.dataset.campaignResult),
+                    funding: 'Non renseigné'
                 };
+                const availableFunds = simulation.dataset.availableFunds;
+                const fundingGap = availableFunds !== ''
+                    ? Math.max(0, Number(simulation.dataset.expenses) - Number(availableFunds))
+                    : null;
                 const forecastValues = {
                     area: formatArea(simulation.dataset.area),
                     harvest: formatQuantity(simulation.dataset.harvest),
                     yield: formatQuantity(simulation.dataset.yield) + '/ha',
                     expenses: formatCurrency(simulation.dataset.expenses),
                     income: formatCurrency(simulation.dataset.income),
-                    result: formatCurrency(simulation.dataset.result)
+                    result: formatCurrency(simulation.dataset.result),
+                    funding: null === fundingGap ? 'Non renseigné' : formatCurrency(fundingGap)
                 };
 
                 Object.keys(actualValues).forEach(function (key) {
@@ -885,6 +1022,43 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (sourceSimulation) {
                     sourceSimulation.value = simulation.value;
                 }
+
+                const toolsNeeded = (simulation.dataset.toolsNeeded || '').split(/\r\n|\r|\n/).map(function (item) {
+                    return item.trim();
+                }).filter(Boolean);
+                const toolsAvailable = (simulation.dataset.toolsAvailable || '').split(/\r\n|\r|\n/).map(function (item) {
+                    return item.trim();
+                }).filter(Boolean);
+                const normalizedAvailable = new Set(toolsAvailable.map(function (item) {
+                    return normalizeSearchText(item).replace(/\s+/g, ' ').trim();
+                }));
+                const toolsMissing = toolsNeeded.filter(function (item) {
+                    return !normalizedAvailable.has(normalizeSearchText(item).replace(/\s+/g, ' ').trim());
+                });
+                [
+                    ['needed', toolsNeeded],
+                    ['available', toolsAvailable],
+                    ['missing', toolsMissing]
+                ].forEach(function (listData) {
+                    const list = dialog.querySelector('[data-comparison-tools-' + listData[0] + ']');
+                    if (!list) {
+                        return;
+                    }
+                    list.replaceChildren();
+                    if (!listData[1].length) {
+                        const item = document.createElement('li');
+                        item.textContent = 'missing' === listData[0] && toolsNeeded.length
+                            ? 'Aucun élément manquant selon les listes saisies.'
+                            : 'Non renseigné';
+                        list.appendChild(item);
+                        return;
+                    }
+                    listData[1].forEach(function (value) {
+                        const item = document.createElement('li');
+                        item.textContent = value;
+                        list.appendChild(item);
+                    });
+                });
             }
 
             app.addEventListener('click', function (event) {
@@ -1377,7 +1551,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         searchToggle.setAttribute('aria-expanded', isExpanded ? 'false' : 'true');
                         searchToggle.setAttribute('aria-label', isExpanded ? 'Afficher la recherche' : 'Masquer la recherche');
                         searchTool.hidden = isExpanded;
-                        if (filterTool) {
+                        if (filterTool && !filterTool.hasAttribute('data-record-filter-persistent')) {
                             filterTool.hidden = isExpanded;
                         }
 
@@ -1446,6 +1620,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 count.textContent = String(transactionIds.size + visibleRecords.filter(function (record) {
                     return !record.dataset.transactionId;
                 }).length);
+
             });
 
             workspaceTarget.querySelectorAll('[data-farm-finance-total]').forEach(function (total) {
@@ -1506,6 +1681,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 count.textContent = String(transactionIds.size + visibleRecords.filter(function (record) {
                     return !record.dataset.transactionId;
                 }).length);
+
+                if (section.id === 'baykat-workspace-campaigns') {
+                    const emptyMessage = section.querySelector('[data-parcel-campaign-empty]');
+                    if (emptyMessage) {
+                        emptyMessage.hidden = visibleRecords.length > 0;
+                    }
+                }
             });
 
             workspaceTarget.querySelectorAll('[data-farm-finance-total]').forEach(function (total) {
@@ -1895,6 +2077,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     const managementTarget = management.querySelector('[data-dashboard-workspace-target]');
                     const workspaceSections = workspace.content.cloneNode(true);
                     const relevantSections = [
+                        'baykat-workspace-campaigns',
                         'baykat-workspace-activities',
                         'baykat-workspace-finances',
                         'baykat-workspace-stocks'
@@ -1917,10 +2100,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         workspaceEyebrow.textContent = 'Gestion de la parcelle';
                     }
                     if (workspaceHeading) {
-                        workspaceHeading.textContent = 'Cultures, activités, finances et stocks';
+                        workspaceHeading.textContent = 'Campagnes, activités, finances et stocks';
                     }
                     if (workspaceDescription) {
-                        workspaceDescription.textContent = 'Choisissez une rubrique pour consulter les informations de ' + parcelName + '. Cultures, activités, finances et stocks restent liés à cette parcelle.';
+                        workspaceDescription.textContent = 'Retrouvez les campagnes rattachées à ' + parcelName + ', puis consultez ses activités, finances et stocks.';
                     }
 
                     content.appendChild(management);
@@ -2573,6 +2756,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         initializeImagePreviews(app);
+        initializeCampaignQuotePreview();
         initializeCampaignComparison();
         initializeStockMovementForm(app);
         initializeRecordFilters(app);

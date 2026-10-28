@@ -37,8 +37,119 @@ function baykat_farm_crop_catalog_get_active() {
         return new WP_Error( 'crop_catalog_failed', 'Impossible de charger la liste des cultures.' );
     }
 
-    return $cultures;
+    $unique_cultures = array();
+    $seen_names = array();
+    foreach ( (array) $cultures as $culture ) {
+        $normalized_name = baykat_farm_crop_catalog_normalize_name( $culture->name );
+        if ( isset( $seen_names[ $normalized_name ] ) ) {
+            continue;
+        }
+        $seen_names[ $normalized_name ] = true;
+        $unique_cultures[] = $culture;
+    }
+
+    return $unique_cultures;
 }
+
+function baykat_farm_crop_catalog_normalize_name( $name ) {
+    $name = strtolower( remove_accents( trim( sanitize_text_field( $name ) ) ) );
+    $name = preg_replace( '/[^a-z0-9]+/', ' ', $name );
+    $name = trim( preg_replace( '/\s+/', ' ', $name ) );
+    $invariant_plural_words = array( 'mais', 'pois', 'anis', 'cress' );
+    $words = explode( ' ', $name );
+
+    foreach ( $words as &$word ) {
+        $ending = substr( $word, -1 );
+        if ( strlen( $word ) > 4 && in_array( $ending, array( 's', 'x' ), true ) && ! in_array( $word, $invariant_plural_words, true ) ) {
+            $word = substr( $word, 0, -1 );
+        }
+    }
+    unset( $word );
+
+    return implode( ' ', $words );
+}
+
+function baykat_farm_crop_catalog_find_duplicate( $name, $cultures ) {
+    $normalized_name = baykat_farm_crop_catalog_normalize_name( $name );
+    foreach ( $cultures as $culture ) {
+        $normalized_existing = baykat_farm_crop_catalog_normalize_name( $culture->name );
+        if ( $normalized_name === $normalized_existing ) {
+            return array( 'type' => 'same', 'culture' => $culture );
+        }
+
+        if ( strlen( $normalized_name ) >= 5 && strlen( $normalized_existing ) >= 5 && levenshtein( $normalized_name, $normalized_existing ) <= 1 ) {
+            return array( 'type' => 'similar', 'culture' => $culture );
+        }
+    }
+
+    return null;
+}
+
+function baykat_farm_crop_catalog_seed_defaults() {
+    if ( '2' === (string) get_option( 'baykat_farm_crop_catalog_seed_version', '0' ) ) {
+        return;
+    }
+
+    global $wpdb;
+    $table = baykat_farm_crop_catalog_table_name();
+    $cultures = $wpdb->get_results( "SELECT id, name, is_active FROM $table ORDER BY name ASC" );
+    if ( '' !== $wpdb->last_error ) {
+        error_log( 'Baykat Finance: default crop catalog could not be loaded; seeding will retry on a later request.' );
+        return;
+    }
+
+    $default_cultures = array(
+        'Aubergine',
+        'Arachide',
+        'Carotte',
+        'Choux',
+        'Citron',
+        'Concombre',
+        'Courgette',
+        'Gombo',
+        'Haricot',
+        'Joxote',
+        'Mil',
+        'Nadio',
+        'Navet',
+        'Oignon',
+        'Patate douce',
+        'Piment',
+        'Poivron',
+        'Pomme de terre',
+        'Thioukly',
+        'Tomate',
+        'Blé',
+        'Ñambi',
+    );
+
+    foreach ( $default_cultures as $name ) {
+        if ( baykat_farm_crop_catalog_find_duplicate( $name, (array) $cultures ) ) {
+            continue;
+        }
+
+        $inserted = $wpdb->insert(
+            $table,
+            array( 'name' => $name, 'is_active' => 1 ),
+            array( '%s', '%d' )
+        );
+        if ( false === $inserted ) {
+            error_log( 'Baykat Finance: a default crop could not be inserted; catalog seeding will retry on a later request.' );
+            return;
+        }
+        $cultures[] = (object) array(
+            'id' => (int) $wpdb->insert_id,
+            'name' => $name,
+            'is_active' => 1,
+        );
+    }
+
+    update_option( 'baykat_farm_crop_catalog_seed_version', '2' );
+    if ( '2' !== (string) get_option( 'baykat_farm_crop_catalog_seed_version', '0' ) ) {
+        error_log( 'Baykat Finance: default crop catalog seed version could not be saved; seeding will retry on a later request.' );
+    }
+}
+add_action( 'plugins_loaded', 'baykat_farm_crop_catalog_seed_defaults', 20 );
 
 function baykat_farm_campaign_stock_get_summary( $campaign_id, $harvest_id = 0 ) {
     global $wpdb;
@@ -684,19 +795,28 @@ function baykat_farm_crop_catalog_render_admin_page() {
         if ( '' === $name || strlen( $name ) > 190 ) {
             $notice = array( 'type' => 'error', 'text' => 'Saisissez un nom de culture valide.' );
         } else {
-            $existing_id = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM $table WHERE name = %s LIMIT 1", $name ) );
+            $existing_cultures = $wpdb->get_results( "SELECT id, name, is_active FROM $table ORDER BY name ASC" );
             if ( '' !== $wpdb->last_error ) {
                 $notice = array( 'type' => 'error', 'text' => 'La vérification du référentiel a échoué.' );
-            } elseif ( $existing_id ) {
-                $updated = $wpdb->update( $table, array( 'is_active' => 1 ), array( 'id' => (int) $existing_id ), array( '%d' ), array( '%d' ) );
-                $notice = false === $updated
-                    ? array( 'type' => 'error', 'text' => 'La culture n’a pas pu être réactivée.' )
-                    : array( 'type' => 'success', 'text' => 'Culture déjà connue : elle a été réactivée.' );
             } else {
-                $inserted = $wpdb->insert( $table, array( 'name' => $name, 'is_active' => 1 ), array( '%s', '%d' ) );
-                $notice = false === $inserted
-                    ? array( 'type' => 'error', 'text' => 'La culture n’a pas pu être ajoutée.' )
-                    : array( 'type' => 'success', 'text' => 'Culture ajoutée au référentiel.' );
+                $duplicate = baykat_farm_crop_catalog_find_duplicate( $name, $existing_cultures );
+                if ( $duplicate && 'same' === $duplicate['type'] ) {
+                    if ( ! $duplicate['culture']->is_active ) {
+                        $updated = $wpdb->update( $table, array( 'is_active' => 1 ), array( 'id' => (int) $duplicate['culture']->id ), array( '%d' ), array( '%d' ) );
+                        $notice = false === $updated
+                            ? array( 'type' => 'error', 'text' => 'La culture existante n’a pas pu être réactivée.' )
+                            : array( 'type' => 'success', 'text' => 'Cette culture existe déjà sous le nom canonique « ' . $duplicate['culture']->name . ' » et a été réactivée.' );
+                    } else {
+                        $notice = array( 'type' => 'error', 'text' => 'Cette culture existe déjà sous le nom canonique « ' . $duplicate['culture']->name . ' ». Réutilisez-la au lieu de créer un doublon.' );
+                    }
+                } elseif ( $duplicate ) {
+                    $notice = array( 'type' => 'error', 'text' => 'Ce nom est très proche de « ' . $duplicate['culture']->name . ' ». Vérifiez le référentiel BAYKAT avant d’ajouter une autre culture.' );
+                } else {
+                    $inserted = $wpdb->insert( $table, array( 'name' => $name, 'is_active' => 1 ), array( '%s', '%d' ) );
+                    $notice = false === $inserted
+                        ? array( 'type' => 'error', 'text' => 'La culture n’a pas pu être ajoutée.' )
+                        : array( 'type' => 'success', 'text' => 'Culture ajoutée au référentiel.' );
+                }
             }
         }
     } elseif ( isset( $_POST['baykat_toggle_crop_reference'] ) ) {
@@ -719,7 +839,7 @@ function baykat_farm_crop_catalog_render_admin_page() {
     ?>
     <div class="wrap">
         <h1>Référentiel des cultures</h1>
-        <p>Les cultures sont des choix de référence, pas des plantations. Chaque campagne représente une production précise d’une culture sur une parcelle et une période. Désactiver une culture ne modifie pas les campagnes déjà créées.</p>
+        <p>Les cultures sont des choix officiels de référence, pas des plantations. Ajoutez ici uniquement les libellés validés par BAYKAT : les campagnes ne proposent aucune saisie libre. La vérification ignore les majuscules, accents, espaces, ponctuation, pluriels simples en « s » ou « x », et bloque aussi les noms très proches. Désactiver une culture ne modifie pas les campagnes déjà créées.</p>
         <?php if ( $notice ) : ?>
             <div class="notice notice-<?php echo esc_attr( $notice['type'] ); ?> is-dismissible"><p><?php echo esc_html( $notice['text'] ); ?></p></div>
         <?php endif; ?>
@@ -751,7 +871,7 @@ function baykat_farm_crop_catalog_render_admin_page() {
                 </tbody>
             </table>
         <?php else : ?>
-            <p>Aucune culture enregistrée. Ajoutez les choix validés par BAYKAT ; les producteurs pourront aussi sélectionner « Autre ».</p>
+            <p>Aucune culture enregistrée. Ajoutez d’abord les cultures officielles validées par BAYKAT. Aucune campagne ne peut être créée avant que le référentiel soit renseigné.</p>
         <?php endif; ?>
     </div>
     <?php
@@ -945,6 +1065,33 @@ function baykat_farm_campaign_create( $user_id, $source_simulation = null ) {
     if ( $is_conversion ) {
         $crop_name = $source_simulation->crop_name;
         $crop_reference_id = empty( $source_simulation->crop_reference_id ) ? null : (int) $source_simulation->crop_reference_id;
+        if ( ! $crop_reference_id ) {
+            $catalog = baykat_farm_crop_catalog_get_active();
+            if ( is_wp_error( $catalog ) ) {
+                return array( 'type' => 'error', 'message' => $catalog->get_error_message() );
+            }
+            $matching_crop = baykat_farm_crop_catalog_find_duplicate( $crop_name, $catalog );
+            if ( ! $matching_crop || 'same' !== $matching_crop['type'] ) {
+                return array( 'type' => 'error', 'message' => 'Cette ancienne simulation ne correspond pas à une culture active du référentiel BAYKAT. Ajoutez ou réactivez d’abord la culture canonique, puis créez une nouvelle simulation avec ce choix.' );
+            }
+            $crop_reference_id = (int) $matching_crop['culture']->id;
+            $crop_name = $matching_crop['culture']->name;
+        } else {
+            global $wpdb;
+            $catalog_crop = $wpdb->get_row(
+                $wpdb->prepare(
+                    'SELECT id, name FROM ' . baykat_farm_crop_catalog_table_name() . ' WHERE id = %d AND is_active = 1',
+                    $crop_reference_id
+                )
+            );
+            if ( '' !== $wpdb->last_error ) {
+                return array( 'type' => 'error', 'message' => 'Impossible de vérifier la culture liée à cette simulation.' );
+            }
+            if ( ! $catalog_crop ) {
+                return array( 'type' => 'error', 'message' => 'La culture de cette simulation n’est plus active. Réactivez-la dans le référentiel BAYKAT avant de la convertir.' );
+            }
+            $crop_name = $catalog_crop->name;
+        }
         $variety = $source_simulation->variety;
         $area_ha = (float) $source_simulation->area_ha;
         $start_date = $source_simulation->planned_start_date;
@@ -955,25 +1102,21 @@ function baykat_farm_campaign_create( $user_id, $source_simulation = null ) {
             : '';
         $crop_reference_id = ctype_digit( $crop_choice ) ? (int) $crop_choice : 0;
         $crop_name = '';
-        if ( $crop_reference_id ) {
-            global $wpdb;
-            $crop_name = $wpdb->get_var(
-                $wpdb->prepare(
-                    'SELECT name FROM ' . baykat_farm_crop_catalog_table_name() . ' WHERE id = %d AND is_active = 1',
-                    $crop_reference_id
-                )
-            );
-            if ( '' !== $wpdb->last_error ) {
-                return array( 'type' => 'error', 'message' => 'Impossible de vérifier la culture choisie.' );
-            }
-            if ( ! $crop_name ) {
-                return array( 'type' => 'error', 'message' => 'Choisissez une culture active dans le référentiel BAYKAT.' );
-            }
-        } elseif ( 'other' === $crop_choice ) {
-            $crop_name = isset( $_POST['campaign_crop_other'] ) && is_string( $_POST['campaign_crop_other'] )
-                ? sanitize_text_field( wp_unslash( $_POST['campaign_crop_other'] ) )
-                : '';
-            $crop_reference_id = null;
+        if ( ! $crop_reference_id ) {
+            return array( 'type' => 'error', 'message' => 'Choisissez une culture du référentiel BAYKAT. Si elle manque, elle doit d’abord y être ajoutée par un administrateur.' );
+        }
+        global $wpdb;
+        $crop_name = $wpdb->get_var(
+            $wpdb->prepare(
+                'SELECT name FROM ' . baykat_farm_crop_catalog_table_name() . ' WHERE id = %d AND is_active = 1',
+                $crop_reference_id
+            )
+        );
+        if ( '' !== $wpdb->last_error ) {
+            return array( 'type' => 'error', 'message' => 'Impossible de vérifier la culture choisie.' );
+        }
+        if ( ! $crop_name ) {
+            return array( 'type' => 'error', 'message' => 'Choisissez une culture active dans le référentiel BAYKAT.' );
         }
         $variety = isset( $_POST['campaign_variety'] ) && is_string( $_POST['campaign_variety'] )
             ? sanitize_text_field( wp_unslash( $_POST['campaign_variety'] ) )
@@ -987,9 +1130,28 @@ function baykat_farm_campaign_create( $user_id, $source_simulation = null ) {
             : '';
     }
 
-    $expected_yield = 'simulation' === $campaign_type ? baykat_farm_campaign_decimal_input( 'expected_yield_kg_ha' ) : null;
-    $expected_cost = 'simulation' === $campaign_type ? baykat_farm_campaign_decimal_input( 'expected_cost' ) : null;
-    $expected_price = 'simulation' === $campaign_type ? baykat_farm_campaign_decimal_input( 'expected_price_per_kg' ) : null;
+    $expected_yield = $is_conversion
+        ? ( null === $source_simulation->expected_yield_kg_ha ? null : (float) $source_simulation->expected_yield_kg_ha )
+        : ( 'simulation' === $campaign_type ? baykat_farm_campaign_decimal_input( 'expected_yield_kg_ha' ) : null );
+    $expected_cost = $is_conversion
+        ? ( null === $source_simulation->expected_cost ? null : (float) $source_simulation->expected_cost )
+        : ( 'simulation' === $campaign_type ? baykat_farm_campaign_decimal_input( 'expected_cost' ) : null );
+    $expected_price = $is_conversion
+        ? ( null === $source_simulation->expected_price_per_kg ? null : (float) $source_simulation->expected_price_per_kg )
+        : ( 'simulation' === $campaign_type ? baykat_farm_campaign_decimal_input( 'expected_price_per_kg' ) : null );
+    $expected_available_funds = $is_conversion
+        ? ( null === $source_simulation->expected_available_funds ? null : (float) $source_simulation->expected_available_funds )
+        : ( 'simulation' === $campaign_type ? baykat_farm_campaign_decimal_input( 'expected_available_funds' ) : null );
+    $expected_tools_needed = $is_conversion
+        ? (string) $source_simulation->expected_tools_needed
+        : ( 'simulation' === $campaign_type && isset( $_POST['expected_tools_needed'] ) && is_string( $_POST['expected_tools_needed'] )
+            ? sanitize_textarea_field( wp_unslash( $_POST['expected_tools_needed'] ) )
+            : '' );
+    $expected_tools_available = $is_conversion
+        ? (string) $source_simulation->expected_tools_available
+        : ( 'simulation' === $campaign_type && isset( $_POST['expected_tools_available'] ) && is_string( $_POST['expected_tools_available'] )
+            ? sanitize_textarea_field( wp_unslash( $_POST['expected_tools_available'] ) )
+            : '' );
 
     if (
         '' === $crop_name
@@ -1001,7 +1163,15 @@ function baykat_farm_campaign_create( $user_id, $source_simulation = null ) {
         || ( '' !== $start_date && ! baykat_farm_valid_date( $start_date ) )
         || ( '' !== $harvest_date && ! baykat_farm_valid_date( $harvest_date ) )
         || ( '' !== $start_date && '' !== $harvest_date && $harvest_date < $start_date )
-        || ( 'simulation' === $campaign_type && ( null === $expected_yield || null === $expected_cost || null === $expected_price || $expected_yield <= 0 || $expected_cost < 0 || $expected_price <= 0 ) )
+        || ( 'simulation' === $campaign_type && ( null === $expected_yield || null === $expected_cost || null === $expected_price || null === $expected_available_funds || $expected_yield <= 0 || $expected_cost < 0 || $expected_price <= 0 || $expected_available_funds < 0 ) )
+        || ( null !== $expected_yield && $expected_yield > 999999999999.999 )
+        || $expected_cost > 999999999999.99
+        || ( null !== $expected_price && $expected_price > 999999999999.999 )
+        || ( null !== $expected_available_funds && $expected_available_funds > 999999999999.99 )
+        || strlen( $expected_tools_needed ) > 4000
+        || strlen( $expected_tools_available ) > 4000
+        || count( preg_split( '/\r\n|\r|\n/', trim( $expected_tools_needed ), -1, PREG_SPLIT_NO_EMPTY ) ) > 40
+        || count( preg_split( '/\r\n|\r|\n/', trim( $expected_tools_available ), -1, PREG_SPLIT_NO_EMPTY ) ) > 40
     ) {
         return array( 'type' => 'error', 'message' => 'Vérifiez la culture, la superficie, les dates et les hypothèses de la simulation.' );
     }
@@ -1063,10 +1233,13 @@ function baykat_farm_campaign_create( $user_id, $source_simulation = null ) {
             'expected_yield_kg_ha'       => $expected_yield,
             'expected_cost'              => $expected_cost,
             'expected_price_per_kg'      => $expected_price,
+            'expected_available_funds'   => $expected_available_funds,
+            'expected_tools_needed'      => '' === $expected_tools_needed ? null : $expected_tools_needed,
+            'expected_tools_available'   => '' === $expected_tools_available ? null : $expected_tools_available,
             'production_status'          => $production_status,
             'commercialization_status'  => 'planned',
         ),
-        array( '%d', '%s', '%d', '%d', '%d', '%d', '%d', '%s', '%s', '%f', '%s', '%s', '%f', '%f', '%f', '%s', '%s' )
+        array( '%d', '%s', '%d', '%d', '%d', '%d', '%d', '%s', '%s', '%f', '%s', '%s', '%f', '%f', '%f', '%f', '%s', '%s', '%s', '%s' )
     );
 
     if ( false === $inserted ) {
@@ -1198,7 +1371,10 @@ function baykat_farm_render_campaigns() {
         <section class="baykat-farm-panel baykat-farm-add-panel" aria-labelledby="baykat-campaign-create-title">
             <details class="baykat-farm-add-form">
                 <summary id="baykat-campaign-create-title"><span class="baykat-farm-eyebrow">Commencer un suivi</span><strong>Créer une campagne</strong><span class="baykat-farm-add-form-icon" aria-hidden="true">+</span></summary>
-                <p class="baykat-campaign-form-intro">Choisissez une campagne réelle pour suivre une culture sur une parcelle, ou une simulation pour tester un projet avant de disposer d’une ferme.</p>
+                <p class="baykat-campaign-form-intro">Choisissez une culture du référentiel BAYKAT. Si elle manque, un administrateur doit d’abord l’ajouter afin que toutes les campagnes réutilisent le même nom canonique.</p>
+                <?php if ( ! $crop_catalog ) : ?>
+                    <p class="baykat-farm-notice baykat-farm-notice-error" role="alert">Aucune culture BAYKAT n’est encore active. Le référentiel doit être renseigné avant de créer une campagne ou une simulation.</p>
+                <?php endif; ?>
                 <form class="baykat-farm-form" method="post">
                     <?php wp_nonce_field( 'baykat_add_campaign', '_wpnonce' ); ?>
                     <div class="baykat-farm-field baykat-farm-field-wide">
@@ -1209,18 +1385,13 @@ function baykat_farm_render_campaigns() {
                         </select>
                     </div>
                     <div class="baykat-farm-field">
-                        <label for="baykat_campaign_crop_name">Culture</label>
-                        <select name="campaign_crop_reference_id" id="baykat_campaign_crop_reference" required>
+                        <label for="baykat_campaign_crop_reference">Culture BAYKAT</label>
+                        <select name="campaign_crop_reference_id" id="baykat_campaign_crop_reference" required <?php disabled( ! $crop_catalog ); ?>>
                             <option value="">Choisir une culture</option>
                             <?php foreach ( $crop_catalog as $culture ) : ?>
                                 <option value="<?php echo esc_attr( $culture->id ); ?>"><?php echo esc_html( $culture->name ); ?></option>
                             <?php endforeach; ?>
-                            <option value="other">Autre</option>
                         </select>
-                    </div>
-                    <div class="baykat-farm-field baykat-campaign-crop-other-field" hidden>
-                        <label for="baykat_campaign_crop_other">Préciser la culture</label>
-                        <input type="text" name="campaign_crop_other" id="baykat_campaign_crop_other" maxlength="190">
                     </div>
                     <div class="baykat-farm-field">
                         <label for="baykat_campaign_variety">Variété (facultatif)</label>
@@ -1250,6 +1421,42 @@ function baykat_farm_render_campaigns() {
                         <label for="baykat_expected_price">Prix de vente espéré (FCFA/kg)</label>
                         <input type="number" name="expected_price_per_kg" id="baykat_expected_price" min="0.01" step="0.01">
                     </div>
+                    <div class="baykat-farm-field baykat-campaign-simulation-field">
+                        <label for="baykat_expected_available_funds">Fonds déjà disponibles (FCFA)</label>
+                        <input type="number" name="expected_available_funds" id="baykat_expected_available_funds" min="0" step="0.01" value="0">
+                        <small>Trésorerie ou financement déjà confirmé pour ce projet.</small>
+                    </div>
+                    <div class="baykat-farm-field baykat-farm-field-wide baykat-campaign-simulation-field">
+                        <label for="baykat_expected_tools_needed">Outils et intrants à prévoir (un élément par ligne)</label>
+                        <textarea name="expected_tools_needed" id="baykat_expected_tools_needed" rows="3" maxlength="4000" placeholder="Ex. matériel d’irrigation, semences, outils de préparation"></textarea>
+                    </div>
+                    <div class="baykat-farm-field baykat-farm-field-wide baykat-campaign-simulation-field">
+                        <label for="baykat_expected_tools_available">Outils et intrants déjà disponibles (un élément par ligne)</label>
+                        <textarea name="expected_tools_available" id="baykat_expected_tools_available" rows="3" maxlength="4000" placeholder="Listez ce que vous possédez ou avez déjà sécurisé"></textarea>
+                    </div>
+                    <section class="baykat-campaign-quote-preview baykat-campaign-simulation-field" data-simulation-quote-preview aria-live="polite" hidden>
+                        <div class="baykat-campaign-quote-heading">
+                            <div><span class="baykat-farm-eyebrow">Estimation basée sur vos hypothèses</span><h3>Aperçu de votre devis agricole</h3></div>
+                            <span class="baykat-campaign-quote-badge">Calcul déterministe</span>
+                        </div>
+                        <p class="baykat-campaign-quote-explainer">Ce calcul ne remplace pas un itinéraire technique validé : le rendement, les coûts et le prix viennent de vos saisies. Modifiez-les pour tester d’autres scénarios.</p>
+                        <div class="baykat-campaign-quote-metrics">
+                            <div><span>Récolte estimée</span><strong data-quote-harvest>—</strong></div>
+                            <div><span>Recettes estimées</span><strong data-quote-revenue>—</strong></div>
+                            <div><span>Résultat simplifié</span><strong data-quote-result>—</strong></div>
+                            <div><span>Financement à mobiliser</span><strong data-quote-funding-gap>—</strong></div>
+                        </div>
+                        <div class="baykat-campaign-quote-analysis" data-quote-analysis></div>
+                        <div class="baykat-campaign-quote-thresholds">
+                            <p><span>Prix minimum pour couvrir le budget</span><strong data-quote-break-even-price>—</strong></p>
+                            <p><span>Rendement minimum au prix saisi</span><strong data-quote-break-even-yield>—</strong></p>
+                        </div>
+                        <div class="baykat-campaign-quote-tools">
+                            <h4>Outils et intrants</h4>
+                            <p data-quote-tools-summary>Précisez les besoins pour établir votre checklist.</p>
+                            <ul data-quote-tools-missing></ul>
+                        </div>
+                    </section>
                     <div class="baykat-farm-field baykat-campaign-real-field baykat-farm-field-wide" hidden>
                         <label for="baykat_campaign_farm">Ferme</label>
                         <select name="campaign_farm_id" id="baykat_campaign_farm">
@@ -1268,7 +1475,7 @@ function baykat_farm_render_campaigns() {
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <button class="baykat-finance-button" type="submit" name="baykat_add_campaign" value="1">Enregistrer</button>
+                    <button class="baykat-finance-button" type="submit" name="baykat_add_campaign" value="1" <?php disabled( ! $crop_catalog ); ?>>Enregistrer</button>
                 </form>
             </details>
         </section>
@@ -1317,7 +1524,7 @@ function baykat_farm_render_campaigns() {
                             )
                         );
                         ?>
-                        <article class="baykat-campaign-card">
+                        <article id="baykat-campaign-record-<?php echo esc_attr( $campaign->id ); ?>" class="baykat-campaign-card">
                             <header class="baykat-campaign-card-heading">
                                 <span class="baykat-campaign-type">Campagne réelle</span>
                                 <h4><?php echo esc_html( $campaign->crop_name ); ?></h4>
@@ -1664,6 +1871,9 @@ function baykat_farm_render_campaigns() {
                             data-expenses="<?php echo esc_attr( (float) $simulation->expected_cost ); ?>"
                             data-income="<?php echo esc_attr( $forecast_income ); ?>"
                             data-result="<?php echo esc_attr( $forecast_result ); ?>"
+                            data-available-funds="<?php echo esc_attr( null === $simulation->expected_available_funds ? '' : (float) $simulation->expected_available_funds ); ?>"
+                            data-tools-needed="<?php echo esc_attr( (string) $simulation->expected_tools_needed ); ?>"
+                            data-tools-available="<?php echo esc_attr( (string) $simulation->expected_tools_available ); ?>"
                         ><?php echo esc_html( $simulation->crop_name . ' · ' . baykat_farm_format_quantity( $simulation->area_ha, 4 ) . ' ha' . ( $simulation->planned_start_date ? ' · ' . $simulation->planned_start_date : '' ) ); ?></option>
                     <?php endforeach; ?>
                 </select>
@@ -1679,9 +1889,18 @@ function baykat_farm_render_campaigns() {
                             <tr><th scope="row">Dépenses suivies</th><td data-comparison-real-expenses></td><td data-comparison-forecast-expenses></td></tr>
                             <tr><th scope="row">Recettes</th><td data-comparison-real-income></td><td data-comparison-forecast-income></td></tr>
                             <tr><th scope="row">Résultat simplifié</th><td data-comparison-real-result></td><td data-comparison-forecast-result></td></tr>
+                            <tr><th scope="row">Financement à mobiliser</th><td data-comparison-real-funding></td><td data-comparison-forecast-funding></td></tr>
                         </tbody>
                     </table>
                 </div>
+                <section class="baykat-campaign-comparison-tools">
+                    <h3>Checklist déclarée pour cette simulation</h3>
+                    <div>
+                        <div><h4>Besoins déclarés</h4><ul data-comparison-tools-needed></ul></div>
+                        <div><h4>Déjà disponible</h4><ul data-comparison-tools-available></ul></div>
+                        <div><h4>À mobiliser</h4><ul data-comparison-tools-missing></ul></div>
+                    </div>
+                </section>
                 <p class="baykat-campaign-comparison-note">Les données réelles reflètent les opérations enregistrées à ce jour. Le prévisionnel reprend les hypothèses de la simulation. Le résultat est un indicateur simplifié, pas un résultat comptable.</p>
                 <?php if ( $editable_farms && $parcels ) : ?>
                     <details class="baykat-campaign-comparison-convert">
@@ -1723,14 +1942,6 @@ function baykat_farm_render_campaigns() {
         const simulationFields = form.querySelectorAll(".baykat-campaign-simulation-field");
         const farmSelect = document.getElementById("baykat_campaign_farm");
         const parcelSelect = document.getElementById("baykat_campaign_parcel");
-        const cropSelect = document.getElementById("baykat_campaign_crop_reference");
-        const cropOtherField = form.querySelector(".baykat-campaign-crop-other-field");
-        const cropOtherInput = document.getElementById("baykat_campaign_crop_other");
-        const updateCropChoice = () => {
-            const isOther = cropSelect && cropSelect.value === "other";
-            if (cropOtherField) cropOtherField.hidden = !isOther;
-            if (cropOtherInput) cropOtherInput.required = Boolean(isOther);
-        };
         const updateMode = () => {
             const real = typeSelect.value === "real";
             realFields.forEach((field) => {
@@ -1751,10 +1962,8 @@ function baykat_farm_render_campaigns() {
             if (parcelSelect.selectedOptions[0]?.hidden) parcelSelect.value = "";
         };
         typeSelect.addEventListener("change", updateMode);
-        cropSelect?.addEventListener("change", updateCropChoice);
         farmSelect?.addEventListener("change", updateParcels);
         updateMode();
-        updateCropChoice();
         updateParcels();
         document.querySelectorAll("[data-campaign-farm]").forEach((select) => {
             const parcelSelect = select.closest("form").querySelector("[data-campaign-parcel]");

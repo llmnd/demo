@@ -159,6 +159,16 @@ Les statuts proposés sont : planifiée, en croissance, récoltée et en pause.
 ### 3.9 Campagnes et simulations — première version
 
 - Une campagne réelle est rattachée à une ferme, une parcelle et une culture.
+- Les campagnes réelles et les simulations utilisent exclusivement une culture
+  active du référentiel BAYKAT. Le producteur ne peut pas saisir un nom libre;
+  une culture absente doit d’abord être ajoutée et validée dans le référentiel
+  par un administrateur. Les ajouts bloquent les doublons après normalisation
+  des majuscules, accents, espaces, ponctuation, pluriels simples en « s » ou
+  « x » et noms très proches. Le catalogue initial reprend les 19 produits
+  agricoles affichés par la [Bourse des Prix BayKat](https://baykat.sn/bourse-des-prix/),
+  complétés par l’arachide, le mil et le blé, qui sont aussi des cultures;
+  l’huile est exclue car ce n’est pas une culture à semer. Les campagnes
+  existantes restent inchangées.
 - Une campagne réelle expose deux phases indépendantes : production et
   commercialisation. La commercialisation ne peut démarrer qu’après la fin de
   la production.
@@ -177,12 +187,25 @@ Les statuts proposés sont : planifiée, en croissance, récoltée et en pause.
 - Une simulation peut être créée sans ferme ni parcelle. La superficie, le
   rendement attendu, les coûts prévus et le prix espéré sont saisis par
   l’utilisateur; le plugin ne préremplit pas les hypothèses.
-- La simulation affiche séparément la récolte, les recettes et le résultat
-  prévisionnels. Elle n’est pas incluse dans les rapports ou chiffres réels.
+- Avant son enregistrement, la simulation prévisualise la récolte (surface ×
+  rendement), les recettes (récolte × prix), le résultat simplifié (recettes −
+  coûts) et le financement à mobiliser (coûts − fonds disponibles, avec un
+  plancher à zéro). Elle calcule aussi les seuils de prix et de rendement qui
+  couvriraient les coûts, toutes les autres hypothèses restant inchangées.
+- La simulation compare les outils et intrants déclarés nécessaires à ceux
+  déclarés disponibles, par correspondance de nom sans tenir compte de la
+  casse, des accents ni des espaces répétés. Elle ne recommande pas
+  automatiquement de matériel.
+- Ces calculs sont déterministes et n’utilisent que les entrées de l’utilisateur.
+  Aucun rendement-type, coût-type, calendrier ou conseil agronomique n’est
+  déduit du seul nom de culture. Le résultat ne tient compte que des coûts
+  saisis et n’est pas un bénéfice comptable garanti.
+- Une simulation enregistrée n’est pas incluse dans les rapports ou chiffres
+  réels.
 - Une simulation peut être convertie explicitement en campagne réelle après le
-  choix d’une ferme et d’une parcelle. Seuls la culture, la variété, la
-  superficie et les dates prévues sont repris; l’estimation financière reste
-  sur la simulation d’origine.
+  choix d’une ferme et d’une parcelle. La culture, la variété, la superficie,
+  les dates prévues et les hypothèses de devis sont reprises comme prévisions
+  liées à la campagne; elles ne créent ni récolte, ni dépense, ni revenu réel.
 - Les données de campagne sont stockées dans une table dédiée et la mise à
   niveau du schéma est automatique.
 - Le plugin local comprend un registre du stock récolté par campagne et par

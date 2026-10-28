@@ -2489,6 +2489,26 @@ body.baykat-farm-login-page .baykat-farm-app.baykat-farm-login {
 .baykat-campaign-card header > p { margin: 4px 0 0; color: #777168; font-size: 13px; }
 .baykat-campaign-compare-button { justify-self: start; min-height: 40px; padding: 9px 14px; border: 1px solid #d5c6a9; border-radius: 9px; background: #faf8f4; color: #715c39; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
 .baykat-campaign-compare-button:hover { border-color: #b99a64; background: #f3eee4; }
+.baykat-campaign-quote-preview { grid-column: 1 / -1; display: grid; gap: 14px; padding: 18px; border: 1px solid #d8e6dc; border-radius: 14px; background: linear-gradient(145deg, #f8fbf8, #fff); }
+.baykat-campaign-quote-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.baykat-campaign-quote-heading h3 { margin: 4px 0 0; color: #302b25; font-size: 19px; }
+.baykat-campaign-quote-badge { flex: 0 0 auto; padding: 5px 9px; border-radius: 999px; background: #e7f3eb; color: #245d3d; font-size: 10px; font-weight: 800; }
+.baykat-campaign-quote-explainer { margin: 0; color: #625b51; font-size: 12px; line-height: 1.5; }
+.baykat-campaign-quote-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 145px), 1fr)); gap: 8px; }
+.baykat-campaign-quote-metrics > div { display: grid; gap: 5px; padding: 11px; border: 1px solid #e5e9e3; border-radius: 10px; background: #fff; }
+.baykat-campaign-quote-metrics span,
+.baykat-campaign-quote-thresholds span { color: #777168; font-size: 11px; }
+.baykat-campaign-quote-metrics strong { color: #302b25; font-size: 15px; overflow-wrap: anywhere; }
+.baykat-campaign-quote-analysis { padding: 11px 12px; border-left: 3px solid #b99a64; border-radius: 0 8px 8px 0; background: #f7f4ee; color: #51493e; font-size: 12px; line-height: 1.55; }
+.baykat-campaign-quote-thresholds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.baykat-campaign-quote-thresholds p { display: grid; gap: 5px; margin: 0; padding: 10px; border: 1px solid #ebe7df; border-radius: 9px; background: #fff; }
+.baykat-campaign-quote-thresholds strong { color: #302b25; font-size: 13px; }
+.baykat-campaign-quote-tools { padding-top: 12px; border-top: 1px solid #e5e9e3; }
+.baykat-campaign-quote-tools h4,
+.baykat-campaign-comparison-tools h3 { margin: 0 0 6px; color: #302b25; font-size: 14px; }
+.baykat-campaign-quote-tools p { margin: 0; color: #625b51; font-size: 12px; line-height: 1.5; }
+.baykat-campaign-quote-tools ul,
+.baykat-campaign-comparison-tools ul { display: grid; gap: 5px; margin: 8px 0 0; padding-left: 18px; color: #625b51; font-size: 12px; }
 .baykat-campaign-compare-button:focus-visible,
 .baykat-campaign-comparison-close:focus-visible { outline: 3px solid rgba(185,154,100,0.42); outline-offset: 3px; }
 .baykat-campaign-comparison { width: min(760px, calc(100% - 28px)); max-width: 760px; max-height: min(88vh, 900px); padding: 0; overflow: auto; border: 1px solid #e8e4dc; border-radius: 18px; background: #fff; color: #302b25; box-shadow: 0 24px 80px rgba(32,27,20,0.28); }
@@ -2510,6 +2530,9 @@ body.baykat-farm-login-page .baykat-farm-app.baykat-farm-login {
 .baykat-campaign-comparison-table tbody tr:last-child th,
 .baykat-campaign-comparison-table tbody tr:last-child td { border-bottom: 0; }
 .baykat-campaign-comparison-note { margin: 0; color: #777168; font-size: 12px; line-height: 1.55; }
+.baykat-campaign-comparison-tools { padding-top: 12px; border-top: 1px solid #ebe7df; }
+.baykat-campaign-comparison-tools > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.baykat-campaign-comparison-tools h4 { margin: 8px 0 0; color: #625b51; font-size: 12px; }
 .baykat-campaign-comparison-convert { padding-top: 14px; border-top: 1px solid #ebe7df; }
 .baykat-campaign-comparison-convert > summary { color: #715c39; font-size: 13px; font-weight: 700; cursor: pointer; }
 .baykat-campaign-comparison-convert > p { margin: 9px 0; color: #777168; font-size: 12px; line-height: 1.5; }
@@ -2574,6 +2597,10 @@ body.baykat-farm-login-page .baykat-farm-app.baykat-farm-login {
     .baykat-campaign-comparison-table th,
     .baykat-campaign-comparison-table td { min-width: 112px; padding: 9px; font-size: 12px; }
     .baykat-campaign-comparison-convert .baykat-finance-button { width: 100%; }
+    .baykat-campaign-quote-preview { padding: 13px; }
+    .baykat-campaign-quote-heading { display: grid; }
+    .baykat-campaign-quote-thresholds,
+    .baykat-campaign-comparison-tools > div { grid-template-columns: minmax(0, 1fr); }
 }
 
 .baykat-campaign-count {
@@ -2662,4 +2689,48 @@ body.baykat-farm-login-page .baykat-farm-app.baykat-farm-login {
     .baykat-campaign-stock-grid > div { padding: 8px; }
     .baykat-campaign-stock-grid span { font-size: 11px; }
     .baykat-campaign-stock-grid strong { font-size: 13px; }
+}
+
+.baykat-farm-parcel-intro { margin: -10px 0 18px; color: #777168; font-size: 13px; line-height: 1.5; }
+.baykat-farm-parcel-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); align-items: start; }
+.baykat-farm-parcel-card { max-width: 480px; width: 100%; padding: 0; border-color: #e8e4dc; background: #fff; }
+.baykat-farm-parcel-card > .baykat-farm-parcel-image { display: block; width: 100%; height: 154px; object-fit: cover; object-position: center; background: #f2ecdf; }
+.baykat-farm-parcel-card > .baykat-farm-visual-card-body { min-width: 0; gap: 8px; padding: 16px; text-align: left; }
+.baykat-farm-parcel-card .baykat-farm-eyebrow { overflow-wrap: anywhere; font-size: 10px; }
+.baykat-farm-parcel-card .baykat-farm-visual-card-body h4 { font-size: 17px; }
+.baykat-farm-parcel-card .baykat-farm-card-meta { display: flex; align-items: baseline; justify-content: flex-start; gap: 6px; }
+.baykat-farm-parcel-area-label { color: #777168; font-size: 11px; }
+.baykat-farm-parcel-card .baykat-farm-card-meta strong { color: #302b25; font-size: 14px; }
+.baykat-farm-parcel-card .baykat-farm-parcel-area-missing { color: #8a6530; font-size: 12px; }
+.baykat-farm-parcel-card .baykat-farm-open-record { min-height: 40px; margin: 2px 0 0; font-size: 12px; }
+.baykat-farm-parcel-card .baykat-farm-image-update,
+.baykat-farm-parcel-card .baykat-farm-record-actions { margin-top: 2px; }
+.baykat-farm-record-tools.has-filter { flex-wrap: wrap; }
+.baykat-farm-record-tools.has-filter .baykat-farm-record-tool[data-record-filter-tool] { width: min(100%, 220px); }
+
+@media (max-width: 640px) {
+    .baykat-farm-parcel-card { max-width: none; }
+    .baykat-farm-parcel-card > .baykat-farm-parcel-image { height: 164px; }
+    .baykat-farm-parcel-card > .baykat-farm-visual-card-body { padding: 14px; }
+    .baykat-farm-parcel-card .baykat-farm-open-record { min-height: 42px; }
+}
+
+.baykat-farm-parcel-campaigns { display: grid; gap: 10px; }
+.baykat-farm-parcel-campaign { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px; border: 1px solid #eee9e1; border-radius: 12px; background: #fff; }
+.baykat-farm-parcel-campaign h4 { margin: 3px 0 4px; color: #302b25; font-size: 15px; }
+.baykat-farm-parcel-campaign p { margin: 0; color: #777168; font-size: 12px; line-height: 1.5; }
+.baykat-farm-parcel-campaign-link,
+.baykat-farm-parcel-campaign-create { color: #725b31; font-size: 13px; font-weight: 700; text-decoration: none; }
+.baykat-farm-parcel-campaign-link { flex: 0 0 auto; }
+.baykat-farm-parcel-campaign-link:hover,
+.baykat-farm-parcel-campaign-create:hover { color: #302b25; text-decoration: underline; text-underline-offset: 3px; }
+.baykat-farm-parcel-campaign-create { justify-self: start; padding: 8px 0; }
+.baykat-farm-parcel-campaign-empty { margin: 0; }
+
+@media (max-width: 640px) {
+    .baykat-farm-parcel-campaign { align-items: flex-start; flex-direction: column; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .baykat-farm-parcel-card { transition: none; }
 }

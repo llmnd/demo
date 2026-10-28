@@ -38,8 +38,9 @@ function baykat_farm_render_navigation( $modules, $active, $base_url ) {
  * @param string $search_label Libellé du champ de recherche.
  * @param array  $filters      Filtres disponibles, sous la forme identifiant => libellé.
  * @param string $filter_label Libellé du filtre facultatif.
+ * @param bool   $show_filter  Afficher le filtre sans ouvrir la recherche.
  */
-function baykat_farm_render_record_filters( $list_id, $search_label, $filters = array(), $filter_label = 'Filtrer par statut' ) {
+function baykat_farm_render_record_filters( $list_id, $search_label, $filters = array(), $filter_label = 'Filtrer par statut', $show_filter = false ) {
     $search_id = sanitize_html_class( $list_id . '-search' );
     $filter_id = sanitize_html_class( $list_id . '-filter' );
     ?>
@@ -69,7 +70,7 @@ function baykat_farm_render_record_filters( $list_id, $search_label, $filters = 
             >
         </div>
         <?php if ( $filters ) : ?>
-            <div class="baykat-farm-record-tool" data-record-filter-tool hidden>
+            <div class="baykat-farm-record-tool" data-record-filter-tool<?php echo $show_filter ? ' data-record-filter-persistent' : ' hidden'; ?>>
                 <label for="<?php echo esc_attr( $filter_id ); ?>"><?php echo esc_html( $filter_label ); ?></label>
                 <select
                     id="<?php echo esc_attr( $filter_id ); ?>"

@@ -4,6 +4,43 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+function baykat_farm_render_parcel_campaign_section( $campaigns ) {
+    ?>
+    <details class="baykat-farm-workspace-section" id="baykat-workspace-campaigns" open>
+        <summary>
+            <span class="baykat-farm-workspace-summary">
+                <strong>Campagnes</strong>
+                <small>Productions rattachées à cette parcelle</small>
+            </span>
+            <span class="baykat-farm-workspace-count"><?php echo esc_html( number_format_i18n( count( $campaigns ) ) ); ?></span>
+        </summary>
+        <div class="baykat-farm-workspace-content baykat-farm-parcel-campaigns">
+            <?php foreach ( $campaigns as $campaign ) : ?>
+                <article
+                    id="baykat-workspace-campaign-<?php echo esc_attr( $campaign->id ); ?>"
+                    class="baykat-farm-parcel-campaign"
+                    data-farm-record-card
+                    data-parcel-id="<?php echo esc_attr( $campaign->parcel_id ); ?>"
+                >
+                    <div>
+                        <span class="baykat-farm-eyebrow"><?php echo esc_html( baykat_farm_campaign_status_label( $campaign->production_status ) ); ?></span>
+                        <h4><?php echo esc_html( $campaign->crop_name ); ?></h4>
+                        <p>
+                            <?php echo esc_html( baykat_farm_format_quantity( $campaign->area_ha, 4 ) ); ?> ha
+                            <?php if ( $campaign->variety ) : ?> · <?php echo esc_html( $campaign->variety ); ?><?php endif; ?>
+                            <?php if ( $campaign->planned_start_date ) : ?> · Début : <?php echo esc_html( mysql2date( 'd/m/Y', $campaign->planned_start_date ) ); ?><?php endif; ?>
+                        </p>
+                    </div>
+                    <a class="baykat-farm-parcel-campaign-link" href="<?php echo esc_url( add_query_arg( 'module', 'campagnes', get_permalink() ) . '#baykat-campaign-record-' . absint( $campaign->id ) ); ?>">Consulter la campagne</a>
+                </article>
+            <?php endforeach; ?>
+            <p class="baykat-farm-empty-state baykat-farm-parcel-campaign-empty" data-parcel-campaign-empty hidden>Aucune campagne n’est encore rattachée à cette parcelle.</p>
+            <a class="baykat-farm-parcel-campaign-create" href="<?php echo esc_url( add_query_arg( 'module', 'campagnes', get_permalink() ) . '#baykat-campaign-create-title' ); ?>">Créer une campagne</a>
+        </div>
+    </details>
+    <?php
+}
+
 function baykat_farm_render_parcelles( $process_actions = true ) {
     $user_id = get_current_user_id();
     $message = null;
@@ -23,6 +60,29 @@ function baykat_farm_render_parcelles( $process_actions = true ) {
     $farms = baykat_farm_get_user_farms( $user_id );
     $editable_farms = baykat_farm_filter_editable_records( $farms );
     $parcels = baykat_farm_get_user_parcels( $user_id );
+    $parcel_campaigns = array();
+    if ( $process_actions ) {
+        $parcel_campaigns = baykat_farm_campaign_get_user_campaigns( $user_id );
+        if ( is_wp_error( $parcel_campaigns ) ) {
+            if ( ! $message ) {
+                $message = array( 'type' => 'error', 'message' => $parcel_campaigns->get_error_message() );
+            }
+            $parcel_campaigns = array();
+        }
+        $parcel_campaigns = array_values(
+            array_filter(
+                $parcel_campaigns,
+                function ( $campaign ) {
+                    return 'real' === $campaign->campaign_type;
+                }
+            )
+        );
+    }
+    $parcel_farm_filters = array();
+    foreach ( (array) $parcels as $parcel ) {
+        $parcel_farm_filters[ (int) $parcel->farm_id ] = $parcel->farm_name;
+    }
+    $has_multiple_parcel_farms = count( $parcel_farm_filters ) > 1;
     ?>
     <div class="baykat-farm-content">
         <?php if ( $message ) : ?>
@@ -68,27 +128,36 @@ function baykat_farm_render_parcelles( $process_actions = true ) {
 
         <section class="baykat-farm-panel" aria-labelledby="baykat-farm-parcel-list-title">
             <header class="baykat-farm-panel-heading"><span class="baykat-farm-eyebrow">Votre terrain</span><h3 id="baykat-farm-parcel-list-title">Parcelles enregistrées</h3></header>
+            <p class="baykat-farm-parcel-intro"><?php echo $has_multiple_parcel_farms ? 'Chaque parcelle appartient à une ferme. Recherchez par nom ou filtrez par ferme pour retrouver rapidement le bon terrain.' : 'Chaque parcelle est rattachée à sa ferme. Utilisez la recherche pour retrouver rapidement un terrain par son nom.'; ?></p>
             <?php if ( $parcels ) : ?>
-                <?php baykat_farm_render_record_filters( 'baykat-farm-parcel-list', 'Rechercher une parcelle' ); ?>
-                <div class="baykat-farm-record-grid baykat-farm-visual-grid" id="baykat-farm-parcel-list">
+                <?php baykat_farm_render_record_filters( 'baykat-farm-parcel-list', 'Rechercher une parcelle', $has_multiple_parcel_farms ? $parcel_farm_filters : array(), 'Filtrer par ferme', true ); ?>
+                <div class="baykat-farm-record-grid baykat-farm-visual-grid baykat-farm-parcel-grid" id="baykat-farm-parcel-list">
                     <?php foreach ( $parcels as $parcel ) : ?>
                         <article
                             id="baykat-parcel-record-<?php echo esc_attr( $parcel->id ); ?>"
-                            class="baykat-farm-record-card baykat-farm-visual-card"
+                            class="baykat-farm-record-card baykat-farm-visual-card baykat-farm-parcel-card<?php echo $parcel->image_id ? ' has-image' : ''; ?>"
                             data-farm-record-card
                             data-parcel-record-card
                             data-parcel-farm-id="<?php echo esc_attr( $parcel->farm_id ); ?>"
                             data-parcel-id="<?php echo esc_attr( $parcel->id ); ?>"
+                            data-farm-record-filter-value="<?php echo esc_attr( $parcel->farm_id ); ?>"
                             data-search-text="<?php echo esc_attr( $parcel->farm_name . ' ' . $parcel->name . ' ' . ( null === $parcel->area_m2 ? '' : $parcel->area_m2 ) ); ?>"
                         >
-                            <?php echo baykat_farm_render_image( $parcel->image_id, 'medium_large' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                            <?php if ( $parcel->image_id ) : ?>
+                                <?php echo baykat_farm_render_image( $parcel->image_id, 'medium', 'baykat-farm-parcel-image' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                            <?php endif; ?>
                             <div class="baykat-farm-visual-card-body">
-                                <span class="baykat-farm-eyebrow"><?php echo esc_html( $parcel->farm_name ); ?></span>
+                                <span class="baykat-farm-eyebrow">Ferme · <?php echo esc_html( $parcel->farm_name ); ?></span>
                                 <h4><?php echo esc_html( $parcel->name ); ?></h4>
                                 <div class="baykat-farm-card-meta">
-                                    <span><?php echo null === $parcel->area_m2 ? 'Superficie non renseignée' : esc_html( baykat_farm_format_quantity( $parcel->area_m2, 2 ) . ' m²' ); ?></span>
+                                    <?php if ( null === $parcel->area_m2 ) : ?>
+                                        <span class="baykat-farm-parcel-area-missing">Superficie à renseigner</span>
+                                    <?php else : ?>
+                                        <span class="baykat-farm-parcel-area-label">Superficie</span>
+                                        <strong><?php echo esc_html( baykat_farm_format_quantity( $parcel->area_m2, 2 ) ); ?> m²</strong>
+                                    <?php endif; ?>
                                 </div>
-                                <button class="baykat-farm-open-record" type="button" data-open-parcel-modal="<?php echo esc_attr( $parcel->id ); ?>">Voir la parcelle</button>
+                                <button class="baykat-farm-open-record" type="button" data-open-parcel-modal="<?php echo esc_attr( $parcel->id ); ?>">Ouvrir les détails</button>
                                 <?php if ( in_array( $parcel->access_role, array( 'owner', 'manager' ), true ) ) : ?>
                                 <?php baykat_farm_render_image_update_form( 'parcel', $parcel->id, $parcel->image_id ? 'Changer la photo' : 'Ajouter une photo' ); ?>
                                 <details class="baykat-farm-record-actions">
@@ -131,5 +200,32 @@ function baykat_farm_render_parcelles( $process_actions = true ) {
             <?php endif; ?>
         </section>
     </div>
+    <?php if ( $process_actions ) : ?>
+        <template data-dashboard-workspace-template>
+            <?php baykat_farm_render_parcel_campaign_section( $parcel_campaigns ); ?>
+        </template>
+        <dialog class="baykat-farm-dashboard-modal" data-farm-dashboard-dialog aria-labelledby="baykat-farm-modal-title">
+            <div class="baykat-farm-dashboard-modal-shell">
+                <header class="baykat-farm-dashboard-modal-header">
+                    <div>
+                        <span class="baykat-farm-eyebrow">Détail de la parcelle</span>
+                        <h2 id="baykat-farm-modal-title" data-dashboard-modal-title>Parcelle</h2>
+                    </div>
+                    <button class="baykat-farm-modal-close" type="button" data-close-dashboard-modal aria-label="Fermer la fenêtre" autofocus>×</button>
+                </header>
+                <div class="baykat-farm-dashboard-modal-body" data-dashboard-modal-body></div>
+                <template data-dashboard-workspace-template-modal>
+                    <section class="baykat-farm-modal-workspace" aria-label="Informations de la parcelle">
+                        <header class="baykat-farm-modal-workspace-heading">
+                            <span class="baykat-farm-eyebrow">Gestion de la parcelle</span>
+                            <h3>Campagnes liées</h3>
+                            <p>Consultez les productions rattachées à cette parcelle.</p>
+                        </header>
+                        <div data-dashboard-workspace-target></div>
+                    </section>
+                </template>
+            </div>
+        </dialog>
+    <?php endif; ?>
     <?php
 }

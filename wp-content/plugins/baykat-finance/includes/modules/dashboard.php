@@ -509,6 +509,8 @@ function baykat_farm_render_dashboard() {
             <div class="baykat-farm-workspace-content"><?php baykat_farm_render_parcelles( false ); ?></div>
         </details>
 
+        <?php baykat_farm_render_parcel_campaign_section( $real_campaigns ); ?>
+
         <details class="baykat-farm-workspace-section" id="baykat-workspace-activities">
             <summary>
                 <span class="baykat-farm-workspace-summary">

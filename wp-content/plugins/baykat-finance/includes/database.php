@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'BAYKAT_FINANCE_DB_VERSION', '18' );
+define( 'BAYKAT_FINANCE_DB_VERSION', '19' );
 
 /**
  * Retourne le nom de la table des transactions.
@@ -248,6 +248,9 @@ function baykat_finance_activate() {
         expected_yield_kg_ha DECIMAL(15,3) NULL,
         expected_cost DECIMAL(15,2) NULL,
         expected_price_per_kg DECIMAL(15,2) NULL,
+        expected_available_funds DECIMAL(15,2) NULL,
+        expected_tools_needed TEXT NULL,
+        expected_tools_available TEXT NULL,
         production_status VARCHAR(20) NOT NULL DEFAULT 'planned',
         commercialization_status VARCHAR(20) NOT NULL DEFAULT 'planned',
         archived_at DATETIME NULL,
@@ -323,7 +326,7 @@ function baykat_finance_activate() {
         $parcels_table    => array( 'user_id', 'farm_id', 'name', 'area_m2', 'boundary', 'status', 'image_id', 'archived_at' ),
         $crops_table      => array( 'user_id', 'parcel_id', 'name', 'variety', 'planted_at', 'expected_harvest_date', 'harvested_quantity', 'harvested_unit', 'status', 'image_id' ),
         $activities_table => array( 'user_id', 'parcel_id', 'campaign_id', 'title', 'activity_type', 'activity_date', 'notes', 'image_id' ),
-        $campaigns_table => array( 'user_id', 'campaign_type', 'farm_id', 'parcel_id', 'crop_id', 'crop_reference_id', 'source_simulation_id', 'crop_name', 'variety', 'area_ha', 'planned_start_date', 'planned_harvest_date', 'expected_yield_kg_ha', 'expected_cost', 'expected_price_per_kg', 'production_status', 'commercialization_status', 'archived_at' ),
+        $campaigns_table => array( 'user_id', 'campaign_type', 'farm_id', 'parcel_id', 'crop_id', 'crop_reference_id', 'source_simulation_id', 'crop_name', 'variety', 'area_ha', 'planned_start_date', 'planned_harvest_date', 'expected_yield_kg_ha', 'expected_cost', 'expected_price_per_kg', 'expected_available_funds', 'expected_tools_needed', 'expected_tools_available', 'production_status', 'commercialization_status', 'archived_at' ),
         $crop_catalog_table => array( 'name', 'is_active', 'created_at' ),
         $members_table    => array( 'farm_id', 'owner_user_id', 'member_user_id', 'role' ),
         $stock_movements_table => array( 'movement_type', 'item_name', 'quantity', 'unit', 'movement_date', 'destination_farm_id', 'destination_parcel_id' ),
