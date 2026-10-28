@@ -952,21 +952,179 @@ document.addEventListener('DOMContentLoaded', function () {
             let comparisonTrigger = null;
             const numberFormatter = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 });
             const currencyFormatter = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
+            const percentFormatter = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 });
 
             function formatArea(value) {
-                return value ? numberFormatter.format(Number(value)) + ' ha' : 'Non disponible';
+                const number = parseValue(value);
+                return null !== number ? numberFormatter.format(number) + ' ha' : 'Non disponible';
             }
 
             function formatQuantity(value) {
-                return value !== '' && Number.isFinite(Number(value))
-                    ? numberFormatter.format(Number(value)) + ' kg'
+                const number = parseValue(value);
+                return null !== number
+                    ? numberFormatter.format(number) + ' kg'
                     : 'Non disponible';
             }
 
             function formatCurrency(value) {
-                return value !== '' && Number.isFinite(Number(value))
-                    ? currencyFormatter.format(Number(value)) + ' FCFA'
+                const number = parseValue(value);
+                return null !== number
+                    ? currencyFormatter.format(number) + ' FCFA'
                     : 'Non disponible';
+            }
+
+            function parseValue(value) {
+                if (undefined === value || null === value || '' === value) {
+                    return null;
+                }
+                const number = Number(value);
+                return Number.isFinite(number) ? number : null;
+            }
+
+            function formatDifference(difference, formatter, suffix) {
+                const sign = difference > 0 ? '+' : difference < 0 ? '−' : '';
+                return sign + formatter.format(Math.abs(difference)) + suffix;
+            }
+
+            function formatPercentage(difference) {
+                if (Math.abs(difference) > 0 && Math.abs(difference) < 0.1) {
+                    return (difference < 0 ? '−' : '+') + '< 0,1 %';
+                }
+                return formatDifference(difference, percentFormatter, ' %');
+            }
+
+            function formatVariance(difference, forecast, formatter, suffix) {
+                const absolute = formatDifference(difference, formatter, suffix);
+                if (0 === forecast) {
+                    return absolute + ' · prévision nulle';
+                }
+                const percentage = (difference / Math.abs(forecast)) * 100;
+                return absolute + ' · ' + formatPercentage(percentage);
+            }
+
+            function getComparisonState(actual, forecast) {
+                const difference = actual - forecast;
+                const tolerance = Math.max(Math.abs(forecast) * 0.01, 0.0001);
+                return Math.abs(difference) <= tolerance ? 'equal' : difference > 0 ? 'above' : 'below';
+            }
+
+            function setReading(dialog, key, label, state, difference) {
+                const reading = dialog.querySelector('[data-comparison-reading="' + key + '"]');
+                if (!reading) {
+                    return;
+                }
+                reading.dataset.state = state;
+                const status = reading.querySelector('[data-comparison-status="' + key + '"]');
+                const delta = reading.querySelector('[data-comparison-delta="' + key + '"]');
+                if (status) {
+                    status.textContent = label;
+                }
+                if (delta) {
+                    delta.textContent = difference || '';
+                }
+            }
+
+            function setProgress(dialog, key, percent) {
+                const bar = dialog.querySelector('[data-comparison-bar="' + key + '"]');
+                if (!bar) {
+                    return;
+                }
+                const width = Math.min(100, Math.max(0, percent));
+                bar.style.width = '0%';
+                requestAnimationFrame(function () {
+                    bar.style.width = width + '%';
+                });
+            }
+
+            function setSummary(dialog, title, state, text, percent, caption) {
+                const summary = dialog.querySelector('[data-comparison-summary]');
+                const status = dialog.querySelector('[data-comparison-summary-status]');
+                const description = dialog.querySelector('[data-comparison-summary-text]');
+                const progress = dialog.querySelector('[data-comparison-progress-track]');
+                const progressBar = dialog.querySelector('[data-comparison-progress-bar]');
+                const progressCaption = dialog.querySelector('[data-comparison-progress-caption]');
+
+                if (summary) {
+                    summary.dataset.state = state;
+                }
+                if (dialog.querySelector('[data-comparison-summary-title]')) {
+                    dialog.querySelector('[data-comparison-summary-title]').textContent = title;
+                }
+                if (status) {
+                    status.textContent = state;
+                }
+                if (description) {
+                    description.textContent = text;
+                }
+                if (progress) {
+                    progress.hidden = null === percent;
+                    if (null !== percent) {
+                        progress.setAttribute('aria-valuenow', String(Math.min(100, Math.max(0, percent))));
+                        progress.setAttribute('aria-valuetext', formatAttainment(percent) + ' de l’objectif prévisionnel');
+                    }
+                }
+                if (progressBar && null !== percent) {
+                    progressBar.style.width = '0%';
+                    requestAnimationFrame(function () {
+                        progressBar.style.width = Math.min(100, Math.max(0, percent)) + '%';
+                    });
+                }
+                if (progressCaption) {
+                    progressCaption.textContent = caption || '';
+                    progressCaption.hidden = !caption;
+                }
+            }
+
+            function formatAttainment(percent) {
+                return percent > 0 && percent < 0.1
+                    ? '< 0,1 %'
+                    : percentFormatter.format(percent) + ' %';
+            }
+
+            function updatePerformanceSummary(dialog, trigger, simulation) {
+                const actualYield = parseValue(trigger.dataset.campaignYield);
+                const expectedYield = parseValue(simulation.dataset.yield);
+                const productionStatus = trigger.dataset.campaignProductionStatus;
+                const isComplete = 'completed' === productionStatus;
+
+                if (null === actualYield || null === expectedYield || expectedYield <= 0) {
+                    const message = null === actualYield
+                        ? (Number(trigger.dataset.campaignHarvestCount) > 0
+                            ? 'Le rendement réel ne peut pas être comparé : la récolte doit être homogène, exprimée en kg, et la surface supérieure à zéro.'
+                            : 'Aucune récolte réelle n’est enregistrée pour le moment.')
+                        : 'Le rendement prévisionnel est nul ou indisponible ; le taux d’atteinte ne peut pas être calculé.';
+                    setSummary(dialog, 'Rendement par rapport à l’objectif', 'indisponible', message, null, '');
+                    return;
+                }
+
+                const percent = (actualYield / expectedYield) * 100;
+                const state = getComparisonState(actualYield, expectedYield);
+                let label = 'En cours';
+                if ('above' === state) {
+                    label = isComplete ? 'Objectif dépassé' : 'Prévision déjà dépassée';
+                } else if ('equal' === state) {
+                    label = 'Objectif atteint';
+                } else if (isComplete) {
+                    label = 'Objectif non atteint';
+                } else if ('paused' === productionStatus) {
+                    label = 'Suivi en pause';
+                }
+                const progressText = formatAttainment(percent) + ' de l’objectif de rendement atteint';
+                const explanation = isComplete && 'below' === state
+                    ? 'La production est terminée : le rendement enregistré reste inférieur à la cible.'
+                    : 'Le rendement réel est calculé sur les récoltes en kg et la surface cultivée ; il peut encore évoluer.';
+                setSummary(
+                    dialog,
+                    'Avancement de l’objectif de rendement',
+                    'above' === state ? 'positive' : 'equal' === state ? 'positive' : isComplete ? 'warning' : 'ongoing',
+                    numberFormatter.format(actualYield) + ' kg/ha réalisés sur ' + numberFormatter.format(expectedYield) + ' kg/ha prévus. ' + explanation,
+                    percent,
+                    progressText
+                );
+                const summaryStatus = dialog.querySelector('[data-comparison-summary-status]');
+                if (summaryStatus) {
+                    summaryStatus.textContent = label;
+                }
             }
 
             function updateComparison(dialog) {
@@ -979,28 +1137,45 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 const campaignTitle = dialog.querySelector('[data-comparison-campaign-title]');
                 if (campaignTitle) {
-                    campaignTitle.textContent = trigger.dataset.campaignName || '';
+                    campaignTitle.textContent = (trigger.dataset.campaignName || '')
+                        + ' · comparaison avec ' + simulation.textContent.trim();
                 }
 
+                const actualYieldNumber = parseValue(trigger.dataset.campaignYield);
+                const forecastYieldNumber = parseValue(simulation.dataset.yield);
+                const hasActualExpenses = Number(trigger.dataset.campaignExpenseCount) > 0;
+                const hasActualIncome = Number(trigger.dataset.campaignIncomeCount) > 0;
+                const hasActualTransactions = Number(trigger.dataset.campaignTransactionCount) > 0;
                 const actualValues = {
                     area: formatArea(trigger.dataset.campaignArea),
-                    harvest: trigger.dataset.campaignHarvest || 'Non disponible',
-                    yield: trigger.dataset.campaignYield !== ''
-                        ? formatQuantity(trigger.dataset.campaignYield) + '/ha'
+                    harvest: Number(trigger.dataset.campaignHarvestCount) > 0
+                        ? trigger.dataset.campaignHarvest || 'Non disponible'
+                        : 'Aucune récolte enregistrée',
+                    yield: null !== actualYieldNumber
+                        ? numberFormatter.format(actualYieldNumber) + ' kg/ha'
                         : 'Non disponible',
-                    expenses: formatCurrency(trigger.dataset.campaignExpenses),
-                    income: formatCurrency(trigger.dataset.campaignIncome),
-                    result: formatCurrency(trigger.dataset.campaignResult),
+                    expenses: hasActualExpenses
+                        ? formatCurrency(trigger.dataset.campaignExpenses)
+                        : 'Aucune dépense enregistrée',
+                    income: hasActualIncome
+                        ? formatCurrency(trigger.dataset.campaignIncome)
+                        : 'Aucune recette enregistrée',
+                    result: hasActualTransactions
+                        ? formatCurrency(trigger.dataset.campaignResult)
+                        : 'Non disponible · aucune opération',
                     funding: 'Non renseigné'
                 };
-                const availableFunds = simulation.dataset.availableFunds;
-                const fundingGap = availableFunds !== ''
-                    ? Math.max(0, Number(simulation.dataset.expenses) - Number(availableFunds))
+                const availableFunds = parseValue(simulation.dataset.availableFunds);
+                const forecastExpenses = parseValue(simulation.dataset.expenses);
+                const fundingGap = null !== availableFunds && null !== forecastExpenses
+                    ? Math.max(0, forecastExpenses - availableFunds)
                     : null;
                 const forecastValues = {
                     area: formatArea(simulation.dataset.area),
                     harvest: formatQuantity(simulation.dataset.harvest),
-                    yield: formatQuantity(simulation.dataset.yield) + '/ha',
+                    yield: null !== forecastYieldNumber
+                        ? numberFormatter.format(forecastYieldNumber) + ' kg/ha'
+                        : 'Non disponible',
                     expenses: formatCurrency(simulation.dataset.expenses),
                     income: formatCurrency(simulation.dataset.income),
                     result: formatCurrency(simulation.dataset.result),
@@ -1017,6 +1192,201 @@ document.addEventListener('DOMContentLoaded', function () {
                         forecastCell.textContent = forecastValues[key];
                     }
                 });
+
+                const actualArea = parseValue(trigger.dataset.campaignArea);
+                const forecastArea = parseValue(simulation.dataset.area);
+                if (null !== actualArea && null !== forecastArea) {
+                    const areaDifference = actualArea - forecastArea;
+                    const areaTolerance = Math.max(Math.abs(forecastArea) * 0.01, 0.0001);
+                    setReading(
+                        dialog,
+                        'area',
+                        Math.abs(areaDifference) <= areaTolerance ? 'Surface comparable' : 'Surface différente',
+                        Math.abs(areaDifference) <= areaTolerance ? 'equal' : 'neutral',
+                        formatVariance(areaDifference, forecastArea, numberFormatter, ' ha')
+                    );
+                } else {
+                    setReading(dialog, 'area', 'Donnée indisponible', 'neutral', '');
+                }
+
+                const actualHarvest = parseValue(trigger.dataset.campaignHarvestKg);
+                const forecastHarvest = parseValue(simulation.dataset.harvest);
+                const hasHarvest = Number(trigger.dataset.campaignHarvestCount) > 0;
+                const productionComplete = 'completed' === trigger.dataset.campaignProductionStatus;
+                if (null === actualHarvest || null === forecastHarvest) {
+                    setReading(
+                        dialog,
+                        'harvest',
+                        hasHarvest ? 'Unités non comparables' : 'Aucune récolte enregistrée',
+                        'neutral',
+                        ''
+                    );
+                    setProgress(dialog, 'harvest', 0);
+                } else if (forecastHarvest <= 0) {
+                    const harvestState = actualHarvest > 0 ? 'positive' : 'neutral';
+                    setReading(
+                        dialog,
+                        'harvest',
+                        actualHarvest > 0 ? 'Prévision dépassée' : 'Cible de récolte nulle',
+                        harvestState,
+                        formatDifference(actualHarvest - forecastHarvest, numberFormatter, ' kg')
+                    );
+                    setProgress(dialog, 'harvest', actualHarvest > 0 ? 100 : 0);
+                } else {
+                    const harvestPercent = (actualHarvest / forecastHarvest) * 100;
+                    const harvestComparison = getComparisonState(actualHarvest, forecastHarvest);
+                    const harvestLabel = 'above' === harvestComparison
+                        ? productionComplete ? 'Objectif dépassé' : 'Prévision dépassée'
+                        : 'equal' === harvestComparison
+                            ? 'Objectif atteint'
+                            : productionComplete ? 'Objectif non atteint' : 'En cours · ' + percentFormatter.format(harvestPercent) + ' %';
+                    const harvestTone = 'above' === harvestComparison || 'equal' === harvestComparison
+                        ? 'positive'
+                        : productionComplete ? 'warning' : 'ongoing';
+                    setReading(
+                        dialog,
+                        'harvest',
+                        harvestLabel,
+                        harvestTone,
+                        formatVariance(actualHarvest - forecastHarvest, forecastHarvest, numberFormatter, ' kg')
+                    );
+                    setProgress(dialog, 'harvest', harvestPercent);
+                }
+
+                updatePerformanceSummary(dialog, trigger, simulation);
+                if (null !== actualYieldNumber && null !== forecastYieldNumber && forecastYieldNumber > 0) {
+                    const yieldState = getComparisonState(actualYieldNumber, forecastYieldNumber);
+                    const yieldPercent = (actualYieldNumber / forecastYieldNumber) * 100;
+                    const yieldLabel = 'above' === yieldState
+                        ? 'completed' === trigger.dataset.campaignProductionStatus ? 'Objectif dépassé' : 'Dépasse le prévisionnel'
+                        : 'equal' === yieldState
+                            ? 'Objectif atteint'
+                            : 'completed' === trigger.dataset.campaignProductionStatus
+                                ? 'Objectif non atteint'
+                                : 'En cours · ' + percentFormatter.format(yieldPercent) + ' %';
+                    setReading(
+                        dialog,
+                        'yield',
+                        yieldLabel,
+                        'above' === yieldState || 'equal' === yieldState
+                            ? 'positive'
+                            : 'completed' === trigger.dataset.campaignProductionStatus ? 'warning' : 'ongoing',
+                        formatVariance(actualYieldNumber - forecastYieldNumber, forecastYieldNumber, numberFormatter, ' kg/ha')
+                    );
+                    setProgress(dialog, 'yield', yieldPercent);
+                } else {
+                    setReading(dialog, 'yield', 'Rendement non comparable', 'neutral', '');
+                    setProgress(dialog, 'yield', 0);
+                }
+
+                const actualExpense = parseValue(trigger.dataset.campaignExpenses);
+                const forecastExpense = parseValue(simulation.dataset.expenses);
+                const hasExpenses = Number(trigger.dataset.campaignExpenseCount) > 0;
+                if (null === actualExpense || null === forecastExpense) {
+                    setReading(dialog, 'expenses', 'Donnée indisponible', 'neutral', '');
+                } else if (!hasExpenses && actualExpense === 0) {
+                    setReading(
+                        dialog,
+                        'expenses',
+                        forecastExpense > 0 ? 'Aucune dépense enregistrée' : 'Aucune dépense saisie',
+                        'neutral',
+                        forecastExpense > 0 ? '' : formatCurrency(0)
+                    );
+                } else if (forecastExpense <= 0) {
+                    setReading(
+                        dialog,
+                        'expenses',
+                        actualExpense > 0 ? 'Dépense non prévue' : 'Budget nul respecté',
+                        actualExpense > 0 ? 'warning' : 'positive',
+                        formatDifference(actualExpense - forecastExpense, currencyFormatter, ' FCFA')
+                    );
+                } else {
+                    const expenseState = getComparisonState(actualExpense, forecastExpense);
+                    setReading(
+                        dialog,
+                        'expenses',
+                        'above' === expenseState
+                            ? 'Budget dépassé'
+                            : 'below' === expenseState
+                                ? 'Sous budget suivi à date'
+                                : 'Budget respecté',
+                        'above' === expenseState ? 'warning' : 'positive',
+                        formatVariance(actualExpense - forecastExpense, forecastExpense, currencyFormatter, ' FCFA')
+                    );
+                }
+
+                const actualIncome = parseValue(trigger.dataset.campaignIncome);
+                const forecastIncome = parseValue(simulation.dataset.income);
+                const hasIncome = Number(trigger.dataset.campaignIncomeCount) > 0;
+                if (null === actualIncome || null === forecastIncome) {
+                    setReading(dialog, 'income', 'Donnée indisponible', 'neutral', '');
+                } else if (!hasIncome && actualIncome === 0) {
+                    setReading(
+                        dialog,
+                        'income',
+                        forecastIncome > 0 ? 'Aucune recette enregistrée' : 'Aucune recette saisie',
+                        'neutral',
+                        ''
+                    );
+                } else if (forecastIncome <= 0) {
+                    setReading(
+                        dialog,
+                        'income',
+                        actualIncome > 0 ? 'Recettes non prévues' : 'Prévision sans recette',
+                        actualIncome > 0 ? 'positive' : 'neutral',
+                        formatDifference(actualIncome - forecastIncome, currencyFormatter, ' FCFA')
+                    );
+                } else {
+                    const incomeState = getComparisonState(actualIncome, forecastIncome);
+                    const incomeIsComplete = 'completed' === trigger.dataset.campaignCommercializationStatus;
+                    setReading(
+                        dialog,
+                        'income',
+                        'above' === incomeState
+                            ? 'Prévision dépassée'
+                            : 'equal' === incomeState
+                                ? 'Objectif atteint'
+                                : incomeIsComplete ? 'Objectif non atteint' : 'En dessous à date',
+                        'above' === incomeState || 'equal' === incomeState
+                            ? 'positive'
+                            : incomeIsComplete ? 'warning' : 'ongoing',
+                        formatVariance(actualIncome - forecastIncome, forecastIncome, currencyFormatter, ' FCFA')
+                    );
+                }
+
+                const actualResult = parseValue(trigger.dataset.campaignResult);
+                const forecastResult = parseValue(simulation.dataset.result);
+                const hasTransactions = Number(trigger.dataset.campaignTransactionCount) > 0;
+                if (null === actualResult || null === forecastResult || !hasTransactions) {
+                    setReading(
+                        dialog,
+                        'result',
+                        hasTransactions ? 'Donnée indisponible' : 'Aucune donnée financière',
+                        'neutral',
+                        ''
+                    );
+                } else {
+                    const resultState = getComparisonState(actualResult, forecastResult);
+                    setReading(
+                        dialog,
+                        'result',
+                        'above' === resultState
+                            ? 'Supérieur au prévisionnel'
+                            : 'below' === resultState
+                                ? 'Inférieur au prévisionnel'
+                                : 'Au niveau du prévisionnel',
+                        'above' === resultState ? 'positive' : 'below' === resultState ? 'warning' : 'equal',
+                        formatVariance(actualResult - forecastResult, forecastResult, currencyFormatter, ' FCFA')
+                    );
+                }
+
+                setReading(
+                    dialog,
+                    'funding',
+                    null === fundingGap ? 'Financement réel non suivi' : 'Besoin prévisionnel',
+                    'neutral',
+                    null === fundingGap ? '' : formatCurrency(fundingGap)
+                );
 
                 const sourceSimulation = dialog.querySelector('[data-comparison-source-simulation]');
                 if (sourceSimulation) {

@@ -919,6 +919,20 @@ function baykat_farm_campaign_get_user_campaigns( $user_id ) {
                         SELECT COUNT(*)
                         FROM $transactions AS transactions
                         WHERE transactions.campaign_id = campaigns.id
+                            AND transactions.type = 'expense'
+                            AND transactions.cancelled_at IS NULL
+                    ) AS actual_expense_count,
+                    (
+                        SELECT COUNT(*)
+                        FROM $transactions AS transactions
+                        WHERE transactions.campaign_id = campaigns.id
+                            AND transactions.type = 'income'
+                            AND transactions.cancelled_at IS NULL
+                    ) AS actual_income_count,
+                    (
+                        SELECT COUNT(*)
+                        FROM $transactions AS transactions
+                        WHERE transactions.campaign_id = campaigns.id
                             AND transactions.cancelled_at IS NULL
                     ) AS transaction_count,
                     (
@@ -1526,7 +1540,7 @@ function baykat_farm_render_campaigns() {
                         $actual_harvest = $has_consistent_harvest
                             ? baykat_farm_format_quantity( $campaign->harvested_quantity ) . ' ' . $harvest_unit
                             : 'Non disponible';
-                        $actual_yield = $has_consistent_harvest && 'kg' === $harvest_unit
+                        $actual_yield = $has_consistent_harvest && 'kg' === $harvest_unit && (float) $campaign->area_ha > 0
                             ? baykat_farm_format_quantity( (float) $campaign->harvested_kg / (float) $campaign->area_ha ) . ' kg/ha'
                             : 'Non disponible';
                         $production_cost_per_kg = $has_consistent_harvest
@@ -1588,10 +1602,17 @@ function baykat_farm_render_campaigns() {
                                     data-campaign-crop-reference="<?php echo esc_attr( (int) $campaign->crop_reference_id ); ?>"
                                     data-campaign-area="<?php echo esc_attr( (float) $campaign->area_ha ); ?>"
                                     data-campaign-harvest="<?php echo esc_attr( $actual_harvest ); ?>"
-                                    data-campaign-yield="<?php echo esc_attr( $has_consistent_harvest && 'kg' === $harvest_unit ? (float) $campaign->harvested_kg / (float) $campaign->area_ha : '' ); ?>"
+                                    data-campaign-harvest-kg="<?php echo esc_attr( $has_consistent_harvest && 'kg' === $harvest_unit ? (float) $campaign->harvested_kg : '' ); ?>"
+                                    data-campaign-harvest-count="<?php echo esc_attr( (int) $campaign->harvest_count ); ?>"
+                                    data-campaign-yield="<?php echo esc_attr( $has_consistent_harvest && 'kg' === $harvest_unit && (float) $campaign->area_ha > 0 ? (float) $campaign->harvested_kg / (float) $campaign->area_ha : '' ); ?>"
+                                    data-campaign-production-status="<?php echo esc_attr( $campaign->production_status ); ?>"
+                                    data-campaign-commercialization-status="<?php echo esc_attr( $campaign->commercialization_status ); ?>"
                                     data-campaign-expenses="<?php echo esc_attr( $actual_expenses ); ?>"
+                                    data-campaign-expense-count="<?php echo esc_attr( (int) $campaign->actual_expense_count ); ?>"
                                     data-campaign-income="<?php echo esc_attr( $actual_income ); ?>"
+                                    data-campaign-income-count="<?php echo esc_attr( (int) $campaign->actual_income_count ); ?>"
                                     data-campaign-result="<?php echo esc_attr( $actual_result ); ?>"
+                                    data-campaign-transaction-count="<?php echo esc_attr( (int) $campaign->transaction_count ); ?>"
                                 >Comparer au prévisionnel</button>
                             <?php else : ?>
                                 <button class="baykat-campaign-compare-button" type="button" data-create-comparison-simulation>Créer une simulation pour comparer</button>
@@ -1941,19 +1962,60 @@ function baykat_farm_render_campaigns() {
                         ><?php echo esc_html( $simulation->crop_name . ' · ' . baykat_farm_format_quantity( $simulation->area_ha, 4 ) . ' ha' . ( $simulation->planned_start_date ? ' · ' . $simulation->planned_start_date : '' ) ); ?></option>
                     <?php endforeach; ?>
                 </select>
+                <section class="baykat-campaign-comparison-summary" data-comparison-summary aria-live="polite">
+                    <div class="baykat-campaign-comparison-summary-heading">
+                        <div>
+                            <span class="baykat-farm-eyebrow">Lecture rapide</span>
+                            <h3 data-comparison-summary-title>Rendement par rapport à l’objectif</h3>
+                        </div>
+                        <span class="baykat-campaign-comparison-badge" data-comparison-summary-status>Calcul en cours</span>
+                    </div>
+                    <p data-comparison-summary-text></p>
+                    <div
+                        class="baykat-campaign-comparison-progress"
+                        data-comparison-progress-track
+                        role="progressbar"
+                        aria-label="Réalisation du rendement prévisionnel"
+                        aria-valuemin="0"
+                        aria-valuemax="100"
+                        aria-valuenow="0"
+                    ><span data-comparison-progress-bar></span></div>
+                    <small data-comparison-progress-caption></small>
+                </section>
                 <div class="baykat-campaign-comparison-table-wrap">
                     <table class="baykat-campaign-comparison-table">
                         <thead>
-                            <tr><th scope="col">Indicateur</th><th scope="col">Réel enregistré</th><th scope="col">Prévisionnel</th></tr>
+                            <tr><th scope="col">Indicateur</th><th scope="col">Réel enregistré</th><th scope="col">Prévisionnel</th><th scope="col">Écart et lecture</th></tr>
                         </thead>
                         <tbody>
-                            <tr><th scope="row">Surface</th><td data-comparison-real-area></td><td data-comparison-forecast-area></td></tr>
-                            <tr><th scope="row">Récolte totale</th><td data-comparison-real-harvest></td><td data-comparison-forecast-harvest></td></tr>
-                            <tr><th scope="row">Rendement</th><td data-comparison-real-yield></td><td data-comparison-forecast-yield></td></tr>
-                            <tr><th scope="row">Dépenses suivies</th><td data-comparison-real-expenses></td><td data-comparison-forecast-expenses></td></tr>
-                            <tr><th scope="row">Recettes</th><td data-comparison-real-income></td><td data-comparison-forecast-income></td></tr>
-                            <tr><th scope="row">Résultat simplifié</th><td data-comparison-real-result></td><td data-comparison-forecast-result></td></tr>
-                            <tr><th scope="row">Financement à mobiliser</th><td data-comparison-real-funding></td><td data-comparison-forecast-funding></td></tr>
+                            <tr>
+                                <th scope="row">Surface</th><td data-comparison-real-area></td><td data-comparison-forecast-area></td>
+                                <td><div class="baykat-campaign-comparison-reading" data-comparison-reading="area"><span data-comparison-status="area"></span><strong data-comparison-delta="area"></strong></div></td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Récolte totale</th><td data-comparison-real-harvest></td><td data-comparison-forecast-harvest></td>
+                                <td><div class="baykat-campaign-comparison-reading" data-comparison-reading="harvest"><span data-comparison-status="harvest"></span><strong data-comparison-delta="harvest"></strong><div class="baykat-campaign-comparison-row-progress"><span data-comparison-bar="harvest"></span></div></div></td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Rendement</th><td data-comparison-real-yield></td><td data-comparison-forecast-yield></td>
+                                <td><div class="baykat-campaign-comparison-reading" data-comparison-reading="yield"><span data-comparison-status="yield"></span><strong data-comparison-delta="yield"></strong><div class="baykat-campaign-comparison-row-progress"><span data-comparison-bar="yield"></span></div></div></td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Dépenses suivies</th><td data-comparison-real-expenses></td><td data-comparison-forecast-expenses></td>
+                                <td><div class="baykat-campaign-comparison-reading" data-comparison-reading="expenses"><span data-comparison-status="expenses"></span><strong data-comparison-delta="expenses"></strong></div></td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Recettes</th><td data-comparison-real-income></td><td data-comparison-forecast-income></td>
+                                <td><div class="baykat-campaign-comparison-reading" data-comparison-reading="income"><span data-comparison-status="income"></span><strong data-comparison-delta="income"></strong></div></td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Résultat simplifié</th><td data-comparison-real-result></td><td data-comparison-forecast-result></td>
+                                <td><div class="baykat-campaign-comparison-reading" data-comparison-reading="result"><span data-comparison-status="result"></span><strong data-comparison-delta="result"></strong></div></td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Financement à mobiliser</th><td data-comparison-real-funding></td><td data-comparison-forecast-funding></td>
+                                <td><div class="baykat-campaign-comparison-reading" data-comparison-reading="funding"><span data-comparison-status="funding"></span><strong data-comparison-delta="funding"></strong></div></td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -1965,7 +2027,7 @@ function baykat_farm_render_campaigns() {
                         <div><h4>À mobiliser</h4><ul data-comparison-tools-missing></ul></div>
                     </div>
                 </section>
-                <p class="baykat-campaign-comparison-note">Les données réelles reflètent les opérations enregistrées à ce jour. Le prévisionnel reprend les hypothèses de la simulation. Le résultat est un indicateur simplifié, pas un résultat comptable.</p>
+                <p class="baykat-campaign-comparison-note">Les données réelles reflètent les opérations enregistrées à ce jour, pas nécessairement la campagne terminée. « En dessous à date » n’indique pas un échec si la production ou la commercialisation est encore en cours. Les recettes BAYKAT non intégrées ne figurent pas dans les montants. Le résultat est un indicateur simplifié, pas un résultat comptable.</p>
                 <?php if ( $editable_farms && $parcels ) : ?>
                     <details class="baykat-campaign-comparison-convert">
                         <summary>Transformer cette simulation en campagne réelle</summary>

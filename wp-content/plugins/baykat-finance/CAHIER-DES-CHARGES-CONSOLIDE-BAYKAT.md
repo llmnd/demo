@@ -123,6 +123,8 @@ Les charges sont en **jours ouvrés estimatifs par demande**. Elles se chevauche
 **Commercialisation :** cette catégorie entre dans le résultat, mais pas dans le coût de production par kg.  
 **Unités :** une conversion n’est appliquée que si elle est explicitement fiable et validée ; sinon l’indicateur concerné est « Non disponible ».
 
+**Comparaison simulation/réel :** le rendement en kg/ha est l’indicateur principal de production ; les surfaces et récoltes totales sont comparées séparément. Un écart inférieur ou égal à 1 % est considéré comme proche de la prévision. Tant que la production ou la commercialisation est en cours, les indicateurs sont présentés « à date » ; une campagne terminée peut être signalée comme objectif atteint, dépassé ou non atteint. « Sous budget » n’est affiché que si des dépenses réelles sont enregistrées, et l’absence de recette ou de dépense est explicitement distinguée d’un montant réellement suivi à zéro. Le financement à mobiliser reste une hypothèse tant qu’aucune trésorerie réelle n’est suivie.
+
 **Présentation du bilan PDF :** les recettes, dépenses et opérations annulées sont présentées séparément ; les opérations annulées sont exclues des totaux. Un total nul signifie « aucune valeur enregistrée » et ne prouve pas l’absence de coûts réels. Le bilan de campagne rapproche la récolte du stock physique par les ventes, pertes, autres sorties et retours, sans confondre les quantités allouées avec le stock physique. Les dates d’activité, de récolte et de transaction reprennent leurs dates d’opération enregistrées ; pour les événements de stock, le PDF indique explicitement qu’il s’agit de la date de saisie.
 
 ## 6. Lots, budget et délais indicatifs
