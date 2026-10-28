@@ -29,7 +29,7 @@ function baykat_farm_format_quantity( $quantity, $precision = 3 ) {
 function baykat_farm_table_name( $table ) {
     global $wpdb;
 
-    $allowed_tables = array( 'farms', 'parcels', 'crops', 'activities' );
+    $allowed_tables = array( 'farms', 'parcels', 'crops', 'activities', 'campaigns' );
 
     if ( ! in_array( $table, $allowed_tables, true ) ) {
         return '';
@@ -420,6 +420,7 @@ function baykat_farm_process_image_update( $user_id, $entity ) {
         'parcel'   => 'parcels',
         'crop'     => 'crops',
         'activity' => 'activities',
+        'campaign' => 'campaigns',
     );
 
     if ( ! isset( $entities[ $entity ] ) ) {

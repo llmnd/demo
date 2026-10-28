@@ -2006,7 +2006,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 clone.classList.add('baykat-farm-modal-record');
                 clone.removeAttribute('data-farm-record-card');
                 clone.removeAttribute('id');
-                clone.querySelectorAll('[data-open-farm-modal], [data-open-parcel-modal]').forEach(function (trigger) {
+                clone.querySelectorAll('[data-open-farm-modal], [data-open-parcel-modal], [data-open-campaign-modal]').forEach(function (trigger) {
                     trigger.remove();
                 });
 
@@ -2034,6 +2034,26 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
 
                 return clone;
+            }
+
+            function openCampaignModal(dialog, campaignId) {
+                const record = findDashboardRecord('data-campaign-id', campaignId);
+
+                if (!record) {
+                    console.error('Baykat Farm could not find campaign details for modal:', campaignId);
+                    return;
+                }
+
+                const content = document.createElement('div');
+                const clonedRecord = cloneRecord(record);
+                const name = record.querySelector('h4');
+                content.className = 'baykat-campaign-modal-content';
+                clonedRecord.classList.add('baykat-campaign-modal-record');
+                content.appendChild(clonedRecord);
+
+                showModal(dialog, name ? name.textContent : 'Détail de la campagne', content);
+                initializeImagePreviews(content);
+                document.dispatchEvent(new Event('baykat:farm-module-loaded'));
             }
 
             function openParcelModal(dialog, parcelId, addBackButton, selectedSectionId, revealActivityId, notice) {
@@ -2324,7 +2344,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             app.addEventListener('click', function (event) {
-                const trigger = event.target.closest('[data-open-daily-modal], [data-open-stats-modal], [data-open-management-target], [data-open-farm-modal], [data-open-parcel-modal], [data-modal-back], [data-close-dashboard-modal]');
+                const trigger = event.target.closest('[data-open-daily-modal], [data-open-stats-modal], [data-open-management-target], [data-open-farm-modal], [data-open-parcel-modal], [data-open-campaign-modal], [data-modal-back], [data-close-dashboard-modal]');
 
                 if (trigger && trigger.matches('a[data-open-farm-modal], a[data-open-management-target]')) {
                     if (
@@ -2394,6 +2414,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     openFarmModal(dialog, trigger.dataset.openFarmModal, trigger.dataset.openFarmModalSection);
                 } else if (trigger.matches('[data-open-parcel-modal]')) {
                     openParcelModal(dialog, trigger.dataset.openParcelModal, dialog.open, trigger.dataset.openParcelModalSection);
+                } else if (trigger.matches('[data-open-campaign-modal]')) {
+                    openCampaignModal(dialog, trigger.dataset.openCampaignModal);
                 }
             });
 
@@ -2419,6 +2441,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     detail.activityId,
                     detail.notice
                 );
+            });
+            app.addEventListener('baykat:farm-refresh-campaign-modal', function (event) {
+                const detail = event.detail || {};
+                const dialog = app.querySelector('[data-farm-dashboard-dialog]');
+                if (!dialog || !detail.campaignId) {
+                    return;
+                }
+                openCampaignModal(dialog, detail.campaignId);
             });
             app.addEventListener('cancel', function (event) {
                 if (event.target.matches('[data-farm-dashboard-dialog]')) {
@@ -2670,21 +2700,33 @@ document.addEventListener('DOMContentLoaded', function () {
             const parcelCard = dialog && dialog.open
                 ? dialog.querySelector('[data-dashboard-modal-body] [data-parcel-record-card]')
                 : null;
+            const campaignCard = dialog && dialog.open
+                ? dialog.querySelector('[data-dashboard-modal-body] [data-campaign-id]')
+                : null;
             const selectedTab = dialog && dialog.open
                 ? dialog.querySelector('[data-dashboard-modal-body] [role="tab"][aria-selected="true"]')
                 : null;
             const activityField = form.querySelector('[name="activity_id"]');
             const modalContext = parcelCard
                 ? {
+                    type: 'parcel',
                     parcelId: parcelCard.dataset.parcelId,
                     sectionId: selectedTab ? selectedTab.getAttribute('aria-controls') : '',
                     activityId: activityField ? activityField.value : ''
                 }
+                : campaignCard
+                    ? {
+                        type: 'campaign',
+                        campaignId: campaignCard.dataset.campaignId
+                    }
                 : null;
 
             loadApplication(form.action || window.location.href, { formData: formData }).then(function (result) {
                 if (modalContext && result && result.success) {
-                    app.dispatchEvent(new CustomEvent('baykat:farm-refresh-parcel-modal', {
+                    const eventName = 'campaign' === modalContext.type
+                        ? 'baykat:farm-refresh-campaign-modal'
+                        : 'baykat:farm-refresh-parcel-modal';
+                    app.dispatchEvent(new CustomEvent(eventName, {
                         detail: Object.assign({}, modalContext, { notice: result.notice })
                     }));
                 }
@@ -2692,7 +2734,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         function filterActivityCampaignOptions(root) {
-            root.querySelectorAll('form').forEach(function (form) {
+            const forms = root.matches('form') ? [root] : root.querySelectorAll('form');
+            forms.forEach(function (form) {
                 const parcelSelect = form.querySelector('select[name="parcel_id"]');
                 const campaignSelect = form.querySelector('[data-activity-campaign-select]');
                 if (!parcelSelect || !campaignSelect) {

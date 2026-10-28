@@ -53,6 +53,8 @@ La note BAYKAT rapporte notamment deux entrées de récolte de 10 kg pour les to
 
 La note rapporte également une unité « Kk », des nombres affichés avec des décimales non nécessaires, l’absence de bilan PDF et un chargement de carte défaillant lors du test. La carte devra être reproduite en préproduction : je ne considère pas encore sa cause comme établie.
 
+**Mise à jour de l’implémentation locale au 28 octobre 2026 :** un export PDF par campagne réelle et par ferme est maintenant disponible dans le plugin. Il récapitule les informations, opérations, récoltes et finances déjà enregistrées, avec un résultat explicitement qualifié de simplifié. La cohérence du PDF et son intégration restent à valider sur la préproduction BAYKAT ; les ventes de « Mes ventes » ne sont pas incluses tant que leur source et leurs statuts ne sont pas accessibles.
+
 **Aucune modification des données de production de BAYKAT n’est incluse dans cette proposition.** Toute migration fera l’objet d’une sauvegarde, d’une vérification en préproduction et d’une validation préalable.
 
 ## 4. Réponses au registre R01–R21

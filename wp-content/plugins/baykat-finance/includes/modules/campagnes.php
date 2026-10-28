@@ -1213,6 +1213,17 @@ function baykat_farm_campaign_create( $user_id, $source_simulation = null ) {
         $crop_id = (int) $wpdb->insert_id;
     }
 
+    $image_id = null;
+    if ( 'real' === $campaign_type ) {
+        $image_id = baykat_farm_handle_image_upload( 'campaign_image', $user_id );
+        if ( is_wp_error( $image_id ) ) {
+            if ( $crop_id ) {
+                $wpdb->delete( baykat_farm_table_name( 'crops' ), array( 'id' => $crop_id ), array( '%d' ) );
+            }
+            return array( 'type' => 'error', 'message' => $image_id->get_error_message() );
+        }
+    }
+
     global $wpdb;
     $table = baykat_farm_campaign_table_name();
     $inserted = $wpdb->insert(
@@ -1236,13 +1247,17 @@ function baykat_farm_campaign_create( $user_id, $source_simulation = null ) {
             'expected_available_funds'   => $expected_available_funds,
             'expected_tools_needed'      => '' === $expected_tools_needed ? null : $expected_tools_needed,
             'expected_tools_available'   => '' === $expected_tools_available ? null : $expected_tools_available,
+            'image_id'                   => $image_id,
             'production_status'          => $production_status,
             'commercialization_status'  => 'planned',
         ),
-        array( '%d', '%s', '%d', '%d', '%d', '%d', '%d', '%s', '%s', '%f', '%s', '%s', '%f', '%f', '%f', '%f', '%s', '%s', '%s', '%s' )
+        array( '%d', '%s', '%d', '%d', '%d', '%d', '%d', '%s', '%s', '%f', '%s', '%s', '%f', '%f', '%f', '%f', '%s', '%s', '%d', '%s', '%s' )
     );
 
     if ( false === $inserted ) {
+        if ( $image_id ) {
+            wp_delete_attachment( $image_id, true );
+        }
         if ( $crop_id ) {
             $wpdb->delete( baykat_farm_table_name( 'crops' ), array( 'id' => $crop_id ), array( '%d' ) );
         }
@@ -1318,6 +1333,9 @@ function baykat_farm_render_campaigns() {
         $message = baykat_farm_process_archive_submission( $user_id );
     }
     if ( ! $message ) {
+        $message = baykat_farm_process_image_update( $user_id, 'campaign' );
+    }
+    if ( ! $message ) {
         $message = baykat_farm_campaign_update_phase( $user_id );
     }
     if ( ! $message ) {
@@ -1375,7 +1393,7 @@ function baykat_farm_render_campaigns() {
                 <?php if ( ! $crop_catalog ) : ?>
                     <p class="baykat-farm-notice baykat-farm-notice-error" role="alert">Aucune culture BAYKAT n’est encore active. Le référentiel doit être renseigné avant de créer une campagne ou une simulation.</p>
                 <?php endif; ?>
-                <form class="baykat-farm-form" method="post">
+                <form class="baykat-farm-form" method="post" enctype="multipart/form-data">
                     <?php wp_nonce_field( 'baykat_add_campaign', '_wpnonce' ); ?>
                     <div class="baykat-farm-field baykat-farm-field-wide">
                         <label for="baykat_campaign_type">Type</label>
@@ -1475,6 +1493,9 @@ function baykat_farm_render_campaigns() {
                             <?php endforeach; ?>
                         </select>
                     </div>
+                    <div class="baykat-campaign-real-field baykat-campaign-image-field" hidden>
+                        <?php baykat_farm_render_image_field( 'campaign_image', 'Photo de la campagne' ); ?>
+                    </div>
                     <button class="baykat-finance-button" type="submit" name="baykat_add_campaign" value="1" <?php disabled( ! $crop_catalog ); ?>>Enregistrer</button>
                 </form>
             </details>
@@ -1524,13 +1545,32 @@ function baykat_farm_render_campaigns() {
                             )
                         );
                         ?>
-                        <article id="baykat-campaign-record-<?php echo esc_attr( $campaign->id ); ?>" class="baykat-campaign-card">
+                        <article
+                            id="baykat-campaign-record-<?php echo esc_attr( $campaign->id ); ?>"
+                            class="baykat-campaign-card"
+                            data-campaign-record-card
+                            data-campaign-id="<?php echo esc_attr( $campaign->id ); ?>"
+                        >
+                            <?php if ( $campaign->image_id ) : ?>
+                                <?php echo baykat_farm_render_image( $campaign->image_id, 'medium_large', 'baykat-campaign-image' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                            <?php endif; ?>
                             <header class="baykat-campaign-card-heading">
                                 <span class="baykat-campaign-type">Campagne réelle</span>
                                 <h4><?php echo esc_html( $campaign->crop_name ); ?></h4>
                                 <p class="baykat-campaign-context"><?php echo esc_html( $campaign->variety ? 'Variété ' . $campaign->variety : 'Variété non précisée' ); ?> <span aria-hidden="true">·</span> <?php echo esc_html( baykat_farm_format_quantity( $campaign->area_ha, 4 ) ); ?> ha</p>
                                 <p class="baykat-campaign-context"><?php echo esc_html( $campaign->farm_name . ' / ' . $campaign->parcel_name ); ?></p>
+                                <?php if ( $campaign->planned_start_date || $campaign->planned_harvest_date ) : ?>
+                                    <p class="baykat-campaign-context">
+                                        <?php if ( $campaign->planned_start_date ) : ?>Début : <?php echo esc_html( mysql2date( 'd/m/Y', $campaign->planned_start_date ) ); ?><?php endif; ?>
+                                        <?php if ( $campaign->planned_start_date && $campaign->planned_harvest_date ) : ?> <span aria-hidden="true">·</span> <?php endif; ?>
+                                        <?php if ( $campaign->planned_harvest_date ) : ?>Récolte prévue : <?php echo esc_html( mysql2date( 'd/m/Y', $campaign->planned_harvest_date ) ); ?><?php endif; ?>
+                                    </p>
+                                <?php endif; ?>
                             </header>
+                            <?php if ( baykat_farm_user_can_edit_farm( (int) $campaign->farm_id, $user_id ) ) : ?>
+                                <?php baykat_farm_render_image_update_form( 'campaign', $campaign->id, $campaign->image_id ? 'Changer la photo' : 'Ajouter une photo' ); ?>
+                            <?php endif; ?>
+                            <div class="baykat-campaign-card-actions">
                             <?php if ( $matching_simulations ) : ?>
                                 <?php
                                 $comparable_simulation_id = (int) $campaign->source_simulation_id;
@@ -1556,6 +1596,18 @@ function baykat_farm_render_campaigns() {
                             <?php else : ?>
                                 <button class="baykat-campaign-compare-button" type="button" data-create-comparison-simulation>Créer une simulation pour comparer</button>
                             <?php endif; ?>
+                                <button class="baykat-farm-open-record baykat-campaign-open-details" type="button" data-open-campaign-modal="<?php echo esc_attr( $campaign->id ); ?>">Voir les détails</button>
+                                <?php
+                                $campaign_pdf_url = add_query_arg(
+                                    array(
+                                        'action' => 'baykat_export_campaign_pdf',
+                                        'campaign_id' => (int) $campaign->id,
+                                    ),
+                                    admin_url( 'admin-post.php' )
+                                );
+                                ?>
+                                <a class="baykat-finance-button baykat-campaign-pdf-link" href="<?php echo esc_url( wp_nonce_url( $campaign_pdf_url, 'baykat_export_campaign_pdf_' . (int) $campaign->id ) ); ?>">Bilan PDF</a>
+                            </div>
                                 <div class="baykat-campaign-overview">
                                     <div class="baykat-campaign-overview-heading">
                                         <div><span class="baykat-farm-eyebrow">Données clés de production</span><strong><?php echo esc_html( baykat_farm_format_quantity( $campaign->area_ha, 4 ) ); ?> ha cultivés</strong></div>
@@ -1842,6 +1894,18 @@ function baykat_farm_render_campaigns() {
             <?php endif; ?>
         </section>
     </div>
+    <dialog class="baykat-farm-dashboard-modal" data-farm-dashboard-dialog aria-labelledby="baykat-campaign-modal-title">
+        <div class="baykat-farm-dashboard-modal-shell">
+            <header class="baykat-farm-dashboard-modal-header">
+                <div>
+                    <span class="baykat-farm-eyebrow">Détail de la campagne</span>
+                    <h2 id="baykat-campaign-modal-title" data-dashboard-modal-title>Campagne</h2>
+                </div>
+                <button class="baykat-farm-modal-close" type="button" data-close-dashboard-modal aria-label="Fermer la fenêtre" autofocus>×</button>
+            </header>
+            <div class="baykat-farm-dashboard-modal-body" data-dashboard-modal-body></div>
+        </div>
+    </dialog>
     <?php if ( $simulations ) : ?>
         <dialog class="baykat-campaign-comparison" data-campaign-comparison-dialog aria-labelledby="baykat-campaign-comparison-title">
             <div class="baykat-campaign-comparison-content">
@@ -1906,7 +1970,7 @@ function baykat_farm_render_campaigns() {
                     <details class="baykat-campaign-comparison-convert">
                         <summary>Transformer cette simulation en campagne réelle</summary>
                         <p>Choisissez la ferme et la parcelle. Les chiffres prévisionnels resteront des hypothèses et ne seront pas enregistrés comme récoltes ou dépenses réelles.</p>
-                        <form method="post" class="baykat-farm-form">
+                        <form method="post" class="baykat-farm-form" enctype="multipart/form-data">
                             <?php wp_nonce_field( 'baykat_create_from_simulation', '_wpnonce' ); ?>
                             <input type="hidden" name="source_simulation_id" value="" data-comparison-source-simulation>
                             <input type="hidden" name="campaign_type" value="real">
@@ -1926,6 +1990,7 @@ function baykat_farm_render_campaigns() {
                                     <?php endforeach; ?>
                                 </select>
                             </label>
+                            <?php baykat_farm_render_image_field( 'campaign_image', 'Photo de la campagne', '-conversion' ); ?>
                             <button class="baykat-finance-button" type="submit" name="baykat_create_from_simulation" value="1">Créer la campagne réelle</button>
                         </form>
                     </details>
@@ -1947,6 +2012,10 @@ function baykat_farm_render_campaigns() {
             realFields.forEach((field) => {
                 field.hidden = !real;
                 field.querySelectorAll("select").forEach((select) => { select.required = real; });
+                field.querySelectorAll('input[type="file"]').forEach((input) => {
+                    input.disabled = !real;
+                    if (!real) input.value = "";
+                });
             });
             simulationFields.forEach((field) => {
                 field.hidden = real;

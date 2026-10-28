@@ -82,13 +82,14 @@ function baykat_farm_render_activites( $process_actions = true ) {
                     <div class="baykat-farm-field baykat-farm-field-wide">
                         <label for="baykat_activity_campaign">Campagne réelle</label>
                         <select name="campaign_id" id="baykat_activity_campaign" data-activity-campaign-select required>
-                            <option value="">Aucune campagne</option>
+                            <option value="">Choisir une campagne</option>
                             <?php foreach ( $editable_campaigns as $campaign ) : ?>
                                 <option value="<?php echo esc_attr( $campaign->id ); ?>" data-parcel-id="<?php echo esc_attr( $campaign->parcel_id ); ?>">
                                     <?php echo esc_html( $campaign->crop_name . ' — ' . $campaign->farm_name . ' / ' . $campaign->parcel_name ); ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
+                        <span class="baykat-farm-field-help">Choisissez d’abord une parcelle : seules ses campagnes réelles sont proposées.</span>
                     </div>
                     <div class="baykat-farm-field">
                         <label for="baykat_activity_type">Type d’activité</label>
@@ -276,13 +277,14 @@ function baykat_farm_render_activites( $process_actions = true ) {
                                         <div class="baykat-farm-field">
                                             <label for="baykat_activity_edit_campaign_<?php echo esc_attr( $activity->id ); ?>">Campagne réelle</label>
                                             <select name="campaign_id" id="baykat_activity_edit_campaign_<?php echo esc_attr( $activity->id ); ?>" data-activity-campaign-select required>
-                                                <option value="">Aucune campagne</option>
+                                                <option value="">Choisir une campagne</option>
                                                 <?php foreach ( $editable_campaigns as $campaign ) : ?>
                                                     <option value="<?php echo esc_attr( $campaign->id ); ?>" data-parcel-id="<?php echo esc_attr( $campaign->parcel_id ); ?>" <?php selected( (int) $activity->campaign_id, (int) $campaign->id ); ?>>
                                                         <?php echo esc_html( $campaign->crop_name . ' — ' . $campaign->farm_name . ' / ' . $campaign->parcel_name ); ?>
                                                     </option>
                                                 <?php endforeach; ?>
                                             </select>
+                                            <span class="baykat-farm-field-help">Les campagnes proposées dépendent de la parcelle sélectionnée.</span>
                                         </div>
                                         <div class="baykat-farm-field">
                                             <label for="baykat_activity_edit_type_<?php echo esc_attr( $activity->id ); ?>">Type d’activité</label>

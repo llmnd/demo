@@ -153,12 +153,22 @@ Les statuts proposés sont : planifiée, en croissance, récoltée et en pause.
 - Le fichier comprend les transactions financières accessibles et un résumé
   par culture des quantités récoltées, revenus, dépenses directement associées
   et marge calculée.
+- Téléchargement d’un bilan PDF pour chaque ferme et chaque campagne réelle,
+  avec période, activités, dépenses, récoltes, recettes, quantités disponibles
+  et résultat simplifié.
+- Les bilans précisent qu’ils ne sont pas des documents comptables et signalent
+  que les ventes BAYKAT non intégrées et les anciennes dates manquantes ne sont
+  pas reconstituées.
 - Les transactions non associées à une culture ne sont pas imputées à la marge
   d’une culture particulière.
 
 ### 3.9 Campagnes et simulations — première version
 
 - Une campagne réelle est rattachée à une ferme, une parcelle et une culture.
+- Une campagne réelle peut avoir une photo facultative, ajoutée lors de sa
+  création ou modifiée depuis sa fiche détaillée. La liste présente des cartes
+  synthétiques; l’ouverture d’une campagne affiche ses indicateurs, ses phases,
+  ses récoltes, son stock et ses actions dans une fenêtre dédiée.
 - Les campagnes réelles et les simulations utilisent exclusivement une culture
   active du référentiel BAYKAT. Le producteur ne peut pas saisir un nom libre;
   une culture absente doit d’abord être ajoutée et validée dans le référentiel
@@ -215,8 +225,9 @@ Les statuts proposés sont : planifiée, en croissance, récoltée et en pause.
   l’historique et la logique d’annulation existants. L’intégration aux ventes,
   commandes et retours officiels de « Mes ventes » reste à réaliser après
   réception du code source et validation des statuts BAYKAT.
-- L’export PDF et les tests de migration sur une base de préproduction restent
-  à réaliser.
+- L’export des bilans PDF par ferme et campagne est disponible localement.
+- L’intégration à BAYKAT, la recette des bilans et les tests de migration sur
+  une base de préproduction restent à réaliser.
 
 ## 4. Données et comptes
 
@@ -270,4 +281,4 @@ Les statuts proposés sont : planifiée, en croissance, récoltée et en pause.
 | Activités | Journal des opérations agricoles |
 | Finances | Revenus, dépenses, intrants et ventes |
 | Stocks | Mouvements d’intrants et quantités disponibles |
-| Rapports | Export CSV des finances et de la rentabilité par culture |
+| Rapports | Export CSV des finances et de la rentabilité par culture, bilans PDF par ferme et campagne |

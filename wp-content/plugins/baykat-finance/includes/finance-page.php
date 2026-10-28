@@ -120,6 +120,25 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
 
     // Récupérer les données financières.
     $finance_data = baykat_finance_get_user_transactions( $user_id, $transaction_category );
+    if ( 'all' !== $initial_type ) {
+        $finance_data['transactions'] = array_values(
+            array_filter(
+                $finance_data['transactions'],
+                function ( $transaction ) use ( $initial_type ) {
+                    return $transaction->type === $initial_type;
+                }
+            )
+        );
+    }
+    $transaction_heading = 'income' === $initial_type
+        ? 'Revenus'
+        : ( 'expense' === $initial_type ? 'Dépenses' : 'Transactions' );
+    $transaction_description = 'income' === $initial_type
+        ? 'Retrouvez les revenus enregistrés.'
+        : ( 'expense' === $initial_type ? 'Retrouvez les dépenses enregistrées.' : 'Retrouvez et filtrez les mouvements enregistrés.' );
+    $empty_transactions_message = 'income' === $initial_type
+        ? 'Aucun revenu pour le moment.'
+        : ( 'expense' === $initial_type ? 'Aucune dépense pour le moment.' : 'Aucune transaction pour le moment.' );
     $parcels = baykat_farm_get_user_parcels( $user_id );
     $editable_parcels = baykat_farm_filter_editable_records( $parcels );
     $farms = baykat_farm_get_user_farms( $user_id );
@@ -168,7 +187,7 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
             <div class="baykat-farm-notice baykat-farm-notice-error" role="alert">Impossible de charger les campagnes. Les transactions ne pourront pas être rattachées à une campagne pour le moment.</div>
         <?php endif; ?>
 
-        <div class="baykat-finance-cards">
+        <div class="baykat-finance-cards<?php echo 'all' !== $initial_type ? ' baykat-finance-cards-single' : ''; ?>">
 
             <div class="baykat-finance-card baykat-finance-card-balance">
                 <span class="baykat-finance-card-label">Solde</span>
@@ -188,6 +207,7 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
                 </strong>
             </div>
 
+            <?php if ( 'expense' !== $initial_type ) : ?>
             <div class="baykat-finance-card baykat-finance-card-income">
                 <span class="baykat-finance-card-label">Revenus</span>
 
@@ -205,7 +225,9 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
                     FCFA
                 </strong>
             </div>
+            <?php endif; ?>
 
+            <?php if ( 'income' !== $initial_type ) : ?>
             <div class="baykat-finance-card baykat-finance-card-expense">
                 <span class="baykat-finance-card-label">Dépenses</span>
 
@@ -223,6 +245,7 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
                     FCFA
                 </strong>
             </div>
+            <?php endif; ?>
 
         </div>
 
@@ -281,11 +304,11 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
                         id="baykat_type"
                         required
                     >
-                        <option value="income">
+                        <option value="income" <?php selected( $initial_type, 'income' ); ?>>
                             Revenu
                         </option>
 
-                        <option value="expense">
+                        <option value="expense" <?php selected( $initial_type, 'expense' ); ?>>
                             Dépense
                         </option>
                     </select>
@@ -429,8 +452,8 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
             <div class="baykat-finance-section-heading baykat-finance-transactions-heading">
                 <div>
                     <span class="baykat-finance-eyebrow">Historique</span>
-                    <h2>Transactions</h2>
-                    <p>Retrouvez et filtrez les mouvements enregistrés.</p>
+                    <h2><?php echo esc_html( $transaction_heading ); ?></h2>
+                    <p><?php echo esc_html( $transaction_description ); ?></p>
                 </div>
             </div>
 
@@ -445,6 +468,7 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
                         autocomplete="off"
                     >
                 </div>
+                <?php if ( 'all' === $initial_type ) : ?>
                 <div class="baykat-finance-tool baykat-finance-filter">
                     <label for="baykat-finance-filter">Type de transaction</label>
                     <select id="baykat-finance-filter">
@@ -453,6 +477,7 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
                         <option value="expense" <?php selected( $initial_type, 'expense' ); ?>>Dépenses</option>
                     </select>
                 </div>
+                <?php endif; ?>
             </div>
 
             <div class="baykat-finance-table-wrap">
@@ -472,7 +497,7 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
 
                         <?php if ( empty( $finance_data['transactions'] ) ) : ?>
                             <tr class="baykat-finance-empty-row">
-                                <td colspan="5">Aucune transaction pour le moment.</td>
+                                <td colspan="5"><?php echo esc_html( $empty_transactions_message ); ?></td>
                             </tr>
                         <?php else : ?>
                             <?php foreach ( $finance_data['transactions'] as $transaction ) : ?>
