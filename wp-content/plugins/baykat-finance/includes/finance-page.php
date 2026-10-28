@@ -123,10 +123,25 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
     $parcels = baykat_farm_get_user_parcels( $user_id );
     $editable_parcels = baykat_farm_filter_editable_records( $parcels );
     $farms = baykat_farm_get_user_farms( $user_id );
+    $editable_farms = baykat_farm_filter_editable_records( $farms );
     $activities = baykat_farm_get_user_activities( $user_id );
     $editable_activities = baykat_farm_filter_editable_records( $activities );
     $crops = baykat_farm_get_user_crops( $user_id );
     $editable_crops = baykat_farm_filter_editable_records( $crops );
+    $campaigns = baykat_farm_campaign_get_user_campaigns( $user_id );
+    $campaigns_error = is_wp_error( $campaigns );
+    if ( $campaigns_error ) {
+        $campaigns = array();
+    }
+    $editable_campaigns = array_values(
+        array_filter(
+            $campaigns,
+            function ( $campaign ) use ( $user_id ) {
+                return 'real' === $campaign->campaign_type
+                    && baykat_farm_user_can_edit_farm( (int) $campaign->farm_id, $user_id );
+            }
+        )
+    );
 
     ob_start();
     ?>
@@ -148,6 +163,9 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
                 <?php echo esc_html( $message['message'] ); ?>
             </div>
 
+        <?php endif; ?>
+        <?php if ( $campaigns_error ) : ?>
+            <div class="baykat-farm-notice baykat-farm-notice-error" role="alert">Impossible de charger les campagnes. Les transactions ne pourront pas être rattachées à une campagne pour le moment.</div>
         <?php endif; ?>
 
         <div class="baykat-finance-cards">
@@ -250,7 +268,7 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
                     '_wpnonce'
                 );
                 ?>
-                <p class="baykat-farm-add-form-description">Choisissez le type et le montant, puis rattachez l’opération à la parcelle concernée. La culture et l’activité sont facultatives.</p>
+                <p class="baykat-farm-add-form-description">Choisissez une ferme et une date. Rattachez l’opération à une parcelle et une campagne si elle est spécifique; une dépense commune peut rester au niveau de la ferme.</p>
 
                 <div class="baykat-finance-field">
 
@@ -297,6 +315,12 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
 
                 </div>
 
+                <div class="baykat-finance-field">
+                    <label for="baykat_operation_date">Date réelle de l’opération</label>
+                    <input type="date" name="operation_date" id="baykat_operation_date" value="<?php echo esc_attr( current_time( 'Y-m-d' ) ); ?>" required>
+                    <span class="baykat-finance-field-help">La date de saisie sera conservée séparément.</span>
+                </div>
+
                 <div class="baykat-finance-field" data-expense-category-field>
                     <label for="baykat_expense_category">Nature de la dépense</label>
                     <select name="expense_category" id="baykat_expense_category">
@@ -307,16 +331,26 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
                 </div>
 
                 <div class="baykat-finance-field">
-                    <label for="baykat_parcel_id">Parcelle de la ferme</label>
-                    <select name="parcel_id" id="baykat_parcel_id" data-finance-parcel-select required>
-                        <option value="">Choisir une parcelle</option>
+                    <label for="baykat_farm_id">Ferme</label>
+                    <select name="farm_id" id="baykat_farm_id" data-finance-farm-select required>
+                        <option value="">Choisir une ferme</option>
+                        <?php foreach ( $editable_farms as $farm ) : ?>
+                            <option value="<?php echo esc_attr( $farm->id ); ?>"><?php echo esc_html( $farm->name ); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="baykat-finance-field">
+                    <label for="baykat_parcel_id">Parcelle <span>(facultative pour une dépense commune)</span></label>
+                    <select name="parcel_id" id="baykat_parcel_id" data-finance-parcel-select>
+                        <option value="">Dépense commune à la ferme / aucune parcelle</option>
                         <?php foreach ( $editable_parcels as $parcel ) : ?>
-                            <option value="<?php echo esc_attr( $parcel->id ); ?>">
+                            <option value="<?php echo esc_attr( $parcel->id ); ?>" data-farm-id="<?php echo esc_attr( $parcel->farm_id ); ?>">
                                 <?php echo esc_html( $parcel->farm_name . ' — ' . $parcel->name ); ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <span class="baykat-finance-field-help">Les activités et cultures proposées ensuite correspondront à cette parcelle.</span>
+                    <span class="baykat-finance-field-help">Les revenus et dépenses propres à une production doivent être rattachés à une parcelle; une charge commune reste au niveau ferme.</span>
                 </div>
 
                 <div class="baykat-finance-field">
@@ -324,7 +358,7 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
                     <select name="activity_id" id="baykat_activity_id" data-finance-activity-select>
                         <option value="">Aucune activité — lier seulement à la parcelle</option>
                         <?php foreach ( $editable_activities as $activity ) : ?>
-                            <option value="<?php echo esc_attr( $activity->id ); ?>" data-parcel-id="<?php echo esc_attr( $activity->parcel_id ); ?>">
+                            <option value="<?php echo esc_attr( $activity->id ); ?>" data-parcel-id="<?php echo esc_attr( $activity->parcel_id ); ?>" data-campaign-id="<?php echo esc_attr( $activity->campaign_id ); ?>">
                                 <?php echo esc_html( $activity->title . ' — ' . $activity->farm_name . ' / ' . $activity->parcel_name ); ?>
                             </option>
                         <?php endforeach; ?>
@@ -344,6 +378,21 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
                     </select>
                     <span class="baykat-finance-field-help">Associez une opération à une culture pour calculer sa marge.</span>
                 </div>
+
+                <?php if ( $editable_campaigns ) : ?>
+                <div class="baykat-finance-field">
+                    <label for="baykat_campaign_id">Campagne réelle (facultatif)</label>
+                    <select name="campaign_id" id="baykat_campaign_id" data-finance-campaign-select>
+                        <option value="">Aucune campagne</option>
+                        <?php foreach ( $editable_campaigns as $campaign ) : ?>
+                            <option value="<?php echo esc_attr( $campaign->id ); ?>" data-parcel-id="<?php echo esc_attr( $campaign->parcel_id ); ?>">
+                                <?php echo esc_html( $campaign->crop_name . ' — ' . $campaign->farm_name . ' / ' . $campaign->parcel_name ); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <span class="baykat-finance-field-help">Les montants rattachés alimentent les indicateurs réels de la campagne.</span>
+                </div>
+                <?php endif; ?>
 
                 <div class="baykat-finance-field baykat-finance-field-description">
 
@@ -415,7 +464,7 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
                             <th>Montant</th>
                             <th>Description</th>
                             <th>Parcelle</th>
-                            <th>Date</th>
+                            <th>Date d’opération</th>
                         </tr>
                     </thead>
 
@@ -444,11 +493,13 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
                                         isset( $transaction->expense_category ) ? baykat_finance_expense_category_label( $transaction->expense_category ) : '',
                                         isset( $transaction->activity_title ) ? $transaction->activity_title : '',
                                         isset( $transaction->crop_name ) ? $transaction->crop_name : '',
+                                        isset( $transaction->campaign_crop_name ) ? $transaction->campaign_crop_name : '',
                                         $transaction->amount,
                                         $transaction_amount_label,
                                         $transaction->description,
                                         $transaction->farm_name,
                                         $transaction->parcel_name,
+                                        $transaction->operation_date,
                                         $transaction->created_at,
                                     )
                                 );
@@ -490,6 +541,9 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
                                     <?php if ( ! empty( $transaction->crop_name ) ) : ?>
                                         <small class="baykat-finance-transaction-meta">Culture : <?php echo esc_html( $transaction->crop_name ); ?></small>
                                     <?php endif; ?>
+                                    <?php if ( ! empty( $transaction->campaign_crop_name ) ) : ?>
+                                        <small class="baykat-finance-transaction-meta">Campagne : <?php echo esc_html( $transaction->campaign_crop_name ); ?></small>
+                                    <?php endif; ?>
                                     <?php if ( $transaction->item_name && $transaction->description ) : ?>
                                         <small class="baykat-finance-transaction-meta"><?php echo esc_html( $transaction->description ); ?></small>
                                     <?php endif; ?>
@@ -508,12 +562,9 @@ function baykat_finance_render_frontend_page( $initial_type = 'all', $process_su
                                     ?>
                                 </td>
 
-                                <td data-label="Date">
-                                    <?php
-                                    echo esc_html(
-                                        $transaction->created_at
-                                    );
-                                    ?>
+                                <td data-label="Date d’opération">
+                                    <?php echo esc_html( ! empty( $transaction->operation_date ) ? $transaction->operation_date : 'Non renseignée (ancienne donnée)' ); ?>
+                                    <small class="baykat-finance-transaction-meta">Saisie le <?php echo esc_html( $transaction->created_at ); ?></small>
                                 </td>
 
                             </tr>

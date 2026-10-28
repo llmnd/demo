@@ -119,7 +119,7 @@ function baykat_farm_render_cultures( $process_actions = true ) {
                                     Récolte prévue : <?php echo esc_html( $crop->expected_harvest_date ? $crop->expected_harvest_date : '—' ); ?>
                                 </p>
                                 <?php if ( ! empty( $crop->harvested_quantity ) ) : ?>
-                                    <p class="baykat-farm-card-dates">Récolté : <?php echo esc_html( number_format( (float) $crop->harvested_quantity, 3, ',', ' ' ) . ' ' . $crop->harvested_unit ); ?></p>
+                                    <p class="baykat-farm-card-dates">Récolté : <?php echo esc_html( baykat_farm_format_quantity( $crop->harvested_quantity ) . ' ' . baykat_farm_normalize_unit( $crop->harvested_unit ) ); ?></p>
                                 <?php endif; ?>
                                 <?php if ( in_array( $crop->access_role, array( 'owner', 'manager' ), true ) ) : ?>
                                 <?php if ( in_array( $crop->status, array( 'growing', 'harvested' ), true ) ) : ?>
@@ -157,7 +157,7 @@ function baykat_farm_render_cultures( $process_actions = true ) {
                                             <ul>
                                                 <?php foreach ( $crop_harvests as $harvest ) : ?>
                                                     <li>
-                                                        <strong><?php echo esc_html( number_format( (float) $harvest->quantity, 3, ',', ' ' ) . ' ' . $harvest->unit ); ?></strong>
+                                                        <strong><?php echo esc_html( baykat_farm_format_quantity( $harvest->quantity ) . ' ' . baykat_farm_normalize_unit( $harvest->unit ) ); ?></strong>
                                                         <span><?php echo esc_html( $harvest->harvest_date ? mysql2date( 'j M Y', $harvest->harvest_date ) : 'Date antérieure non précisée' ); ?></span>
                                                         <?php $harvest_recorder = get_userdata( (int) $harvest->recorded_by ); ?>
                                                         <?php if ( $harvest_recorder ) : ?>

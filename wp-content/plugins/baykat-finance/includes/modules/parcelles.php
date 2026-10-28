@@ -9,7 +9,10 @@ function baykat_farm_render_parcelles( $process_actions = true ) {
     $message = null;
 
     if ( $process_actions ) {
-        $message = baykat_farm_process_record_action( $user_id, 'parcel' );
+        $message = baykat_farm_process_archive_submission( $user_id );
+        if ( ! $message ) {
+            $message = baykat_farm_process_record_action( $user_id, 'parcel' );
+        }
         if ( ! $message ) {
             $message = baykat_farm_process_parcel_submission( $user_id );
         }
@@ -20,12 +23,6 @@ function baykat_farm_render_parcelles( $process_actions = true ) {
     $farms = baykat_farm_get_user_farms( $user_id );
     $editable_farms = baykat_farm_filter_editable_records( $farms );
     $parcels = baykat_farm_get_user_parcels( $user_id );
-    $statuses = array(
-        'planned'   => 'Planifiée',
-        'growing'   => 'En cours',
-        'harvested' => 'Récoltée',
-        'paused'    => 'En pause',
-    );
     ?>
     <div class="baykat-farm-content">
         <?php if ( $message ) : ?>
@@ -56,14 +53,6 @@ function baykat_farm_render_parcelles( $process_actions = true ) {
                         <label for="baykat_parcel_area">Superficie (m², facultatif)</label>
                         <input type="number" name="parcel_area_m2" id="baykat_parcel_area" min="0.01" step="0.01">
                     </div>
-                    <div class="baykat-farm-field">
-                        <label for="baykat_parcel_status">Statut</label>
-                        <select name="parcel_status" id="baykat_parcel_status" required>
-                            <?php foreach ( $statuses as $slug => $label ) : ?>
-                                <option value="<?php echo esc_attr( $slug ); ?>"><?php echo esc_html( $label ); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
                     <?php baykat_farm_render_image_field( 'parcel_image', 'Photo de la parcelle' ); ?>
                     <button class="baykat-finance-button" type="submit" name="baykat_add_parcel" value="1">Enregistrer la parcelle</button>
                     </form>
@@ -80,7 +69,7 @@ function baykat_farm_render_parcelles( $process_actions = true ) {
         <section class="baykat-farm-panel" aria-labelledby="baykat-farm-parcel-list-title">
             <header class="baykat-farm-panel-heading"><span class="baykat-farm-eyebrow">Votre terrain</span><h3 id="baykat-farm-parcel-list-title">Parcelles enregistrées</h3></header>
             <?php if ( $parcels ) : ?>
-                <?php baykat_farm_render_record_filters( 'baykat-farm-parcel-list', 'Rechercher une parcelle', $statuses ); ?>
+                <?php baykat_farm_render_record_filters( 'baykat-farm-parcel-list', 'Rechercher une parcelle' ); ?>
                 <div class="baykat-farm-record-grid baykat-farm-visual-grid" id="baykat-farm-parcel-list">
                     <?php foreach ( $parcels as $parcel ) : ?>
                         <article
@@ -90,16 +79,14 @@ function baykat_farm_render_parcelles( $process_actions = true ) {
                             data-parcel-record-card
                             data-parcel-farm-id="<?php echo esc_attr( $parcel->farm_id ); ?>"
                             data-parcel-id="<?php echo esc_attr( $parcel->id ); ?>"
-                            data-search-text="<?php echo esc_attr( $parcel->farm_name . ' ' . $parcel->name . ' ' . ( isset( $statuses[ $parcel->status ] ) ? $statuses[ $parcel->status ] : $parcel->status ) . ' ' . ( null === $parcel->area_m2 ? '' : $parcel->area_m2 ) ); ?>"
-                            data-farm-record-filter-value="<?php echo esc_attr( $parcel->status ); ?>"
+                            data-search-text="<?php echo esc_attr( $parcel->farm_name . ' ' . $parcel->name . ' ' . ( null === $parcel->area_m2 ? '' : $parcel->area_m2 ) ); ?>"
                         >
                             <?php echo baykat_farm_render_image( $parcel->image_id, 'medium_large' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
                             <div class="baykat-farm-visual-card-body">
                                 <span class="baykat-farm-eyebrow"><?php echo esc_html( $parcel->farm_name ); ?></span>
                                 <h4><?php echo esc_html( $parcel->name ); ?></h4>
                                 <div class="baykat-farm-card-meta">
-                                    <span><?php echo null === $parcel->area_m2 ? 'Superficie non renseignée' : esc_html( number_format( (float) $parcel->area_m2, 2, ',', ' ' ) . ' m²' ); ?></span>
-                                    <span class="baykat-farm-status"><?php echo esc_html( isset( $statuses[ $parcel->status ] ) ? $statuses[ $parcel->status ] : $parcel->status ); ?></span>
+                                    <span><?php echo null === $parcel->area_m2 ? 'Superficie non renseignée' : esc_html( baykat_farm_format_quantity( $parcel->area_m2, 2 ) . ' m²' ); ?></span>
                                 </div>
                                 <button class="baykat-farm-open-record" type="button" data-open-parcel-modal="<?php echo esc_attr( $parcel->id ); ?>">Voir la parcelle</button>
                                 <?php if ( in_array( $parcel->access_role, array( 'owner', 'manager' ), true ) ) : ?>
@@ -125,14 +112,6 @@ function baykat_farm_render_parcelles( $process_actions = true ) {
                                             <label for="baykat_parcel_edit_area_<?php echo esc_attr( $parcel->id ); ?>">Superficie (m²)</label>
                                             <input type="number" name="parcel_area_m2" id="baykat_parcel_edit_area_<?php echo esc_attr( $parcel->id ); ?>" min="0.01" step="0.01" value="<?php echo esc_attr( $parcel->area_m2 ); ?>">
                                         </div>
-                                        <div class="baykat-farm-field">
-                                            <label for="baykat_parcel_edit_status_<?php echo esc_attr( $parcel->id ); ?>">Statut</label>
-                                            <select name="parcel_status" id="baykat_parcel_edit_status_<?php echo esc_attr( $parcel->id ); ?>" required>
-                                                <?php foreach ( $statuses as $slug => $label ) : ?>
-                                                    <option value="<?php echo esc_attr( $slug ); ?>" <?php selected( $parcel->status, $slug ); ?>><?php echo esc_html( $label ); ?></option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                        </div>
                                         <button class="baykat-finance-button" type="submit" name="baykat_update_parcel" value="1">Enregistrer les modifications</button>
                                     </form>
                                     <form class="baykat-farm-delete-form" method="post">
@@ -140,6 +119,7 @@ function baykat_farm_render_parcelles( $process_actions = true ) {
                                         <input type="hidden" name="baykat_delete_parcel_id" value="<?php echo esc_attr( $parcel->id ); ?>">
                                         <button class="baykat-finance-button baykat-farm-delete-button" type="submit" name="baykat_delete_parcel" value="1">Supprimer la parcelle</button>
                                     </form>
+                                    <?php baykat_farm_render_archive_action( 'parcel', (int) $parcel->id, 'archive', 'Archiver la parcelle' ); ?>
                                 </details>
                                 <?php endif; ?>
                             </div>

@@ -81,9 +81,9 @@ function baykat_farm_render_stocks() {
                                             data-farm-id="<?php echo esc_attr( $stock->farm_id ); ?>"
                                             data-parcel-id="<?php echo esc_attr( $stock->parcel_id ); ?>"
                                             data-item-name="<?php echo esc_attr( $stock->item_name ); ?>"
-                                            data-unit="<?php echo esc_attr( $stock->unit ); ?>"
+                                            data-unit="<?php echo esc_attr( baykat_farm_normalize_unit( $stock->unit ) ); ?>"
                                             data-quantity="<?php echo esc_attr( $stock->total_quantity ); ?>"
-                                        ><?php echo esc_html( $stock->farm_name . ' — ' . $stock->parcel_name . ' — ' . $stock->item_name . ' (' . number_format( (float) $stock->total_quantity, 3, ',', ' ' ) . ' ' . $stock->unit . ')' ); ?></option>
+                                        ><?php echo esc_html( $stock->farm_name . ' — ' . $stock->parcel_name . ' — ' . $stock->item_name . ' (' . baykat_farm_format_quantity( $stock->total_quantity ) . ' ' . baykat_farm_normalize_unit( $stock->unit ) . ')' ); ?></option>
                                     <?php endif; ?>
                                 <?php endforeach; ?>
                                 <?php foreach ( $returnable_stock as $index => $stock ) : ?>
@@ -92,10 +92,10 @@ function baykat_farm_render_stocks() {
                                         data-farm-id="<?php echo esc_attr( $stock->farm_id ); ?>"
                                         data-parcel-id="<?php echo esc_attr( $stock->parcel_id ); ?>"
                                         data-item-name="<?php echo esc_attr( $stock->item_name ); ?>"
-                                        data-unit="<?php echo esc_attr( $stock->unit ); ?>"
+                                        data-unit="<?php echo esc_attr( baykat_farm_normalize_unit( $stock->unit ) ); ?>"
                                         data-activity-id="<?php echo esc_attr( $stock->activity_id ); ?>"
                                         data-quantity="<?php echo esc_attr( $stock->returnable_quantity ); ?>"
-                                    >Retour — <?php echo esc_html( $stock->farm_name . ' — ' . ( $stock->parcel_name ? $stock->parcel_name : 'Stock général' ) . ' — ' . $stock->activity_title . ' — ' . $stock->item_name . ' (' . number_format( (float) $stock->returnable_quantity, 3, ',', ' ' ) . ' ' . $stock->unit . ')' ); ?></option>
+                                    >Retour — <?php echo esc_html( $stock->farm_name . ' — ' . ( $stock->parcel_name ? $stock->parcel_name : 'Stock général' ) . ' — ' . $stock->activity_title . ' — ' . $stock->item_name . ' (' . baykat_farm_format_quantity( $stock->returnable_quantity ) . ' ' . baykat_farm_normalize_unit( $stock->unit ) . ')' ); ?></option>
                                 <?php endforeach; ?>
                             </select>
                             <small data-stock-prefill-help>Choisissez un stock connu pour éviter les erreurs de nom et d’unité.</small>
@@ -188,7 +188,7 @@ function baykat_farm_render_stocks() {
                                     <td data-label="Ferme"><?php echo esc_html( $stock->farm_name ); ?></td>
                                     <td data-label="Parcelle"><?php echo esc_html( $stock->parcel_name ); ?></td>
                                     <td data-label="Intrant"><strong><?php echo esc_html( $stock->item_name ); ?></strong></td>
-                                    <td data-label="Quantité disponible"><?php echo esc_html( number_format( (float) $stock->total_quantity, 3, ',', ' ' ) . ' ' . $stock->unit ); ?></td>
+                                    <td data-label="Quantité disponible"><?php echo esc_html( baykat_farm_format_quantity( $stock->total_quantity ) . ' ' . baykat_farm_normalize_unit( $stock->unit ) ); ?></td>
                                     <td data-label="Achats enregistrés"><?php echo esc_html( number_format( (float) $stock->total_cost, 0, ',', ' ' ) ); ?> FCFA</td>
                                 </tr>
                             <?php endforeach; ?>
@@ -212,7 +212,7 @@ function baykat_farm_render_stocks() {
                                     <td data-label="Date"><?php echo esc_html( $movement->movement_date ); ?></td>
                                     <td data-label="Mouvement"><?php echo esc_html( isset( baykat_farm_stock_types()[ $movement->movement_type ] ) ? baykat_farm_stock_types()[ $movement->movement_type ] : $movement->movement_type ); ?></td>
                                     <td data-label="Intrant"><strong><?php echo esc_html( $movement->item_name ); ?></strong></td>
-                                    <td data-label="Quantité"><?php echo esc_html( number_format( (float) $movement->quantity, 3, ',', ' ' ) . ' ' . $movement->unit ); ?></td>
+                                    <td data-label="Quantité"><?php echo esc_html( baykat_farm_format_quantity( $movement->quantity ) . ' ' . baykat_farm_normalize_unit( $movement->unit ) ); ?></td>
                                     <td data-label="Emplacement"><?php echo esc_html( $movement->farm_name . ( $movement->parcel_name ? ' — ' . $movement->parcel_name : '' ) ); ?>
                                         <?php if ( ! empty( $movement->destination_farm_name ) ) : ?><small>→ <?php echo esc_html( $movement->destination_farm_name . ( $movement->destination_parcel_name ? ' — ' . $movement->destination_parcel_name : '' ) ); ?></small><?php endif; ?>
                                     </td>

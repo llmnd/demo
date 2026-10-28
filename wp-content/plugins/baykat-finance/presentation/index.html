@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#172c25">
+  <meta name="description" content="Proposition de cadrage pour le projet BAYKAT — Gérer ma ferme.">
+  <title>BAYKAT — Gérer ma ferme | Proposition V1</title>
+  <link rel="stylesheet" href="slides.css">
+</head>
+<body>
+  <main class="deck" id="deck" aria-label="Présentation de la proposition BAYKAT">
+    <header class="topbar">
+      <a class="brand" href="#slide-1" aria-label="BAYKAT, début de la présentation">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 40 40" fill="none"><path d="M8 29.5 19.8 9l12.1 20.5H8Z" stroke="currentColor" stroke-width="2"/><path d="M13 29.5c1.8-5.2 5.8-8.3 11.8-9.3M20 28v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </span>
+        <span>BAYKAT <small>GÉRER MA FERME</small></span>
+      </a>
+      <div class="topbar-meta">
+        <span class="live-dot"></span>
+        <span>Proposition de cadrage</span>
+        <span class="meta-divider"></span>
+        <span>23 octobre 2026</span>
+      </div>
+      <button class="icon-button fullscreen-button" type="button" aria-label="Activer le plein écran" title="Plein écran (F)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"/></svg>
+      </button>
+    </header>
+
+    <div class="progress-track" aria-hidden="true"><span class="progress-fill" id="progress-fill"></span></div>
+
+    <div class="slides" id="slides" aria-live="polite">
+      <section class="slide slide-cover is-active" id="slide-1" data-title="La récolte mérite mieux qu’une estimation" aria-label="Diapositive 1 sur 13">
+        <div class="cover-copy">
+          <p class="eyebrow"><span class="eyebrow-line"></span> PROPOSITION V1 · RÉUNION DE CADRAGE</p>
+          <h1>Une récolte.<br><em>Deux entrées de 10 kg.</em><br>Un total qui affiche 10.</h1>
+          <p class="cover-lede">Et si chaque décision de production reposait enfin sur des données fiables — de la parcelle jusqu’à la vente ?</p>
+          <div class="cover-author">
+            <span class="avatar">L</span>
+            <span><strong>Ma proposition pour BAYKAT</strong><small>Un outil de pilotage, pas un deuxième outil de vente</small></span>
+          </div>
+          <button class="primary-button" type="button" data-go="2">Découvrons la démarche <span aria-hidden="true">→</span></button>
+        </div>
+        <div class="cover-art" aria-hidden="true">
+          <div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div>
+          <div class="art-note"><span class="note-icon">↗</span><span><strong>La bonne donnée</strong><small>au bon moment</small></span></div>
+          <svg class="farm-illustration" viewBox="0 0 700 650" fill="none">
+            <circle cx="472" cy="137" r="58" fill="#E5B86A"/>
+            <path d="M68 409c101-90 208-128 319-115 107 13 174 63 247 46 28-6 50-17 66-30v221H68V409Z" fill="#314D3F"/>
+            <path d="M68 464c96-64 188-89 278-76 97 14 167 58 247 42 38-8 73-26 107-55v156H68V464Z" fill="#456B52"/>
+            <path d="M68 521c106-45 194-55 274-37 103 24 185 45 358-22v69H68v-10Z" fill="#71885D"/>
+            <path d="M68 563h632v44H68z" fill="#C69359"/>
+            <path d="M89 563c112-47 238-45 350 0M88 580c108-39 239-38 354 0M322 563c51-53 139-69 254-49M351 582c65-40 143-47 226-22" stroke="#E5C18A" stroke-width="3" stroke-linecap="round" opacity=".75"/>
+            <path d="M393 390v-94m0 34c-24-23-39-22-47-18 2 23 19 34 47 34m0-4c21-23 38-24 48-20-4 22-19 34-48 37" stroke="#D8C487" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M516 353v-73m0 29c-20-19-32-18-39-14 2 19 16 28 39 29m0-3c17-19 30-20 39-16-3 18-15 28-39 31" stroke="#D8C487" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M177 407v-56m0 22c-16-15-25-14-31-11 2 15 13 22 31 23m0-3c13-15 24-15 31-12-2 14-12 22-31 24" stroke="#D8C487" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="m441 361 73-53 74 53v73H441v-73Z" fill="#EFE3C9"/>
+            <path d="M428 361h172l-86-68-86 68Z" fill="#C8784F"/>
+            <path d="M468 378h23v29h-23zm51 0h23v29h-23z" fill="#77907A"/>
+            <path d="M485 434v-37h28v37" stroke="#9D704A" stroke-width="4"/>
+            <path d="M485 434v-37h28v37" fill="#DDBD8A"/>
+            <path d="M94 324c23-25 58-33 91-26-5 28-28 47-63 48" stroke="#E8D6AE" stroke-width="3" stroke-linecap="round"/>
+            <path d="M94 324c14 7 29 14 43 21" stroke="#E8D6AE" stroke-width="3" stroke-linecap="round"/>
+            <path d="M227 296c17-19 43-26 68-21-4 22-21 36-48 37" stroke="#E8D6AE" stroke-width="3" stroke-linecap="round"/>
+            <path d="M227 296c11 5 22 11 32 16" stroke="#E8D6AE" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+          <div class="metric-float"><span class="metric-check">✓</span><span><strong>20 kg</strong><small>récolte cumulée</small></span></div>
+          <div class="art-caption">Des données fiables.<br><strong>Des décisions plus justes.</strong></div>
+        </div>
+        <div class="cover-index"><span>01</span><i></i><span>13</span></div>
+      </section>
+
+      <section class="slide" id="slide-2" data-title="Avant / après : les récoltes" aria-label="Diapositive 2 sur 13">
+        <div class="slide-heading">
+          <p class="eyebrow"><span class="eyebrow-line"></span> AVANT / APRÈS</p>
+          <h2>Un écart vérifié.<br><em>Un correctif prêt.</em></h2>
+          <p class="heading-lede">Le code local recalcule les récoltes depuis le journal et fiabilise unités et affichage. La démo distante reste à valider après déploiement.</p>
+        </div>
+        <div class="evidence-grid">
+          <article class="evidence-card evidence-alert">
+            <span class="card-kicker">TOMATES · CUMUL DES RÉCOLTES</span>
+            <div class="harvest-equation">
+              <div class="harvest-bucket"><span>10</span><small>kg</small></div>
+              <b>+</b>
+              <div class="harvest-bucket"><span>10</span><small>kg</small></div>
+              <b>=</b>
+              <div class="harvest-bucket correct"><span>20</span><small>kg</small></div>
+            </div>
+            <p>Avant : 10 kg affichés malgré deux entrées. Après : 20 kg cumulés. Une vente de 1 kg laisse 19 kg disponibles.</p>
+            <div class="card-tag is-ready"><span class="tag-dot"></span> Correctif intégré en local · déploiement et recette à venir</div>
+          </article>
+          <div class="evidence-side">
+            <article class="mini-evidence"><span class="mini-icon icon-link">↗</span><span><strong>Ventes reliées au journal</strong><small>Disponible = récoltes cumulées − ventes non annulées.</small></span></article>
+            <article class="mini-evidence"><span class="mini-icon icon-date">kg</span><span><strong>Unités harmonisées</strong><small>Les variantes reconnues comme « Kk » deviennent « kg ».</small></span></article>
+            <article class="mini-evidence"><span class="mini-icon icon-chart">⌁</span><span><strong>Affichage clarifié</strong><small>40,000 ha → 40 ha · 200,00 m² → 200 m².</small></span></article>
+            <div class="evidence-conclusion"><span>Prochaine étape</span><strong>Déployer, puis vérifier le résultat sur le compte de démonstration.</strong></div>
+          </div>
+        </div>
+        <div class="slide-number">02 <span>/ 13</span></div>
+      </section>
+
+      <section class="slide" id="slide-3" data-title="Un seul parcours de production" aria-label="Diapositive 3 sur 13">
+        <div class="slide-heading centered">
+          <p class="eyebrow"><span class="eyebrow-line"></span> LA VISION</p>
+          <h2>De la parcelle au bilan.<br><em>Un seul parcours de production.</em></h2>
+          <p class="heading-lede">Chaque étape alimente la suivante. Rien n’est ressaisi, rien n’est compté deux fois.</p>
+        </div>
+        <div class="journey">
+          <div class="journey-line"><span class="journey-progress"></span></div>
+          <article class="journey-step">
+            <span class="step-icon"><svg viewBox="0 0 48 48" fill="none"><path d="M6 37 24 7l18 30H6Z" stroke="currentColor" stroke-width="2"/><path d="M12 37c5-8 12-12 22-13" stroke="currentColor" stroke-width="2"/></svg></span>
+            <small>01 · TERRAIN</small><strong>Ferme<br>& parcelle</strong><p>Où je produis</p>
+          </article>
+          <article class="journey-step step-highlight">
+            <span class="step-icon"><svg viewBox="0 0 48 48" fill="none"><path d="M24 40V20m0 11c-9-1-13-6-13-13 8-1 13 3 13 10Zm0-5c1-8 6-12 14-12 0 7-5 12-14 14Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 40h28" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+            <small>02 · SAISON</small><strong>Campagne<br>agricole</strong><p>Quoi, quand, combien</p>
+          </article>
+          <article class="journey-step">
+            <span class="step-icon"><svg viewBox="0 0 48 48" fill="none"><path d="M8 12h32v28H8zM15 7v10m18-10v10M8 21h32" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="m17 30 5 5 10-11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <small>03 · SUIVI</small><strong>Travaux,<br>coûts, récoltes</strong><p>Ce qui s’est passé</p>
+          </article>
+          <article class="journey-step">
+            <span class="step-icon"><svg viewBox="0 0 48 48" fill="none"><path d="M7 39h34M11 35V24h8v11m5 0V12h8v23m5 0V18h6v17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <small>04 · DÉCISION</small><strong>Indicateurs<br>& bilan</strong><p>Ce que j’en retiens</p>
+          </article>
+        </div>
+        <div class="journey-foot"><span class="journey-foot-icon">↗</span><span><strong>Et si je vends sur BAYKAT ?</strong> La vente confirmée revient dans la campagne — sans deuxième saisie.</span></div>
+        <div class="slide-number">03 <span>/ 13</span></div>
+      </section>
+
+      <section class="slide" id="slide-4" data-title="S’appuyer sur l’existant" aria-label="Diapositive 4 sur 13">
+        <div class="slide-heading">
+          <p class="eyebrow"><span class="eyebrow-line"></span> L’APPROCHE</p>
+          <h2>Je ne repars pas de zéro.<br><em>Je consolide le socle.</em></h2>
+          <p class="heading-lede">Le plugin offre déjà des briques concrètes. Mon travail est de les relier au bon modèle et aux bonnes règles.</p>
+        </div>
+        <div class="foundation-layout">
+          <div class="foundation-visual">
+            <div class="foundation-orbit orbit-a"></div><div class="foundation-orbit orbit-b"></div>
+            <div class="foundation-center"><svg viewBox="0 0 48 48" fill="none"><path d="M7 37 24 9l17 28H7Z" stroke="currentColor" stroke-width="2"/><path d="M15 37c4-8 11-12 21-13" stroke="currentColor" stroke-width="2"/></svg><strong>Plugin<br>existant</strong></div>
+            <span class="foundation-chip chip-farm">Fermes</span><span class="foundation-chip chip-parcel">Parcelles</span><span class="foundation-chip chip-crop">Cultures</span><span class="foundation-chip chip-harvest">Récoltes</span><span class="foundation-chip chip-activity">Activités</span><span class="foundation-chip chip-report">CSV</span>
+          </div>
+          <div class="foundation-copy">
+            <div class="status-row"><span class="status-check">✓</span><span><strong>Déjà en place</strong><small>Fermes, parcelles, cultures, activités, transactions, journal de récoltes et export CSV.</small></span></div>
+            <div class="status-row"><span class="status-add">＋</span><span><strong>À faire évoluer</strong><small>Campagnes, rattachements, dates d’opération, archivage et indicateurs cohérents.</small></span></div>
+            <div class="status-row"><span class="status-scope">◎</span><span><strong>À vérifier avant engagement</strong><small>Listivo, accès à « Mes ventes », statuts de vente et contraintes d’hébergement PDF.</small></span></div>
+            <div class="audit-callout"><span class="audit-spark">✳</span><p><strong>Un audit court avant un forfait ferme.</strong><br>Je confirme les hypothèses, les risques et le périmètre avant de lancer le développement.</p></div>
+          </div>
+        </div>
+        <div class="slide-number">04 <span>/ 13</span></div>
+      </section>
+
+      <section class="slide" id="slide-5" data-title="La campagne, pièce maîtresse" aria-label="Diapositive 5 sur 13">
+        <div class="slide-heading">
+          <p class="eyebrow"><span class="eyebrow-line"></span> 01 · STRUCTURER</p>
+          <h2>La campagne devient<br><em>la pièce maîtresse.</em></h2>
+          <p class="heading-lede">Une parcelle peut accueillir plusieurs campagnes successives. Chacune garde son histoire et ses résultats.</p>
+        </div>
+        <div class="campaign-layout">
+          <div class="campaign-stack">
+            <div class="farm-parent"><span class="farm-symbol">⌂</span><span><small>EXPLOITATION · EXEMPLE</small><strong>Ferme exemple</strong></span><span class="parent-chevron">⌄</span></div>
+            <div class="tree-connector"></div>
+            <div class="parcel-parent"><span class="parcel-symbol">▦</span><span><small>PARCELLE · 2,5 HA</small><strong>Parcelle Nord</strong></span><span class="parent-chevron">⌄</span></div>
+            <div class="campaign-list">
+              <article class="campaign-card campaign-old"><span class="campaign-leaf">✓</span><span class="campaign-details"><small>CAMPAGNE CLÔTURÉE · 2025</small><strong>Oignon violet</strong><span>Variété Violet de Galmi · 1,2 ha</span></span><span class="archive-label">Historique conservé</span></article>
+              <article class="campaign-card campaign-current"><span class="campaign-leaf">↗</span><span class="campaign-details"><small>CAMPAGNE EN COURS · 2026</small><strong>Tomate</strong><span>Variété Roma · 1 ha</span></span><span class="current-label">En cours</span></article>
+            </div>
+          </div>
+          <div class="campaign-points">
+            <div class="point-item"><span>01</span><p><strong>Une culture sur une période</strong><small>Variété, surface cultivée, dates, statut et clôture.</small></p></div>
+            <div class="point-item"><span>02</span><p><strong>Les opérations suivent la campagne</strong><small>Activités, intrants, dépenses, récoltes et recettes.</small></p></div>
+            <div class="point-item"><span>03</span><p><strong>L’historique ne s’efface pas</strong><small>On migre avec méthode ; on ne renomme pas à l’aveugle.</small></p></div>
+            <div class="migration-note"><span>↗</span><p><strong>Décision après audit</strong><br>Évolution du modèle actuel ou ajout d’une entité campagne : je confirme le chemin le plus sûr après cartographie des données.</p></div>
+          </div>
+        </div>
+        <div class="slide-number">05 <span>/ 13</span></div>
+      </section>
+
+      <section class="slide" id="slide-6" data-title="La confiance se construit dans le détail" aria-label="Diapositive 6 sur 13">
+        <div class="slide-heading centered">
+          <p class="eyebrow"><span class="eyebrow-line"></span> 02 · FIABILISER</p>
+          <h2>La confiance se construit<br><em>dans le détail.</em></h2>
+          <p class="heading-lede">Chaque opération raconte la même histoire : ce qui a été fait, quand, pour quelle campagne et à quel coût.</p>
+        </div>
+        <div class="record-demo">
+          <div class="record-window">
+            <div class="window-head"><span class="window-lights"><i></i><i></i><i></i></span><span>Nouvelle dépense</span><span class="window-save">Brouillon</span></div>
+            <div class="record-title"><span class="record-icon">↗</span><span><strong>Transport vers le marché</strong><small>Campagne Tomate · Parcelle Nord</small></span></div>
+            <div class="record-fields">
+              <div class="record-field"><small>DATE DE L’OPÉRATION</small><strong>12 octobre 2026</strong><span class="field-calendar">▦</span></div>
+              <div class="record-field"><small>DATE DE SAISIE</small><strong>14 octobre 2026</strong><span class="field-muted">Conservée automatiquement</span></div>
+              <div class="record-field"><small>CATÉGORIE</small><strong>Commercialisation</strong><span class="field-arrow">⌄</span></div>
+              <div class="record-field"><small>MONTANT</small><strong>15 000 <i>FCFA</i></strong><span class="field-muted">Séparateur lisible</span></div>
+            </div>
+            <div class="record-bottom"><span class="unique-cost">✓ <strong>Un coût, une seule source</strong> — pas de doublon entre activité et intrant</span><button type="button" tabindex="-1">Enregistrer <span>→</span></button></div>
+          </div>
+          <div class="record-benefits">
+            <article><span class="benefit-number">01</span><strong>Une date réelle</strong><p>Modifiable, obligatoire et distincte de la date de saisie.</p></article>
+            <article><span class="benefit-number">02</span><strong>Un bon rattachement</strong><p>À la campagne — ou à la ferme pour une charge commune.</p></article>
+            <article><span class="benefit-number">03</span><strong>Un coût, une seule fois</strong><p>Intrant lié à une activité : le coût garde une source unique.</p></article>
+          </div>
+        </div>
+        <div class="slide-number">06 <span>/ 13</span></div>
+      </section>
+
+      <section class="slide" id="slide-7" data-title="Des chiffres qui aident à décider" aria-label="Diapositive 7 sur 13">
+        <div class="slide-heading">
+          <p class="eyebrow"><span class="eyebrow-line"></span> 03 · PILOTER</p>
+          <h2>Des chiffres qui<br><em>aident à décider.</em></h2>
+          <p class="heading-lede">La même règle de calcul partout : à l’écran, dans le CSV et dans le bilan PDF.</p>
+        </div>
+        <div class="dashboard-preview">
+          <div class="dash-topline"><span><i class="dash-leaf">✳</i> SIMULATION · CAMPAGNE TOMATE 2026</span><span class="dash-state"><i></i> Campagne en cours</span></div>
+          <div class="dash-cards">
+            <article class="dash-card"><span>COÛTS SUIVIS</span><strong>385 000 <small>FCFA</small></strong><small class="dash-foot">Intrants · travaux · dépenses</small><div class="dash-card-icon">↘</div></article>
+            <article class="dash-card dash-card-accent"><span>RÉCOLTE</span><strong>2 400 <small>kg</small></strong><small class="dash-foot">Rendement · 2 400 kg / 1 ha</small><div class="sparkline"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></article>
+            <article class="dash-card"><span>COÛT DE PRODUCTION</span><strong>150 <small>FCFA / kg</small></strong><small class="dash-foot">Hors commercialisation</small><div class="dash-card-icon icon-coin">◉</div></article>
+          </div>
+          <div class="dash-result">
+            <div class="result-mark">↗</div>
+            <div><small>RÉSULTAT SIMPLIFIÉ</small><strong>+ 335 000 <i>FCFA</i></strong><span>Ventes confirmées − charges affectées</span></div>
+            <div class="result-margin"><small>MARGE SUR COÛTS SUIVIS</small><strong>46,5 %</strong></div>
+          </div>
+          <p class="dash-disclaimer"><span>ⓘ</span> Résultat simplifié — ce n’est pas un bénéfice comptable. Indicateur non disponible si le dénominateur requis est nul.</p>
+        </div>
+        <div class="formula-strip">
+          <span><b>Rendement</b> récolte (kg) ÷ surface (ha)</span><i></i>
+          <span><b>Coût/kg</b> coûts hors commercialisation ÷ récolte</span><i></i>
+          <span><b>Marge</b> résultat ÷ recettes × 100</span>
+        </div>
+        <div class="slide-number">07 <span>/ 13</span></div>
+      </section>
+
+      <section class="slide" id="slide-8" data-title="Mes ventes et la production, enfin reliées" aria-label="Diapositive 8 sur 13">
+        <div class="slide-heading">
+          <p class="eyebrow"><span class="eyebrow-line"></span> EXEMPLE DE PARCOURS · RELIER BAYKAT</p>
+          <h2>Mes ventes et la production.<br><em>Enfin reliées.</em></h2>
+          <p class="heading-lede">BAYKAT reste le lieu de vente. Gérer ma production suit ce qui a été produit et ce qui a réellement été vendu.</p>
+        </div>
+        <div class="sales-flow">
+          <article class="sales-node production-node">
+            <span class="node-top"><span class="node-icon">✳</span><small>PRODUCTION</small></span>
+            <strong>Campagne<br>Tomate · 2026</strong>
+            <div class="produce-quantity"><span>Récolté</span><b>500 <i>kg</i></b></div>
+            <div class="node-footer">La récolte reste une récolte.<br>Pas un stock mis en vente.</div>
+          </article>
+          <div class="sales-connector"><span class="connector-label">Le producteur choisit</span><div class="connector-line"></div><span class="connector-action">Mettre en vente <b>→</b></span></div>
+          <article class="sales-node marketplace-node">
+            <span class="node-top"><span class="market-badge">B</span><small>MES VENTES · BAYKAT</small></span>
+            <strong>Annonce<br>Tomates fraîches</strong>
+            <div class="listing-pill"><span class="listing-dot"></span> Annonce liée à 1 campagne</div>
+            <div class="node-footer">Publication ≠ recette.<br>Seule une vente confirmée compte.</div>
+          </article>
+          <div class="sales-connector connector-return"><span class="connector-label">Vente confirmée</span><div class="connector-line"></div><span class="connector-action">Montant + quantité <b>↙</b></span></div>
+          <article class="sales-node result-node">
+            <span class="node-top"><span class="node-icon result-icon">✓</span><small>BILAN CAMPAGNE</small></span>
+            <strong>Quantité<br>disponible</strong>
+            <div class="available-math"><span>Récoltes</span><b>−</b><span>Ventes confirmées</span></div>
+            <div class="available-result"><span>Disponible</span><strong>380 <i>kg</i></strong></div>
+          </article>
+        </div>
+        <div class="sales-rules">
+          <span><b>01</b> Une annonce ↔ une campagne à la fois</span>
+          <span><b>02</b> Aucun doublon de saisie</span>
+          <span><b>03</b> Réservations et annulations à confirmer à l’audit</span>
+        </div>
+        <div class="slide-number">08 <span>/ 13</span></div>
+      </section>
+
+      <section class="slide" id="slide-9" data-title="Trois lots, un cap clair" aria-label="Diapositive 9 sur 13">
+        <div class="slide-heading centered">
+          <p class="eyebrow"><span class="eyebrow-line"></span> LA PROPOSITION</p>
+          <h2>Trois lots.<br><em>Un cap clair.</em></h2>
+          <p class="heading-lede">Nous avançons par étapes visibles, validées une par une — avec la maîtrise du périmètre.</p>
+        </div>
+        <div class="lots">
+          <article class="lot-card">
+            <div class="lot-top"><span class="lot-index">01</span><span class="lot-time">5–7 JOURS</span></div>
+            <div class="lot-icon lot-icon-structure"><svg viewBox="0 0 48 48" fill="none"><path d="M5 39 24 7l19 32H5Z" stroke="currentColor" stroke-width="2"/><path d="M13 39c5-9 12-13 24-14" stroke="currentColor" stroke-width="2"/><circle cx="34" cy="15" r="5" fill="currentColor"/></svg></div>
+            <h3>Structure</h3><p>Le bon espace.<br>Le bon modèle.<br>L’historique protégé.</p>
+            <div class="lot-scope"><span>R01</span><span>R02</span><span>R12</span><span>R13</span><span>R14</span><span>R15</span></div>
+            <div class="lot-price"><small>FORFAIT ESTIMATIF</small><strong>450 000 <i>FCFA</i></strong></div>
+          </article>
+          <article class="lot-card lot-featured">
+            <div class="lot-ribbon">LE CŒUR MÉTIER</div>
+            <div class="lot-top"><span class="lot-index">02</span><span class="lot-time">7–9 JOURS</span></div>
+            <div class="lot-icon lot-icon-pilot"><svg viewBox="0 0 48 48" fill="none"><path d="M24 41V19m0 13c-9-2-13-7-13-14 8 0 13 4 13 11Zm0-6c2-8 7-12 15-11-1 7-6 12-15 14Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 41h32M10 11l4-4m20 0 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+            <h3>Pilotage</h3><p>Les opérations fiables.<br>Les coûts justes.<br>Les chiffres utiles.</p>
+            <div class="lot-scope"><span>R03</span><span>R04</span><span>R05</span><span>R06</span><span>R07</span><span>R08</span></div>
+            <div class="lot-price"><small>FORFAIT ESTIMATIF</small><strong>650 000 <i>FCFA</i></strong></div>
+          </article>
+          <article class="lot-card">
+            <div class="lot-top"><span class="lot-index">03</span><span class="lot-time">6–8 JOURS</span></div>
+            <div class="lot-icon lot-icon-integration"><svg viewBox="0 0 48 48" fill="none"><path d="M7 38h34M11 34V23h8v11m5 0V11h8v23m5 0V18h6v16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="m31 18 3 3 6-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <h3>Intégration BAYKAT</h3><p>Les ventes reliées.<br>Le bilan partageable.<br>Le parcours fluide.</p>
+            <div class="lot-scope"><span>R09</span><span>R10</span><span>R11</span></div>
+            <div class="lot-price"><small>FORFAIT ESTIMATIF*</small><strong>550 000 <i>FCFA</i></strong></div>
+          </article>
+        </div>
+        <div class="lots-total"><span><b>V1 · P1</b> <i>18–24 jours ouvrés · 4–5 semaines calendrier</i></span><strong>1 650 000 <small>FCFA</small></strong></div>
+        <p class="lot-footnote">* Lot 3 sous réserve d’accès à « Mes ventes » et d’interfaces exploitables. Estimation à confirmer après audit.</p>
+        <div class="slide-number">09 <span>/ 13</span></div>
+      </section>
+
+      <section class="slide" id="slide-10" data-title="La réussite se vérifie" aria-label="Diapositive 10 sur 13">
+        <div class="slide-heading">
+          <p class="eyebrow"><span class="eyebrow-line"></span> LA RECETTE</p>
+          <h2>La réussite ne se devine pas.<br><em>Elle se vérifie.</em></h2>
+          <p class="heading-lede">Chaque lot se termine par des preuves concrètes, dans une préproduction — jamais directement en production.</p>
+        </div>
+        <div class="validation-layout">
+          <div class="validation-timeline">
+            <div class="timeline-rail"><span class="timeline-fill"></span></div>
+            <article class="validation-step"><span class="validation-number">01</span><div><small>LOT 1 · STRUCTURE</small><strong>Deux comptes.<br>Deux espaces isolés.</strong><p>Parcours complet à 360 px.<br>Campagnes successives, historique conservé.</p></div><span class="validation-check">✓</span></article>
+            <article class="validation-step"><span class="validation-number">02</span><div><small>LOT 2 · PILOTAGE</small><strong>20 opérations.<br>Des résultats exacts.</strong><p>Jeu de test fourni par BAYKAT.<br>Récolte 10 + 10 = 20 kg. Aucun doublon.</p></div><span class="validation-check">✓</span></article>
+            <article class="validation-step"><span class="validation-number">03</span><div><small>LOT 3 · INTÉGRATION</small><strong>Une vente confirmée.<br>Un bilan cohérent.</strong><p>Pas de recette à la publication.<br>PDF identique aux chiffres de l’écran.</p></div><span class="validation-check">✓</span></article>
+          </div>
+          <aside class="validation-aside">
+            <div class="aside-quote">“</div>
+            <p>Ce qui est livré doit être vérifiable par BAYKAT, pas seulement démontrable par le développeur.</p>
+            <span class="aside-rule"></span>
+            <strong>Un lot validé.<br>Puis le suivant.</strong>
+            <small>Une décision écrite protège<br>les deux parties.</small>
+          </aside>
+        </div>
+        <div class="slide-number">10 <span>/ 13</span></div>
+      </section>
+
+      <section class="slide" id="slide-11" data-title="Garder le périmètre sous contrôle" aria-label="Diapositive 11 sur 13">
+        <div class="slide-heading">
+          <p class="eyebrow"><span class="eyebrow-line"></span> MAÎTRISE DU PROJET</p>
+          <h2>Garder le périmètre<br><em>sous contrôle.</em></h2>
+          <p class="heading-lede">Ce qui est confirmé entre dans le plan. Ce qui dépend d’un tiers est vérifié. Ce qui vient après reste une option.</p>
+        </div>
+        <div class="scope-layout">
+          <div class="scope-in">
+            <div class="scope-head"><span class="scope-symbol">✓</span><span><small>V1 · INCLUS</small><strong>Le nécessaire pour piloter</strong></span></div>
+            <div class="scope-pills"><span>Campagnes</span><span>Opérations datées</span><span>Coûts & récoltes</span><span>Indicateurs</span><span>PDF & CSV</span><span>Intégration BAYKAT*</span></div>
+            <p>*Sous réserve des accès et interfaces disponibles, confirmés à l’audit.</p>
+          </div>
+          <div class="scope-out">
+            <div class="scope-head"><span class="scope-symbol">↗</span><span><small>P2 · OPTIONNEL</small><strong>Après stabilisation</strong></span></div>
+            <ul class="option-list">
+              <li><span>R16</span> Stock avancé <small>75–125 k</small></li>
+              <li><span>R17</span> Partage de ferme <small>50–100 k</small></li>
+              <li><span>R18</span> Carte & tracé <small>100–200 k*</small></li>
+              <li><span>R19</span> Déclaration des pertes <small>150–250 k</small></li>
+              <li><span>R20</span> Répartition des charges <small>150–250 k</small></li>
+              <li><span>R21</span> Comparaison & tendances <small>200–350 k</small></li>
+            </ul>
+            <p>*Sans service payant ; diagnostic d’abord.</p>
+          </div>
+          <div class="scope-guard"><span>✳</span><p><strong>Aucun dépassement sans accord.</strong><br>Si l’audit révèle une refonte, une API payante ou une adaptation importante de Listivo / « Mes ventes », je chiffre l’écart avant de poursuivre.</p></div>
+        </div>
+        <div class="slide-number">11 <span>/ 13</span></div>
+      </section>
+
+      <section class="slide" id="slide-12" data-title="Des engagements clairs, des deux côtés" aria-label="Diapositive 12 sur 13">
+        <div class="slide-heading">
+          <p class="eyebrow"><span class="eyebrow-line"></span> CONDITIONS DE COLLABORATION</p>
+          <h2>Des engagements clairs.<br><em>Des deux côtés.</em></h2>
+          <p class="heading-lede">Je veux que le cadre protège la qualité du projet et la confiance entre BAYKAT et moi.</p>
+        </div>
+        <div class="terms-layout">
+          <div class="payment-card">
+            <div class="terms-label">PAIEMENT PAR LOT · PROPOSITION À DISCUTER</div>
+            <h3>40 % au démarrage.<br><em>60 % après recette.</em></h3>
+            <p>Pour chaque lot : 40 % au démarrage, puis 60 % après livraison et recette validée du lot.</p>
+            <div class="payment-rows">
+              <div><span>Lot 1 · Structure</span><strong>180 000 <small>+</small> 270 000</strong></div>
+              <div><span>Lot 2 · Pilotage</span><strong>260 000 <small>+</small> 390 000</strong></div>
+              <div><span>Lot 3 · Intégration</span><strong>220 000 <small>+</small> 330 000</strong></div>
+            </div>
+            <div class="payment-legend"><span><i></i> Lancement</span><span><i></i> Recette validée</span><b>Montants en FCFA</b></div>
+          </div>
+          <div class="terms-list">
+            <article><span class="term-icon">30</span><span><strong>Garantie corrective · 30 jours</strong><small>Anomalies reproductibles du périmètre livré, après recette de chaque lot.</small></span></article>
+            <article><span class="term-icon">⌘</span><span><strong>Code source spécifique livré</strong><small>Après règlement du lot. Le plugin préexistant et les licences tierces restent distingués.</small></span></article>
+            <article><span class="term-icon">◈</span><span><strong>Préproduction et confidentialité</strong><small>Pas de développement direct en production ; accès limités et données producteurs confidentielles.</small></span></article>
+            <article><span class="term-icon">↗</span><span><strong>Tout changement validé avant d’agir</strong><small>Taxes, services externes, adaptations hors périmètre et coût de l’audit sont clarifiés au devis.</small></span></article>
+          </div>
+        </div>
+        <div class="terms-footnote"><span>À convenir ensemble :</span> délai de recette, cycles de correction inclus, coût de l’audit et déduction éventuelle du lot 1.</div>
+        <div class="slide-number">12 <span>/ 13</span></div>
+      </section>
+
+      <section class="slide negotiation-slide" id="slide-13" data-title="Ce que couvre le prix" aria-label="Diapositive 13 sur 17">
+        <div class="slide-heading">
+          <p class="eyebrow"><span class="eyebrow-line"></span> CE QUE JE VOUS PROPOSE</p>
+          <h2>Un investissement<br><em>pour des résultats vérifiables.</em></h2>
+          <p class="heading-lede">Je vous propose une V1 qui protège vos données, fiabilise le suivi des campagnes et relie les opérations au pilotage.</p>
+        </div>
+        <div class="price-proof-layout">
+          <div class="price-proof-list">
+            <article><span>01</span><div><strong>Je protège vos données existantes</strong><small>Je cartographie la base et préserve l’historique lors des évolutions.</small></div></article>
+            <article><span>02</span><div><strong>Je fiabilise votre suivi agricole</strong><small>Campagnes, dates réelles, coûts sans doublon et indicateurs cohérents.</small></div></article>
+            <article><span>03</span><div><strong>Je relie, teste et vous livre</strong><small>Intégration, exports et recette vérifiés sur un périmètre convenu.</small></div></article>
+          </div>
+          <aside class="price-proof-total">
+            <span>VOTRE V1 · TROIS LOTS · ESTIMATION INITIALE</span>
+            <strong>1 650 000 <i>FCFA</i></strong>
+            <p>Chaque lot a son périmètre, son prix et ses critères de recette. Je confirmerai le devis après l’audit technique.</p>
+            <small>Je m’engage sur des livrables testables, pas sur une promesse de rendement commercial.</small>
+          </aside>
+        </div>
+        <div class="slide-number">13 <span>/ 17</span></div>
+      </section>
+
+      <section class="slide negotiation-slide" id="slide-14" data-title="Si le budget est trop élevé" aria-label="Diapositive 14 sur 17">
+        <div class="slide-heading">
+          <p class="eyebrow"><span class="eyebrow-line"></span> SI LE BUDGET DÉPASSE VOTRE ENVELOPPE</p>
+          <h2>Nous pouvons ajuster<br><em>le périmètre ensemble.</em></h2>
+          <p class="heading-lede">Si 1 650 000 FCFA dépasse votre budget, je vous propose trois façons d’avancer sans confondre un premier lot et la V1 complète.</p>
+        </div>
+        <div class="budget-paths">
+          <article class="budget-path">
+            <span class="budget-path-label">A · LA V1 COMPLÈTE</span>
+            <strong>1 650 000 <i>FCFA</i></strong>
+            <p>Nous réalisons les trois lots, avec l’intégration BAYKAT sous réserve des conclusions de l’audit.</p>
+            <small>Estimation initiale : 18 à 24 jours ouvrés.</small>
+          </article>
+          <article class="budget-path is-highlighted">
+            <span class="budget-path-label">B · COMMENCER PAR LE LOT 1</span>
+            <strong>450 000 <i>FCFA</i></strong>
+            <p>Nous lançons uniquement le lot Structure, puis décidons ensemble par écrit de la suite.</p>
+            <small>Ce premier lot ne comprend pas la V1 complète.</small>
+          </article>
+          <article class="budget-path">
+            <span class="budget-path-label">C · PRIORISER VOS BESOINS</span>
+            <strong>Devis révisé</strong>
+            <p>Vous me dites ce qui est indispensable ; nous reportons certaines fonctions et je vous remets un nouveau chiffrage.</p>
+            <small>Les fonctions retirées seront précisées dans le devis.</small>
+          </article>
+        </div>
+        <div class="negotiation-script"><span>Ma question</span><strong>« Quelle enveloppe souhaitez-vous respecter, et quelles fonctions doivent absolument être présentes dans la première version ? »</strong></div>
+        <div class="slide-number">14 <span>/ 17</span></div>
+      </section>
+
+      <section class="slide negotiation-slide" id="slide-15" data-title="Vos questions, mes réponses" aria-label="Diapositive 15 sur 17">
+        <div class="slide-heading">
+          <p class="eyebrow"><span class="eyebrow-line"></span> VOS QUESTIONS, MES RÉPONSES</p>
+          <h2>Si vous me dites…<br><em>voici ce que je vous réponds.</em></h2>
+          <p class="heading-lede">Je souhaite que nous puissions parler franchement du budget, du paiement et des résultats attendus.</p>
+        </div>
+        <div class="objection-grid">
+          <article><span class="objection-number">01</span><blockquote>Si vous me dites : « C’est trop cher. »</blockquote><p>Je vous réponds : « Je comprends votre contrainte. Le montant couvre trois lots détaillés. Voyons ensemble ce qui est prioritaire et ce qui peut attendre. »</p></article>
+          <article><span class="objection-number">02</span><blockquote>Si vous me dites : « Faites tout pour 1 million. »</blockquote><p>Je vous réponds : « À ce budget, je peux revoir le périmètre ou commencer par le lot 1. Je préfère être transparent : ce ne sera pas la V1 complète. »</p></article>
+          <article><span class="objection-number">03</span><blockquote>Si vous me dites : « On paie tout après livraison. »</blockquote><p>Je vous réponds : « Nous pouvons convenir d’un paiement après recette pour chaque lot, avec des critères et un délai de validation écrits au contrat. »</p></article>
+          <article><span class="objection-number">04</span><blockquote>Si vous me dites : « Garantissez-nous le résultat. »</blockquote><p>Je vous réponds : « Je peux m’engager sur les livrables et leur recette, ainsi que sur 30 jours de correction des anomalies du périmètre livré — pas sur votre rendement commercial. »</p></article>
+        </div>
+        <div class="slide-number">15 <span>/ 17</span></div>
+      </section>
+
+      <section class="slide negotiation-slide" id="slide-16" data-title="Un cadre clair pour nous deux" aria-label="Diapositive 16 sur 17">
+        <div class="slide-heading">
+          <p class="eyebrow"><span class="eyebrow-line"></span> UN CADRE CLAIR POUR NOUS DEUX</p>
+          <h2>Je reste ouvert<br><em>à vos priorités.</em></h2>
+          <p class="heading-lede">Nous pouvons ajuster l’ordre et le rythme. Je souhaite simplement que chaque décision soit claire et validée ensemble.</p>
+        </div>
+        <div class="negotiation-guardrails">
+          <div class="guardrail-card guardrail-flexible">
+            <span>CE QUE NOUS POUVONS ADAPTER</span>
+            <ul>
+              <li>L’ordre des lots et le calendrier</li>
+              <li>Les fonctions à reporter en P2</li>
+              <li>Le paiement par lot, à convenir au contrat</li>
+              <li>Les critères de recette, définis ensemble</li>
+            </ul>
+          </div>
+          <div class="guardrail-card guardrail-firm">
+            <span>CE QUE JE VOUS PROPOSE DE SÉCURISER</span>
+            <ul>
+              <li>Un périmètre écrit pour chaque montant</li>
+              <li>Votre accord avant tout travail supplémentaire</li>
+              <li>La préproduction, les sauvegardes et la recette</li>
+              <li>Le coût de l’audit clarifié avant le démarrage</li>
+            </ul>
+          </div>
+          <aside class="negotiation-close">
+            <small>CE QUE JE VOUS PROPOSE POUR AVANCER</small>
+            <strong>« Pouvons-nous valider l’audit, désigner nos interlocuteurs techniques et arrêter ensemble les priorités de la première version ? »</strong>
+          </aside>
+        </div>
+        <div class="slide-number">16 <span>/ 19</span></div>
+      </section>
+
+      <section class="slide question-slide" id="slide-17" data-title="Vos questions sur le modèle et le pilotage" aria-label="Diapositive 17 sur 19">
+        <div class="slide-heading">
+          <p class="eyebrow"><span class="eyebrow-line"></span> VOS QUESTIONS · 1 À 4</p>
+          <h2>Parlons du modèle<br><em>et du pilotage.</em></h2>
+        </div>
+        <div class="question-list">
+          <article class="question-line">
+            <span class="question-index">01</span>
+            <h3>Le modèle actuel peut-il devenir des campagnes sans refonte ?</h3>
+            <span class="question-arrow" aria-hidden="true">↗</span>
+          </article>
+          <article class="question-line">
+            <span class="question-index">02</span>
+            <h3>Quel effort pour ajouter les dates réelles des opérations ?</h3>
+            <span class="question-arrow" aria-hidden="true">↗</span>
+          </article>
+          <article class="question-line">
+            <span class="question-index">03</span>
+            <h3>Les identifiants de « Mes ventes » permettent-ils un rapprochement fiable ?</h3>
+            <span class="question-arrow" aria-hidden="true">↗</span>
+          </article>
+          <article class="question-line">
+            <span class="question-index">04</span>
+            <h3>Peut-on afficher à l’écran la marge déjà calculée dans le CSV ?</h3>
+            <span class="question-arrow" aria-hidden="true">↗</span>
+          </article>
+        </div>
+        <div class="slide-number">17 <span>/ 19</span></div>
+      </section>
+
+      <section class="slide question-slide question-slide-last" id="slide-18" data-title="Vos questions sur le PDF et l’intégration" aria-label="Diapositive 18 sur 19">
+        <div class="slide-heading">
+          <p class="eyebrow"><span class="eyebrow-line"></span> VOS QUESTIONS · 5 À 7</p>
+          <h2>Parlons du PDF<br><em>et de l’intégration.</em></h2>
+        </div>
+        <div class="question-list">
+          <article class="question-line">
+            <span class="question-index">05</span>
+            <h3>Quelle charge prévoir pour le bilan PDF ?</h3>
+            <span class="question-arrow" aria-hidden="true">↗</span>
+          </article>
+          <article class="question-line">
+            <span class="question-index">06</span>
+            <h3>Peut-on masquer le stock, le partage et la carte ?</h3>
+            <span class="question-arrow" aria-hidden="true">↗</span>
+          </article>
+          <article class="question-line">
+            <span class="question-index">07</span>
+            <h3>Quelles adaptations pour /panel et le thème Listivo ?</h3>
+            <span class="question-arrow" aria-hidden="true">↗</span>
+          </article>
+        </div>
+        <div class="slide-number">18 <span>/ 19</span></div>
+      </section>
+
+      <section class="slide slide-close" id="slide-19" data-title="Décidons ensemble de la première étape" aria-label="Diapositive 19 sur 19">
+        <div class="close-background" aria-hidden="true"><span class="close-sun"></span><span class="close-field field-one"></span><span class="close-field field-two"></span><span class="close-field field-three"></span></div>
+        <div class="close-content">
+          <p class="eyebrow"><span class="eyebrow-line"></span> PROCHAINE ÉTAPE</p>
+          <h2>Décidons ensemble<br><em>de la première étape.</em></h2>
+          <p class="close-lede">Un audit court. Des hypothèses validées. Un premier lot qui démarre sur des bases saines.</p>
+          <div class="close-checklist">
+            <span><i>01</i> Accès à la préproduction et aux modules</span>
+            <span><i>02</i> Règles de ventes, unités et données de test</span>
+            <span><i>03</i> Critères de recette et modalité de paiement</span>
+          </div>
+          <div class="close-ask"><span class="ask-icon">↗</span><span><small>MA PROPOSITION</small><strong>On valide l’audit technique et on fige le devis après vérification ?</strong></span></div>
+          <p class="close-signature">Merci. <span>— Lamine</span></p>
+        </div>
+        <div class="close-stamp"><span>PRODUCTION</span><strong>→</strong><span>CONFIANCE</span></div>
+        <div class="slide-number">19 <span>/ 19</span></div>
+      </section>
+    </div>
+
+    <footer class="controls" aria-label="Commandes de présentation">
+      <div class="control-hint"><kbd>←</kbd><kbd>→</kbd><span>pour naviguer</span><kbd>F</kbd><span>plein écran</span></div>
+      <nav class="dot-nav" id="dot-nav" aria-label="Aller à une diapositive"></nav>
+      <div class="control-actions">
+        <span class="slide-counter"><strong id="current-slide">01</strong><i>/</i><span>19</span></span>
+        <button class="nav-button" id="previous-slide" type="button" aria-label="Diapositive précédente" title="Précédent (←)">←</button>
+        <button class="nav-button next-button" id="next-slide" type="button" aria-label="Diapositive suivante" title="Suivant (→)">→</button>
+      </div>
+    </footer>
+  </main>
+  <script src="slides.js"></script>
+</body>
+</html>

@@ -8,6 +8,9 @@ function baykat_farm_render_finance_item_section( $category, $process_actions = 
     if ( ! in_array( $category, array( 'input', 'sale' ), true ) ) {
         return '';
     }
+    if ( 'sale' === $category ) {
+        return '';
+    }
 
     $user_id = get_current_user_id();
     $message = $process_actions
@@ -24,10 +27,33 @@ function baykat_farm_render_finance_item_section( $category, $process_actions = 
     $editable_activities = baykat_farm_filter_editable_records( $activities );
     $crops = baykat_farm_get_user_crops( $user_id );
     $editable_crops = baykat_farm_filter_editable_records( $crops );
+    $campaigns = baykat_farm_campaign_get_user_campaigns( $user_id );
+    $campaigns_error = is_wp_error( $campaigns );
+    if ( $campaigns_error ) {
+        $campaigns = array();
+    }
+    $editable_campaigns = array_values(
+        array_filter(
+            $campaigns,
+            function ( $campaign ) use ( $user_id ) {
+                return 'real' === $campaign->campaign_type
+                    && baykat_farm_user_can_edit_farm( (int) $campaign->farm_id, $user_id );
+            }
+        )
+    );
     $sale_crops = 'sale' === $category ? baykat_finance_get_harvestable_crops( $user_id ) : array();
     $sale_crops_error = is_wp_error( $sale_crops );
     if ( $sale_crops_error ) {
         $sale_crops = array();
+    }
+    $campaign_by_crop = array();
+    foreach ( $editable_campaigns as $campaign ) {
+        $campaign_by_crop[ (int) $campaign->crop_id ] = (int) $campaign->id;
+    }
+    foreach ( $sale_crops as $sale_crop ) {
+        $sale_crop->campaign_id = isset( $campaign_by_crop[ (int) $sale_crop->id ] )
+            ? $campaign_by_crop[ (int) $sale_crop->id ]
+            : 0;
     }
     $page_title = 'sale' === $category ? 'Suivi des ventes' : 'Suivi des intrants';
 
@@ -42,7 +68,6 @@ function baykat_farm_render_finances( $process_actions = true ) {
         'revenus'  => array( 'label' => 'Revenus', 'type' => 'income' ),
         'depenses' => array( 'label' => 'Dépenses', 'type' => 'expense' ),
         'intrants' => array( 'label' => 'Intrants' ),
-        'ventes'   => array( 'label' => 'Ventes' ),
     );
 
     $requested_section = isset( $_GET['finance_view'] ) && is_string( $_GET['finance_view'] )
@@ -74,9 +99,8 @@ function baykat_farm_render_finances( $process_actions = true ) {
     </nav>
     <?php
 
-    if ( in_array( $active_section, array( 'intrants', 'ventes' ), true ) ) {
-        $category = 'intrants' === $active_section ? 'input' : 'sale';
-        echo baykat_farm_render_finance_item_section( $category, $process_actions ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+    if ( 'intrants' === $active_section ) {
+        echo baykat_farm_render_finance_item_section( 'input', $process_actions ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
         return ob_get_clean();
     }
 

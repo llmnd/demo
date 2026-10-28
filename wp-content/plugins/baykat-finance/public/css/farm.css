@@ -34,6 +34,15 @@ body.baykat-farm-page .wp-block-post-content { margin-block-start: 0 !important;
 .baykat-farm-app *::before,
 .baykat-farm-app *::after { box-sizing: border-box; }
 
+.baykat-farm-archive-action { margin-top: 12px; }
+.baykat-farm-archive-list { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.baykat-farm-archive-list > li { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px; border: 1px solid #e8ebef; border-radius: 8px; background: #fff; }
+.baykat-farm-archive-list > li span { display: grid; gap: 3px; }
+.baykat-farm-archive-list small { color: #74808a; }
+@media (max-width: 560px) {
+    .baykat-farm-archive-list > li { align-items: flex-start; flex-direction: column; }
+}
+
 /* -------------------------------------------------------------------------
    HEADER SITE
    ------------------------------------------------------------------------- */
@@ -2472,4 +2481,60 @@ body.baykat-farm-login-page .baykat-farm-app.baykat-farm-login {
     .baykat-farm-activity-finance-form > .baykat-finance-button { grid-column: 1; width: 100%; }
     .baykat-farm-activity-finance-list li { gap: 7px; padding: 8px; }
     .baykat-farm-activity-finance-amount { font-size: 11px; }
+}
+
+.baykat-campaign-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 16px; }
+.baykat-campaign-card { display: grid; gap: 16px; padding: 20px; border: 1px solid #e8e4dc; border-radius: 14px; background: #fff; }
+.baykat-campaign-card h4 { margin: 5px 0; color: #302b25; font-size: 20px; }
+.baykat-campaign-card header > p { margin: 4px 0 0; color: #777168; font-size: 13px; }
+.baykat-campaign-forecast, .baykat-campaign-phases { display: grid; gap: 10px; }
+.baykat-campaign-dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 145px), 1fr)); gap: 9px; }
+.baykat-campaign-dashboard > div { display: grid; gap: 5px; padding: 11px; border: 1px solid #ebe7df; border-radius: 10px; background: #fbfaf7; }
+.baykat-campaign-dashboard span { color: #777168; font-size: 12px; }
+.baykat-campaign-dashboard strong { color: #302b25; font-size: 14px; overflow-wrap: anywhere; }
+.baykat-campaign-dashboard-note { margin: -5px 0 0; color: #777168; font-size: 12px; line-height: 1.5; }
+.baykat-campaign-stock { display: grid; gap: 12px; padding-top: 13px; border-top: 1px solid #ebe7df; }
+.baykat-campaign-stock h5, .baykat-campaign-allocation-list h6 { margin: 0; color: #302b25; font-size: 15px; }
+.baykat-campaign-stock-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 145px), 1fr)); gap: 8px; }
+.baykat-campaign-stock-grid > div { display: grid; gap: 5px; padding: 10px; border: 1px solid #ebe7df; border-radius: 9px; background: #fbfaf7; }
+.baykat-campaign-stock-grid span, .baykat-campaign-allocation-list article span { color: #777168; font-size: 12px; }
+.baykat-campaign-stock-grid strong, .baykat-campaign-allocation-list article strong { color: #302b25; font-size: 14px; overflow-wrap: anywhere; }
+.baykat-campaign-stock-action, .baykat-campaign-stock-history { padding-top: 10px; border-top: 1px solid #ebe7df; }
+.baykat-campaign-stock-action > summary, .baykat-campaign-stock-history > summary { color: #715c39; font-size: 13px; font-weight: 700; cursor: pointer; }
+.baykat-campaign-stock-action form { display: grid; gap: 10px; margin-top: 12px; }
+.baykat-campaign-allocation-list { display: grid; gap: 9px; }
+.baykat-campaign-allocation-list article { display: grid; gap: 10px; padding: 10px; border: 1px solid #ebe7df; border-radius: 9px; background: #fbfaf7; }
+.baykat-campaign-allocation-list article > div { display: grid; gap: 4px; }
+.baykat-campaign-allocation-list article p, .baykat-campaign-stock-history li p { margin: 0; color: #625b51; font-size: 12px; }
+.baykat-campaign-release-form { display: grid; gap: 7px; }
+.baykat-campaign-release-form label { color: #625b51; font-size: 12px; }
+.baykat-campaign-release-form input { min-height: 40px; }
+.baykat-campaign-stock-history ul { display: grid; gap: 7px; margin: 10px 0 0; padding: 0; list-style: none; }
+.baykat-campaign-stock-history li { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; padding: 9px; border: 1px solid #ebe7df; border-radius: 8px; }
+.baykat-campaign-stock-history li strong { color: #302b25; font-size: 12px; }
+.baykat-campaign-stock-history li span { color: #777168; font-size: 11px; }
+.baykat-campaign-stock-history li p { grid-column: 1 / -1; }
+.baykat-campaign-forecast > div, .baykat-campaign-phases > div { display: grid; gap: 5px; padding: 12px; border: 1px solid #ebe7df; border-radius: 10px; background: #fbfaf7; }
+.baykat-campaign-forecast span, .baykat-campaign-phases > div > span { color: #777168; font-size: 12px; }
+.baykat-campaign-forecast strong, .baykat-campaign-phases > div > strong { color: #302b25; font-size: 16px; }
+.baykat-campaign-phases form, .baykat-campaign-convert form { display: grid; gap: 10px; margin-top: 5px; }
+.baykat-campaign-phases form select, .baykat-campaign-convert select { min-height: 42px; }
+.baykat-campaign-harvest { padding-top: 13px; border-top: 1px solid #ebe7df; }
+.baykat-campaign-harvest > summary { color: #715c39; font-size: 13px; font-weight: 700; cursor: pointer; }
+.baykat-campaign-harvest form { display: grid; gap: 10px; margin: 12px 0; }
+.baykat-campaign-harvest-list { display: grid; gap: 8px; margin: 12px 0 0; padding: 0; list-style: none; }
+.baykat-campaign-harvest-list li { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 10px; border: 1px solid #ebe7df; border-radius: 9px; background: #fbfaf7; }
+.baykat-campaign-harvest-list strong { color: #302b25; }
+.baykat-campaign-harvest-list span { color: #777168; font-size: 12px; }
+.baykat-campaign-harvest-list p { grid-column: 1 / -1; margin: 0; color: #625b51; font-size: 12px; }
+.baykat-campaign-convert { padding-top: 13px; border-top: 1px solid #ebe7df; }
+.baykat-campaign-convert > summary { color: #715c39; font-size: 13px; font-weight: 700; cursor: pointer; }
+.baykat-campaign-convert label { display: grid; gap: 5px; color: #625b51; font-size: 12px; }
+.baykat-campaign-convert .baykat-finance-button { width: 100%; }
+.baykat-farm-form [hidden] { display: none !important; }
+
+@media (min-width: 700px) {
+    .baykat-campaign-phases { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .baykat-campaign-phases form { grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
+    .baykat-campaign-phases form .baykat-finance-button { min-height: 42px; }
 }

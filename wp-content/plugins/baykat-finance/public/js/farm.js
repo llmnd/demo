@@ -141,13 +141,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
-            function selectedCropColor(parcel) {
-                const growingCrop = parcel.crops.find(function (crop) { return crop.status === 'growing'; });
-                if (growingCrop) {
+            function selectedCampaignColor(parcel) {
+                const growingCampaign = parcel.campaigns.find(function (campaign) { return campaign.status === 'growing'; });
+                if (growingCampaign) {
                     return parcelColors.growing;
                 }
-                const currentCrop = parcel.crops.find(function (crop) { return parcelColors[crop.status]; });
-                return currentCrop ? parcelColors[currentCrop.status] : parcelColors[parcel.status] || '#829071';
+                const currentCampaign = parcel.campaigns.find(function (campaign) { return parcelColors[campaign.status]; });
+                return currentCampaign ? parcelColors[currentCampaign.status] : parcelColors[parcel.status] || '#829071';
             }
 
             function makeParcelPopup(parcel) {
@@ -160,15 +160,15 @@ document.addEventListener('DOMContentLoaded', function () {
                     : Number(parcel.area_m2).toLocaleString('fr-FR') + ' m²';
                 popup.append(title, area);
 
-                const cropNames = parcel.crops.map(function (crop) { return crop.name; });
-                if (cropNames.length) {
-                    const crops = document.createElement('span');
-                    crops.textContent = 'Cultures : ' + cropNames.join(', ');
-                    popup.appendChild(crops);
+                const campaignNames = parcel.campaigns.map(function (campaign) { return campaign.name; });
+                if (campaignNames.length) {
+                    const campaigns = document.createElement('span');
+                    campaigns.textContent = 'Campagnes : ' + campaignNames.join(', ');
+                    popup.appendChild(campaigns);
                 } else {
-                    const emptyCrops = document.createElement('span');
-                    emptyCrops.textContent = 'Aucune culture enregistrée';
-                    popup.appendChild(emptyCrops);
+                    const emptyCampaigns = document.createElement('span');
+                    emptyCampaigns.textContent = 'Aucune campagne enregistrée';
+                    popup.appendChild(emptyCampaigns);
                 }
 
                 const openButton = document.createElement('button');
@@ -184,8 +184,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 const tooltip = document.createElement('span');
                 const parcelName = parcel.name.trim();
                 const parcelNameKey = parcelName.toLocaleLowerCase('fr-FR');
-                const cropNames = parcel.crops
-                    .map(function (crop) { return crop.name.trim(); })
+                const campaignNames = parcel.campaigns
+                    .map(function (campaign) { return campaign.name.trim(); })
                     .filter(function (name, index, names) {
                         return name
                             && name.toLocaleLowerCase('fr-FR') !== parcelNameKey
@@ -193,7 +193,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 return candidate.toLocaleLowerCase('fr-FR') === name.toLocaleLowerCase('fr-FR');
                             }) === index;
                     });
-                tooltip.textContent = parcelName + (cropNames.length ? ' · ' + cropNames.join(', ') : '');
+                tooltip.textContent = parcelName + (campaignNames.length ? ' · ' + campaignNames.join(', ') : '');
                 return tooltip;
             }
 
@@ -245,7 +245,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     const coordinates = boundary.map(function (point) {
                         return [Number(point[0]), Number(point[1])];
                     });
-                    const color = selectedCropColor(parcel);
+                    const color = selectedCampaignColor(parcel);
 
                     if (isSelected && isDrawing) {
                         if (coordinates.length > 1) {
@@ -337,17 +337,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 renderParcelBoundary();
 
                 if (!activeParcel) {
-                    setParcelStatus('Choisissez une parcelle pour afficher son contour et ses cultures.');
+                    setParcelStatus('Choisissez une parcelle pour afficher son contour et ses campagnes.');
                 } else if (!activeParcel.boundary.length) {
                     setParcelStatus(activeFarm.can_edit
                         ? 'Aucun contour enregistré. Cliquez sur « Tracer » puis placez les points sur la carte.'
                         : 'Le contour de cette parcelle n’a pas encore été dessiné.');
                 } else {
-                    const crops = activeParcel.crops.map(function (crop) { return crop.name; });
+                    const campaigns = activeParcel.campaigns.map(function (campaign) { return campaign.name; });
                     setParcelStatus(
                         activeParcel.name
                         + (activeParcel.area_m2 === null ? '' : ' · ' + Number(activeParcel.area_m2).toLocaleString('fr-FR') + ' m²')
-                        + (crops.length ? ' · Cultures : ' + crops.join(', ') : ' · Aucune culture enregistrée')
+                        + (campaigns.length ? ' · Campagnes : ' + campaigns.join(', ') : ' · Aucune campagne enregistrée')
                         + (activeFarm.can_edit ? ' · Déplacez les points pour ajuster le contour.' : '')
                     );
                 }
@@ -1717,7 +1717,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     const managementTarget = management.querySelector('[data-dashboard-workspace-target]');
                     const workspaceSections = workspace.content.cloneNode(true);
                     const relevantSections = [
-                        'baykat-workspace-crops',
                         'baykat-workspace-activities',
                         'baykat-workspace-finances',
                         'baykat-workspace-stocks'
@@ -1885,7 +1884,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 const workspaceDescription = workspaceView.querySelector('.baykat-farm-modal-workspace-heading p');
                 const farmSections = [
                     'baykat-workspace-parcels',
-                    'baykat-workspace-crops',
                     'baykat-workspace-activities',
                     'baykat-workspace-finances',
                     'baykat-workspace-stocks'
@@ -2332,7 +2330,36 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
 
+        function filterActivityCampaignOptions(root) {
+            root.querySelectorAll('form').forEach(function (form) {
+                const parcelSelect = form.querySelector('select[name="parcel_id"]');
+                const campaignSelect = form.querySelector('[data-activity-campaign-select]');
+                if (!parcelSelect || !campaignSelect) {
+                    return;
+                }
+
+                Array.from(campaignSelect.options).forEach(function (option) {
+                    option.hidden = Boolean(option.value) && (
+                        !parcelSelect.value || option.dataset.parcelId !== parcelSelect.value
+                    );
+                });
+                if (campaignSelect.selectedOptions.length && campaignSelect.selectedOptions[0].hidden) {
+                    campaignSelect.value = '';
+                }
+            });
+        }
+
+        filterActivityCampaignOptions(app);
+        document.addEventListener('baykat:farm-module-loaded', function () {
+            filterActivityCampaignOptions(app);
+        });
+
         app.addEventListener('change', function (event) {
+            const activityParcelSelect = event.target.closest('form select[name="parcel_id"]');
+            if (activityParcelSelect) {
+                filterActivityCampaignOptions(activityParcelSelect.form);
+            }
+
             const activityFinanceType = event.target.closest('.baykat-farm-activity-form select[name="activity_finance_type"]');
             if (activityFinanceType) {
                 const categorySelect = activityFinanceType.form.querySelector('select[name="activity_finance_category"]');

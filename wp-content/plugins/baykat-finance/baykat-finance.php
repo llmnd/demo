@@ -12,6 +12,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 define( 'BAYKAT_FINANCE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'BAYKAT_FINANCE_URL', plugin_dir_url( __FILE__ ) );
+define( 'BAYKAT_FARM_V1_SHOW_ADVANCED_STOCKS', false );
+define( 'BAYKAT_FARM_V1_SHOW_SHARING', false );
+define( 'BAYKAT_FARM_V1_SHOW_MAP', false );
 
 require_once BAYKAT_FINANCE_DIR . 'includes/database.php';
 require_once BAYKAT_FINANCE_DIR . 'includes/permissions.php';
@@ -25,6 +28,8 @@ require_once plugin_dir_path( __FILE__ ) . 'includes/finance-page.php';
 require_once BAYKAT_FINANCE_DIR . 'includes/modules/dashboard.php';
 require_once BAYKAT_FINANCE_DIR . 'includes/modules/parcelles.php';
 require_once BAYKAT_FINANCE_DIR . 'includes/modules/cultures.php';
+require_once BAYKAT_FINANCE_DIR . 'includes/modules/campagnes.php';
+require_once BAYKAT_FINANCE_DIR . 'includes/modules/archives.php';
 require_once BAYKAT_FINANCE_DIR . 'includes/modules/activites.php';
 require_once BAYKAT_FINANCE_DIR . 'includes/modules/finances.php';
 require_once BAYKAT_FINANCE_DIR . 'includes/modules/stocks.php';

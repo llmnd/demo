@@ -43,30 +43,34 @@ function baykat_farm_get_management_page_url() {
 }
 
 /**
- * Redirige les comptes non-administrateurs vers l'application après connexion.
+ * Masque la barre WordPress uniquement sur les pages qui hébergent l’application agricole.
  */
-function baykat_farm_redirect_user_after_login( $redirect_to, $requested_redirect_to, $user ) {
-    if ( is_wp_error( $user ) || ! ( $user instanceof WP_User ) || user_can( $user, 'manage_options' ) ) {
-        return $redirect_to;
+function baykat_farm_filter_admin_bar_visibility( $show ) {
+    if ( is_admin() ) {
+        return $show;
     }
 
-    $application_url = baykat_farm_get_management_page_url();
+    $post = get_queried_object();
+    if (
+        $post instanceof WP_Post
+        && (
+            has_shortcode( $post->post_content, 'gerer_ma_ferme' )
+            || has_shortcode( $post->post_content, 'baykat_farm' )
+        )
+    ) {
+        return false;
+    }
 
-    return $application_url ? $application_url : $redirect_to;
+    return $show;
 }
-add_filter( 'login_redirect', 'baykat_farm_redirect_user_after_login', 10, 3 );
+add_filter( 'show_admin_bar', 'baykat_farm_filter_admin_bar_visibility' );
 
 /**
  * Affiche l'application agricole à partir de son shortcode principal.
  */
 function baykat_farm_shortcode() {
     if ( ! is_user_logged_in() ) {
-        $login_url = wp_login_url( get_permalink() );
-
-        return sprintf(
-            '<div class="baykat-farm-app baykat-farm-login"><p>Connectez-vous pour accéder à votre espace de gestion.</p><a class="baykat-finance-button" href="%s">Se connecter</a></div>',
-            esc_url( $login_url )
-        );
+        return '<div class="baykat-farm-app baykat-farm-login"><p>Connectez-vous à votre compte BAYKAT, puis ouvrez « Gérer ma ferme » depuis votre espace client.</p></div>';
     }
 
     if ( ! baykat_finance_user_can_access() ) {
@@ -82,9 +86,13 @@ function baykat_farm_shortcode() {
             'label'    => 'Parcelles',
             'callback' => 'baykat_farm_render_parcelles',
         ),
-        'cultures' => array(
-            'label'    => 'Cultures',
-            'callback' => 'baykat_farm_render_cultures',
+        'campagnes' => array(
+            'label'    => 'Campagnes',
+            'callback' => 'baykat_farm_render_campaigns',
+        ),
+        'archives' => array(
+            'label'    => 'Archives',
+            'callback' => 'baykat_farm_render_archives',
         ),
         'activites' => array(
             'label'    => 'Activités',
@@ -94,15 +102,17 @@ function baykat_farm_shortcode() {
             'label'    => 'Finances',
             'callback' => 'baykat_farm_render_finances',
         ),
-        'stocks' => array(
-            'label'    => 'Stocks',
-            'callback' => 'baykat_farm_render_stocks',
-        ),
         'rapports' => array(
             'label'    => 'Rapports',
             'callback' => 'baykat_farm_render_reports',
         ),
     );
+    if ( BAYKAT_FARM_V1_SHOW_ADVANCED_STOCKS ) {
+        $modules['stocks'] = array(
+            'label'    => 'Stocks',
+            'callback' => 'baykat_farm_render_stocks',
+        );
+    }
 
     $requested_module = isset( $_GET['module'] ) && is_string( $_GET['module'] )
         ? sanitize_key( wp_unslash( $_GET['module'] ) )

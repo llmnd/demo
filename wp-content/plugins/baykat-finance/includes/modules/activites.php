@@ -9,7 +9,10 @@ function baykat_farm_render_activites( $process_actions = true ) {
     $message = null;
 
     if ( $process_actions ) {
-        $message = baykat_farm_process_record_action( $user_id, 'activity' );
+        $message = baykat_farm_process_archive_submission( $user_id );
+        if ( ! $message ) {
+            $message = baykat_farm_process_record_action( $user_id, 'activity' );
+        }
         if ( ! $message ) {
             $message = baykat_farm_process_activity_submission( $user_id );
         }
@@ -24,6 +27,20 @@ function baykat_farm_render_activites( $process_actions = true ) {
     $editable_parcels = baykat_farm_filter_editable_records( $parcels );
     $activities = baykat_farm_get_user_activities( $user_id );
     $activity_finances = baykat_finance_get_activity_transactions( $user_id );
+    $campaigns = baykat_farm_campaign_get_user_campaigns( $user_id );
+    $campaigns_error = is_wp_error( $campaigns );
+    if ( $campaigns_error ) {
+        $campaigns = array();
+    }
+    $editable_campaigns = array_values(
+        array_filter(
+            $campaigns,
+            function ( $campaign ) use ( $user_id ) {
+                return 'real' === $campaign->campaign_type
+                    && baykat_farm_user_can_edit_farm( (int) $campaign->farm_id, $user_id );
+            }
+        )
+    );
     $activity_types = array(
         'sowing'      => 'Semis',
         'watering'    => 'Arrosage',
@@ -42,6 +59,9 @@ function baykat_farm_render_activites( $process_actions = true ) {
         <?php if ( $message ) : ?>
             <div class="baykat-farm-notice baykat-farm-notice-<?php echo esc_attr( $message['type'] ); ?>" role="<?php echo 'error' === $message['type'] ? 'alert' : 'status'; ?>"><?php echo esc_html( $message['message'] ); ?></div>
         <?php endif; ?>
+        <?php if ( $campaigns_error ) : ?>
+            <div class="baykat-farm-notice baykat-farm-notice-error" role="alert">Impossible de charger les campagnes. Les activités ne pourront pas être rattachées à une campagne pour le moment.</div>
+        <?php endif; ?>
 
         <?php if ( $editable_parcels ) : ?>
             <section class="baykat-farm-panel baykat-farm-add-panel" aria-labelledby="baykat-farm-activity-form-title">
@@ -49,13 +69,24 @@ function baykat_farm_render_activites( $process_actions = true ) {
                     <summary id="baykat-farm-activity-form-title"><span class="baykat-farm-eyebrow">Nouvelle opération</span><strong>Ajouter une activité</strong><span class="baykat-farm-add-form-icon" aria-hidden="true">+</span></summary>
                     <form class="baykat-farm-form baykat-farm-activity-form" method="post" enctype="multipart/form-data">
                     <?php wp_nonce_field( 'baykat_add_activity', '_wpnonce' ); ?>
-                    <p class="baykat-farm-add-form-description">Choisissez la parcelle concernée, décrivez l’opération et datez-la. La dépense ou le revenu associé est facultatif.</p>
+                    <p class="baykat-farm-add-form-description">Choisissez la parcelle concernée, décrivez l’opération et datez-la. La dépense associée est facultative.</p>
                     <div class="baykat-farm-field baykat-farm-field-wide">
                         <label for="baykat_activity_parcel">Parcelle</label>
                         <select name="parcel_id" id="baykat_activity_parcel" required>
                             <option value="">Choisir une parcelle</option>
                             <?php foreach ( $editable_parcels as $parcel ) : ?>
                                 <option value="<?php echo esc_attr( $parcel->id ); ?>"><?php echo esc_html( $parcel->farm_name . ' — ' . $parcel->name ); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="baykat-farm-field baykat-farm-field-wide">
+                        <label for="baykat_activity_campaign">Campagne réelle</label>
+                        <select name="campaign_id" id="baykat_activity_campaign" data-activity-campaign-select required>
+                            <option value="">Aucune campagne</option>
+                            <?php foreach ( $editable_campaigns as $campaign ) : ?>
+                                <option value="<?php echo esc_attr( $campaign->id ); ?>" data-parcel-id="<?php echo esc_attr( $campaign->parcel_id ); ?>">
+                                    <?php echo esc_html( $campaign->crop_name . ' — ' . $campaign->farm_name . ' / ' . $campaign->parcel_name ); ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -81,19 +112,12 @@ function baykat_farm_render_activites( $process_actions = true ) {
                     </div>
                     <div class="baykat-farm-activity-finance-entry baykat-farm-field-wide">
                         <div>
-                            <strong>Finance de l’activité</strong>
-                            <p>Ajoutez un revenu ou une dépense maintenant pour suivre la rentabilité de cette activité. Le montant est facultatif.</p>
+                            <strong>Dépense de l’activité</strong>
+                            <p>Enregistrez éventuellement une dépense liée à cette activité. Les revenus se saisissent dans les finances et se rattachent à la campagne.</p>
                         </div>
                         <div class="baykat-farm-field">
                             <label for="baykat_activity_finance_amount">Montant (FCFA)</label>
                             <input type="number" name="activity_finance_amount" id="baykat_activity_finance_amount" min="0.01" step="0.01" inputmode="decimal" placeholder="Laisser vide si aucune opération">
-                        </div>
-                        <div class="baykat-farm-field">
-                            <label for="baykat_activity_finance_type">Mouvement</label>
-                            <select name="activity_finance_type" id="baykat_activity_finance_type">
-                                <option value="expense">Dépense</option>
-                                <option value="income">Revenu</option>
-                            </select>
                         </div>
                         <div class="baykat-farm-field" data-activity-finance-category-field>
                             <label for="baykat_activity_finance_category">Nature de la dépense</label>
@@ -131,7 +155,7 @@ function baykat_farm_render_activites( $process_actions = true ) {
                             data-activity-id="<?php echo esc_attr( $activity->id ); ?>"
                             data-farm-id="<?php echo esc_attr( $activity->farm_id ); ?>"
                             data-parcel-id="<?php echo esc_attr( $activity->parcel_id ); ?>"
-                            data-search-text="<?php echo esc_attr( $activity->title . ' ' . $activity->activity_date . ' ' . $activity->farm_name . ' ' . $activity->parcel_name . ' ' . ( isset( $activity_types[ $activity->activity_type ] ) ? $activity_types[ $activity->activity_type ] : $activity->activity_type ) . ' ' . $activity->notes ); ?>"
+                            data-search-text="<?php echo esc_attr( $activity->title . ' ' . $activity->activity_date . ' ' . $activity->farm_name . ' ' . $activity->parcel_name . ' ' . ( isset( $activity_types[ $activity->activity_type ] ) ? $activity_types[ $activity->activity_type ] : $activity->activity_type ) . ' ' . $activity->campaign_crop_name . ' ' . $activity->notes ); ?>"
                             data-farm-record-filter-value="<?php echo esc_attr( $activity->activity_type ); ?>"
                         >
                             <?php echo baykat_farm_render_image( $activity->image_id, 'medium_large' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
@@ -141,6 +165,9 @@ function baykat_farm_render_activites( $process_actions = true ) {
                                 <div class="baykat-farm-card-meta">
                                     <span class="baykat-farm-status"><?php echo esc_html( isset( $activity_types[ $activity->activity_type ] ) ? $activity_types[ $activity->activity_type ] : $activity->activity_type ); ?></span>
                                     <span><?php echo esc_html( $activity->farm_name . ' — ' . $activity->parcel_name ); ?></span>
+                                    <?php if ( ! empty( $activity->campaign_crop_name ) ) : ?>
+                                        <span>Campagne : <?php echo esc_html( $activity->campaign_crop_name ); ?></span>
+                                    <?php endif; ?>
                                 </div>
                                 <?php if ( $activity->notes ) : ?>
                                     <p class="baykat-farm-card-dates"><?php echo esc_html( $activity->notes ); ?></p>
@@ -179,7 +206,8 @@ function baykat_farm_render_activites( $process_actions = true ) {
                                                                         : baykat_finance_expense_category_label( $finance->expense_category )
                                                                 );
                                                                 ?>
-                                                                · <?php echo esc_html( mysql2date( 'j M Y · H:i', $finance->created_at ) ); ?>
+                                                                · Opération : <?php echo esc_html( ! empty( $finance->operation_date ) ? $finance->operation_date : 'date non renseignée' ); ?>
+                                                                · Saisie : <?php echo esc_html( mysql2date( 'j M Y · H:i', $finance->created_at ) ); ?>
                                                             </small>
                                                             <?php if ( $finance->description && $finance->item_name ) : ?>
                                                                 <small class="baykat-farm-activity-finance-note"><?php echo esc_html( $finance->description ); ?></small>
@@ -202,13 +230,6 @@ function baykat_farm_render_activites( $process_actions = true ) {
                                             <?php wp_nonce_field( 'baykat_add_activity_finance', '_wpnonce' ); ?>
                                             <input type="hidden" name="activity_id" value="<?php echo esc_attr( $activity->id ); ?>">
                                             <div class="baykat-farm-field">
-                                                <label for="baykat_activity_finance_type_<?php echo esc_attr( $activity->id ); ?>">Mouvement</label>
-                                                <select name="type" id="baykat_activity_finance_type_<?php echo esc_attr( $activity->id ); ?>" required>
-                                                    <option value="expense">Dépense</option>
-                                                    <option value="income">Revenu</option>
-                                                </select>
-                                            </div>
-                                            <div class="baykat-farm-field">
                                                 <label for="baykat_activity_finance_category_<?php echo esc_attr( $activity->id ); ?>">Nature</label>
                                                 <select name="expense_category" id="baykat_activity_finance_category_<?php echo esc_attr( $activity->id ); ?>">
                                                     <?php foreach ( baykat_finance_expense_categories() as $slug => $label ) : ?>
@@ -223,6 +244,10 @@ function baykat_farm_render_activites( $process_actions = true ) {
                                             <div class="baykat-farm-field">
                                                 <label for="baykat_activity_finance_amount_<?php echo esc_attr( $activity->id ); ?>">Montant (FCFA)</label>
                                                 <input type="number" name="amount" id="baykat_activity_finance_amount_<?php echo esc_attr( $activity->id ); ?>" min="0.01" step="0.01" inputmode="decimal" required>
+                                            </div>
+                                            <div class="baykat-farm-field">
+                                                <label for="baykat_activity_operation_date_<?php echo esc_attr( $activity->id ); ?>">Date réelle de l’opération</label>
+                                                <input type="date" name="operation_date" id="baykat_activity_operation_date_<?php echo esc_attr( $activity->id ); ?>" value="<?php echo esc_attr( current_time( 'Y-m-d' ) ); ?>" required>
                                             </div>
                                             <div class="baykat-farm-field baykat-farm-field-wide">
                                                 <label for="baykat_activity_finance_note_<?php echo esc_attr( $activity->id ); ?>">Note (facultatif)</label>
@@ -245,6 +270,17 @@ function baykat_farm_render_activites( $process_actions = true ) {
                                             <select name="parcel_id" id="baykat_activity_edit_parcel_<?php echo esc_attr( $activity->id ); ?>" required>
                                                 <?php foreach ( $editable_parcels as $parcel ) : ?>
                                                     <option value="<?php echo esc_attr( $parcel->id ); ?>" <?php selected( (int) $activity->parcel_id, (int) $parcel->id ); ?>><?php echo esc_html( $parcel->farm_name . ' — ' . $parcel->name ); ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </div>
+                                        <div class="baykat-farm-field">
+                                            <label for="baykat_activity_edit_campaign_<?php echo esc_attr( $activity->id ); ?>">Campagne réelle</label>
+                                            <select name="campaign_id" id="baykat_activity_edit_campaign_<?php echo esc_attr( $activity->id ); ?>" data-activity-campaign-select required>
+                                                <option value="">Aucune campagne</option>
+                                                <?php foreach ( $editable_campaigns as $campaign ) : ?>
+                                                    <option value="<?php echo esc_attr( $campaign->id ); ?>" data-parcel-id="<?php echo esc_attr( $campaign->parcel_id ); ?>" <?php selected( (int) $activity->campaign_id, (int) $campaign->id ); ?>>
+                                                        <?php echo esc_html( $campaign->crop_name . ' — ' . $campaign->farm_name . ' / ' . $campaign->parcel_name ); ?>
+                                                    </option>
                                                 <?php endforeach; ?>
                                             </select>
                                         </div>

@@ -12,9 +12,11 @@ function initializeBaykatFinancePages(root) {
         const transactionType = form ? form.querySelector('#baykat_type') : null;
         const expenseCategoryField = form ? form.querySelector('[data-expense-category-field]') : null;
         const expenseCategorySelect = expenseCategoryField ? expenseCategoryField.querySelector('select') : null;
+        const farmSelect = form ? form.querySelector('[data-finance-farm-select]') : null;
         const parcelSelect = form ? form.querySelector('[data-finance-parcel-select]') : null;
         const activitySelect = form ? form.querySelector('[data-finance-activity-select]') : null;
         const cropSelect = form ? form.querySelector('[data-finance-crop-select]') : null;
+        const campaignSelect = form ? form.querySelector('[data-finance-campaign-select]') : null;
         const saleCropSelect = form ? form.querySelector('[data-finance-sale-crop]') : null;
         const saleProductInput = form ? form.querySelector('[data-sale-product]') : null;
         const saleUnitInput = form ? form.querySelector('[data-sale-unit]') : null;
@@ -41,15 +43,29 @@ function initializeBaykatFinancePages(root) {
                         expenseCategorySelect.value = 'general';
                     }
                 }
+                if (parcelSelect && parcelSelect.tagName === 'SELECT') {
+                    parcelSelect.required = !isExpense;
+                    if (!isExpense && !parcelSelect.value) {
+                        parcelSelect.setCustomValidity('Choisissez une parcelle pour rattacher ce revenu.');
+                    } else {
+                        parcelSelect.setCustomValidity('');
+                    }
+                }
             }
 
             function filterActivityOptions() {
-                if (!parcelSelect) {
+                if (!parcelSelect || parcelSelect.tagName !== 'SELECT') {
                     return;
                 }
 
                 const parcelId = parcelSelect.value;
-                [activitySelect, cropSelect].filter(Boolean).forEach(function (select) {
+                const farmId = farmSelect ? farmSelect.value : '';
+                Array.from(parcelSelect.options).forEach(function (option) {
+                    if (option.value) {
+                        option.hidden = !farmId || option.dataset.farmId !== farmId;
+                    }
+                });
+                [activitySelect, cropSelect, campaignSelect].filter(Boolean).forEach(function (select) {
                     Array.from(select.options).forEach(function (option) {
                         if (!option.value) {
                             option.hidden = false;
@@ -66,10 +82,45 @@ function initializeBaykatFinancePages(root) {
             if (transactionType) {
                 transactionType.addEventListener('change', updateExpenseCategoryVisibility);
                 updateExpenseCategoryVisibility();
+                updateCampaignSelection();
             }
-            if (parcelSelect && (activitySelect || cropSelect)) {
+
+            function updateCampaignSelection() {
+                if (!campaignSelect) {
+                    return;
+                }
+                const activity = activitySelect && activitySelect.selectedOptions[0];
+                const selectedSaleCrop = saleCropSelect && saleCropSelect.selectedOptions[0];
+                const activityCampaignId = activity && activity.value ? activity.dataset.campaignId : '';
+                const cropCampaignId = selectedSaleCrop && selectedSaleCrop.value
+                    ? selectedSaleCrop.dataset.campaignId
+                    : '';
+                const fixedCampaignId = activityCampaignId || cropCampaignId || '';
+                if (fixedCampaignId) {
+                    campaignSelect.value = fixedCampaignId;
+                    campaignSelect.disabled = true;
+                } else {
+                    campaignSelect.disabled = false;
+                }
+            }
+
+            if (parcelSelect && (activitySelect || cropSelect || campaignSelect)) {
                 parcelSelect.addEventListener('change', filterActivityOptions);
                 filterActivityOptions();
+            }
+            if (farmSelect) {
+                farmSelect.addEventListener('change', function () {
+                    if (parcelSelect && parcelSelect.tagName === 'SELECT') {
+                        parcelSelect.value = '';
+                    }
+                    filterActivityOptions();
+                });
+            }
+            if (activitySelect) {
+                activitySelect.addEventListener('change', updateCampaignSelection);
+            }
+            if (campaignSelect) {
+                updateCampaignSelection();
             }
 
             function updateSaleCrop() {
@@ -89,8 +140,17 @@ function initializeBaykatFinancePages(root) {
                 }
                 if (parcelSelect) {
                     parcelSelect.value = hasCrop ? selectedCrop.dataset.parcelId : '';
+                    if (farmSelect && hasCrop) {
+                        const selectedParcel = Array.from(parcelSelect.options).find(function (option) {
+                            return option.value === selectedCrop.dataset.parcelId;
+                        });
+                        farmSelect.value = selectedParcel ? selectedParcel.dataset.farmId : '';
+                    }
                     if (activitySelect) {
                         filterActivityOptions();
+                    }
+                    if (campaignSelect) {
+                        updateCampaignSelection();
                     }
                 }
                 if (saleParcelLabel) {

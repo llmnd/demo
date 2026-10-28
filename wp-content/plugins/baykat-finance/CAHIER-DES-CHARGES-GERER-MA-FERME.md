@@ -96,7 +96,10 @@ Les statuts proposés sont : planifiée, en croissance, récoltée et en pause.
 - Catégorisation des dépenses générales : autre dépense, main-d’œuvre,
   transport, matériel et équipement, entretien.
 - Rattachement d’une transaction à une parcelle et association facultative à
-  une activité ou à une culture de cette parcelle.
+  une activité, une culture ou une campagne réelle de cette parcelle.
+- Saisie séparée de la date réelle de l’opération et de la date de saisie.
+  Les anciennes transactions sans date métier restent explicitement marquées
+  comme non renseignées plutôt que de reprendre leur date de création.
 - Consultation des totaux de revenus, dépenses et solde.
 - Consultation des transactions avec recherche et filtre par type.
 - Sous-sections dédiées aux revenus, dépenses, intrants et ventes.
@@ -137,7 +140,9 @@ Les statuts proposés sont : planifiée, en croissance, récoltée et en pause.
 - Association possible d’une sortie à une activité ou une culture. Un retour
   associé à une activité ne peut pas dépasser la quantité sortie pour celle-ci.
 - Les achats d’intrants sont également inscrits en dépenses financières. Les
-  achats déjà enregistrés sont repris dans le calcul du stock.
+  achats déjà enregistrés sont repris dans le calcul du stock et sont
+  automatiquement rattachés à la campagne de leur activité ou culture, le cas
+  échéant.
 - Le stock est suivi par ferme, parcelle, intrant et unité. Le coût affiché
   correspond au cumul des achats, et non à la valorisation comptable du stock
   restant.
@@ -151,12 +156,52 @@ Les statuts proposés sont : planifiée, en croissance, récoltée et en pause.
 - Les transactions non associées à une culture ne sont pas imputées à la marge
   d’une culture particulière.
 
+### 3.9 Campagnes et simulations — première version
+
+- Une campagne réelle est rattachée à une ferme, une parcelle et une culture.
+- Une campagne réelle expose deux phases indépendantes : production et
+  commercialisation. La commercialisation ne peut démarrer qu’après la fin de
+  la production.
+- Les activités peuvent être rattachées à une campagne. Les transactions
+  rattachées à une activité reprennent cette campagne; celles liées à la culture
+  de la campagne y sont également associées automatiquement. Une transaction
+  peut aussi être reliée directement à une campagne de la même parcelle.
+- Le tableau de bord réel affiche la superficie suivie, les récoltes, le
+  rendement lorsque l’unité est le kilogramme, les dépenses et revenus
+  explicitement rattachés, le résultat enregistré, la marge sur revenus et le
+  nombre d’activités et d’opérations. Les anciennes transactions reliées à une
+  activité ou à une culture de campagne sont associées lors de la mise à niveau.
+- Les montants du tableau de bord sont des totaux des opérations enregistrées
+  et rattachées; ils ne prétendent pas inclure les coûts qui n’ont pas été
+  saisis ou associés à la campagne.
+- Une simulation peut être créée sans ferme ni parcelle. La superficie, le
+  rendement attendu, les coûts prévus et le prix espéré sont saisis par
+  l’utilisateur; le plugin ne préremplit pas les hypothèses.
+- La simulation affiche séparément la récolte, les recettes et le résultat
+  prévisionnels. Elle n’est pas incluse dans les rapports ou chiffres réels.
+- Une simulation peut être convertie explicitement en campagne réelle après le
+  choix d’une ferme et d’une parcelle. Seuls la culture, la variété, la
+  superficie et les dates prévues sont repris; l’estimation financière reste
+  sur la simulation d’origine.
+- Les données de campagne sont stockées dans une table dédiée et la mise à
+  niveau du schéma est automatique.
+- Le plugin local comprend un registre du stock récolté par campagne et par
+  lot, avec réservation, libération, pertes et autres sorties. Les réservations
+  ne diminuent pas le stock physique et ne constituent pas des ventes.
+- Les saisies manuelles de nouvelles ventes sont bloquées, tout en conservant
+  l’historique et la logique d’annulation existants. L’intégration aux ventes,
+  commandes et retours officiels de « Mes ventes » reste à réaliser après
+  réception du code source et validation des statuts BAYKAT.
+- L’export PDF et les tests de migration sur une base de préproduction restent
+  à réaliser.
+
 ## 4. Données et comptes
 
 - Les données sont stockées dans les tables WordPress du site courant, créées
   avec le préfixe configuré pour l’installation (`$wpdb->prefix`).
 - Les tables gérées par le plugin couvrent les fermes, parcelles, cultures,
-  activités, transactions, partages de fermes et mouvements de stock.
+  campagnes, activités, transactions, partages de fermes et mouvements de
+  stock.
 - Par défaut, les données appartiennent au compte WordPress propriétaire.
   Celui-ci peut partager une ferme avec un compte existant comme gestionnaire
   (consultation et modification) ou lecteur (consultation seule).
@@ -198,6 +243,7 @@ Les statuts proposés sont : planifiée, en croissance, récoltée et en pause.
 | Vue d’ensemble | Indicateurs, calendrier des récoltes, activités, finances et gestion des fermes |
 | Parcelles | Parcelles rattachées aux fermes |
 | Cultures | Plantations, variétés, statuts et dates |
+| Campagnes | Deux phases de suivi, planification et simulation prévisionnelle |
 | Activités | Journal des opérations agricoles |
 | Finances | Revenus, dépenses, intrants et ventes |
 | Stocks | Mouvements d’intrants et quantités disponibles |

@@ -74,9 +74,17 @@ if ( ! defined( 'ABSPATH' ) ) {
             <?php if ( $transactions ) : ?>
                 <?php foreach ( $transactions as $transaction ) : ?>
                     <tr>
-                        <td><?php echo esc_html( $transaction->created_at ); ?></td>
+                        <td>
+                            <?php echo esc_html( ! empty( $transaction->operation_date ) ? $transaction->operation_date : 'Non renseignée (ancienne donnée)' ); ?>
+                            <small class="baykat-finance-transaction-meta">Saisie le <?php echo esc_html( $transaction->created_at ); ?></small>
+                        </td>
                         <td><?php echo 'income' === $transaction->type ? 'Revenu' : 'Dépense'; ?></td>
-                        <td><?php echo esc_html( $transaction->description ); ?></td>
+                        <td>
+                            <?php echo esc_html( $transaction->description ); ?>
+                            <?php if ( ! empty( $transaction->campaign_crop_name ) ) : ?>
+                                <small class="baykat-finance-transaction-meta">Campagne : <?php echo esc_html( $transaction->campaign_crop_name ); ?></small>
+                            <?php endif; ?>
+                        </td>
                         <td><?php echo esc_html( number_format( $transaction->amount, 0, ',', ' ' ) ); ?> FCFA</td>
                     </tr>
                 <?php endforeach; ?>

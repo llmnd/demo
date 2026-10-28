@@ -11,6 +11,7 @@ function baykat_finance_expense_categories() {
         'transport'   => 'Transport',
         'equipment'   => 'Matériel et équipement',
         'maintenance' => 'Entretien',
+        'commercialization' => 'Commercialisation',
     );
 }
 
@@ -161,6 +162,12 @@ function baykat_finance_process_transaction_submission( $user_id, $expected_cate
         if ( $submitted_category !== $expected_category ) {
             return null;
         }
+        if ( 'sale' === $expected_category ) {
+            return array(
+                'type' => 'error',
+                'message' => 'La saisie manuelle des ventes est suspendue jusqu’à l’intégration officielle avec BAYKAT.',
+            );
+        }
     }
 
     if ( ( isset( $_POST['baykat_add_transaction'] ) || $is_activity_submission ) && 'general' !== $expected_category ) {
@@ -184,6 +191,9 @@ function baykat_finance_process_transaction_submission( $user_id, $expected_cate
                 ? sanitize_text_field( wp_unslash( $_POST['type'] ) )
                 : ''
         );
+    if ( $is_activity_submission && 'expense' !== $type ) {
+        return array( 'type' => 'error', 'message' => 'Une activité peut porter un coût, mais ses revenus doivent être enregistrés comme recette distincte.' );
+    }
 
     $category = $is_item_submission ? $expected_category : 'general';
     $expense_category = 'general';
@@ -205,6 +215,24 @@ function baykat_finance_process_transaction_submission( $user_id, $expected_cate
         ? trim( (string) wp_unslash( $_POST['amount'] ) )
         : '';
     $amount = is_numeric( $amount_value ) ? (float) $amount_value : 0;
+    $submitted_campaign_id = 0;
+    if ( isset( $_POST['campaign_id'] ) ) {
+        if ( ! is_scalar( $_POST['campaign_id'] ) ) {
+            return array( 'type' => 'error', 'message' => 'Veuillez choisir une campagne valide.' );
+        }
+        $raw_campaign_id = trim( (string) wp_unslash( $_POST['campaign_id'] ) );
+        if ( '' !== $raw_campaign_id ) {
+            $submitted_campaign_id = baykat_farm_request_id( 'campaign_id' );
+            if ( ! $submitted_campaign_id ) {
+                return array( 'type' => 'error', 'message' => 'Veuillez choisir une campagne valide.' );
+            }
+        }
+    }
+    $campaign_id = $submitted_campaign_id;
+    $activity_campaign_id = 0;
+    $operation_date = isset( $_POST['operation_date'] ) && is_string( $_POST['operation_date'] )
+        ? sanitize_text_field( wp_unslash( $_POST['operation_date'] ) )
+        : '';
 
     $description = isset( $_POST['description'] ) && is_string( $_POST['description'] )
         ? sanitize_textarea_field( wp_unslash( $_POST['description'] ) )
@@ -214,10 +242,11 @@ function baykat_finance_process_transaction_submission( $user_id, $expected_cate
         ! in_array( $type, array( 'income', 'expense' ), true )
         || $amount < 0.01
         || $amount > 9999999999999.99
+        || ! baykat_farm_valid_date( $operation_date )
     ) {
         return array(
             'type'    => 'error',
-            'message' => 'Veuillez saisir un type et un montant valides.',
+            'message' => 'Veuillez saisir un type, un montant et une date d’opération valides.',
         );
     }
 
@@ -229,6 +258,7 @@ function baykat_finance_process_transaction_submission( $user_id, $expected_cate
     $activity = null;
     $parcel_id = baykat_farm_request_id( 'parcel_id' );
     $farm_id = null;
+    $submitted_farm_id = baykat_farm_request_id( 'farm_id' );
 
     if ( $is_item_submission && 'sale' === $category ) {
         $crop_id = baykat_farm_request_id( 'crop_id' );
@@ -260,10 +290,13 @@ function baykat_finance_process_transaction_submission( $user_id, $expected_cate
         $activities_table = baykat_farm_table_name( 'activities' );
         $activity = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT id, parcel_id FROM $activities_table WHERE id = %d",
+                "SELECT id, parcel_id, campaign_id FROM $activities_table WHERE id = %d",
                 $activity_id
             )
         );
+        if ( '' !== $wpdb->last_error ) {
+            return array( 'type' => 'error', 'message' => 'Impossible de vérifier l’activité sélectionnée. Veuillez réessayer.' );
+        }
 
         $activity_parcel = $activity ? baykat_farm_get_user_parcel( (int) $activity->parcel_id, $user_id ) : null;
         if ( ! $activity || ! $activity_parcel || ! baykat_farm_user_owns_farm( (int) $activity_parcel->farm_id, $user_id ) ) {
@@ -279,6 +312,7 @@ function baykat_finance_process_transaction_submission( $user_id, $expected_cate
             );
         }
         $parcel_id = (int) $activity->parcel_id;
+        $activity_campaign_id = (int) $activity->campaign_id;
         $item_name = isset( $_POST['item_name'] ) && is_string( $_POST['item_name'] )
             ? sanitize_text_field( wp_unslash( $_POST['item_name'] ) )
             : '';
@@ -325,44 +359,45 @@ function baykat_finance_process_transaction_submission( $user_id, $expected_cate
         }
     }
 
-    if ( 0 === $parcel_id ) {
-        return array(
-            'type'    => 'error',
-            'message' => 'Choisissez une parcelle appartenant à une ferme avant d’enregistrer cette transaction.',
-        );
+    $parcel = null;
+    if ( $parcel_id ) {
+        $parcel = baykat_farm_get_user_parcel( $parcel_id, $user_id );
+        if ( ! $parcel ) {
+            return array( 'type' => 'error', 'message' => 'La parcelle sélectionnée ne vous appartient pas.' );
+        }
+        $farm_id = (int) $parcel->farm_id;
+        if ( $submitted_farm_id && $submitted_farm_id !== $farm_id ) {
+            return array( 'type' => 'error', 'message' => 'La ferme sélectionnée ne correspond pas à cette parcelle.' );
+        }
+    } elseif ( 'expense' === $type && ! $is_item_submission && $submitted_farm_id ) {
+        $farm_id = $submitted_farm_id;
+    } else {
+        return array( 'type' => 'error', 'message' => 'Choisissez une parcelle, ou une ferme pour enregistrer une charge commune.' );
     }
 
-    $parcel = baykat_farm_get_user_parcel( $parcel_id, $user_id );
-
-    if ( ! $parcel ) {
-        return array(
-            'type'    => 'error',
-            'message' => 'La parcelle sélectionnée ne vous appartient pas.',
-        );
-    }
-    $farm_id = (int) $parcel->farm_id;
-    if ( ! baykat_farm_user_owns_farm( $farm_id, $user_id ) ) {
-        return array(
-            'type'    => 'error',
-            'message' => 'Votre rôle sur cette ferme ne permet pas d’ajouter des opérations.',
-        );
+    if ( ! baykat_farm_user_can_edit_farm( $farm_id, $user_id ) ) {
+        return array( 'type' => 'error', 'message' => 'Votre rôle sur cette ferme ne permet pas d’ajouter des opérations.' );
     }
 
     if ( $activity_id && ! $is_activity_submission ) {
         global $wpdb;
         $activities_table = baykat_farm_table_name( 'activities' );
-        $activity_parcel_id = $wpdb->get_var(
+        $activity_record = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT parcel_id FROM $activities_table WHERE id = %d",
+                "SELECT parcel_id, campaign_id FROM $activities_table WHERE id = %d",
                 $activity_id
             )
         );
-        if ( ! $activity_parcel_id || (int) $activity_parcel_id !== $parcel_id || ! baykat_farm_user_owns_farm( (int) $parcel->farm_id, $user_id ) ) {
+        if ( '' !== $wpdb->last_error ) {
+            return array( 'type' => 'error', 'message' => 'Impossible de vérifier l’activité sélectionnée. Veuillez réessayer.' );
+        }
+        if ( ! $activity_record || (int) $activity_record->parcel_id !== $parcel_id || ! baykat_farm_user_owns_farm( (int) $parcel->farm_id, $user_id ) ) {
             return array(
                 'type'    => 'error',
                 'message' => 'L’activité doit appartenir à la parcelle choisie.',
             );
         }
+        $activity_campaign_id = (int) $activity_record->campaign_id;
     }
 
     if ( $is_item_submission ) {
@@ -374,7 +409,7 @@ function baykat_finance_process_transaction_submission( $user_id, $expected_cate
             : '';
         $quantity = is_numeric( $quantity_value ) ? (float) $quantity_value : 0;
         $unit = isset( $_POST['unit'] ) && is_string( $_POST['unit'] )
-            ? sanitize_text_field( wp_unslash( $_POST['unit'] ) )
+            ? baykat_farm_normalize_unit( wp_unslash( $_POST['unit'] ) )
             : '';
 
         if (
@@ -397,7 +432,17 @@ function baykat_finance_process_transaction_submission( $user_id, $expected_cate
             $crop = $crop_id
                 ? $wpdb->get_row(
                     $wpdb->prepare(
-                        "SELECT id, parcel_id, name, status, harvested_quantity, harvested_unit FROM " . baykat_farm_table_name( 'crops' ) . " WHERE id = %d",
+                        "SELECT crops.id, crops.parcel_id, crops.name, crops.status,
+                                COALESCE(
+                                    (SELECT SUM(harvests.quantity)
+                                     FROM " . $wpdb->prefix . "baykat_harvests AS harvests
+                                     WHERE harvests.crop_id = crops.id),
+                                    crops.harvested_quantity,
+                                    0
+                                ) AS harvested_quantity,
+                                crops.harvested_unit
+                         FROM " . baykat_farm_table_name( 'crops' ) . " AS crops
+                         WHERE crops.id = %d",
                         $crop_id
                     )
                 )
@@ -429,11 +474,46 @@ function baykat_finance_process_transaction_submission( $user_id, $expected_cate
                     );
                 }
                 $item_name = $crop->name;
-                $unit = $crop->harvested_unit;
+                $unit = baykat_farm_normalize_unit( $crop->harvested_unit );
             }
         }
     } elseif ( isset( $_POST['crop_id'] ) ) {
         return array( 'type' => 'error', 'message' => 'Veuillez choisir une culture valide.' );
+    }
+
+    if ( $activity_campaign_id ) {
+        if ( $submitted_campaign_id && $submitted_campaign_id !== $activity_campaign_id ) {
+            return array( 'type' => 'error', 'message' => 'La transaction doit rester rattachée à la campagne de son activité.' );
+        }
+        $campaign_id = $activity_campaign_id;
+    }
+
+    if ( ! $campaign_id && $crop_id ) {
+        $crop_campaigns = $wpdb->get_col(
+            $wpdb->prepare(
+                "SELECT id FROM " . baykat_farm_campaign_table_name() . " WHERE crop_id = %d AND campaign_type = 'real' AND archived_at IS NULL ORDER BY id ASC",
+                $crop_id
+            )
+        );
+        if ( '' !== $wpdb->last_error ) {
+            return array( 'type' => 'error', 'message' => 'Impossible de vérifier la campagne de cette culture. Veuillez réessayer.' );
+        }
+        if ( count( $crop_campaigns ) > 1 ) {
+            return array( 'type' => 'error', 'message' => 'Cette culture historique est liée à plusieurs campagnes. Sélectionnez explicitement la campagne concernée.' );
+        }
+        $campaign_id = $crop_campaigns ? (int) $crop_campaigns[0] : 0;
+    }
+
+    if ( $campaign_id ) {
+        $validated_campaign_id = baykat_farm_campaign_validate_link( $campaign_id, $parcel_id, $user_id, $crop_id );
+        if ( is_wp_error( $validated_campaign_id ) ) {
+            return array( 'type' => 'error', 'message' => $validated_campaign_id->get_error_message() );
+        }
+        $campaign_id = $validated_campaign_id;
+    }
+
+    if ( $parcel_id && ! $campaign_id ) {
+        return array( 'type' => 'error', 'message' => 'Rattachez cette opération à une campagne réelle. Seules les dépenses communes peuvent rester au niveau de la ferme.' );
     }
 
     global $wpdb;
@@ -441,21 +521,23 @@ function baykat_finance_process_transaction_submission( $user_id, $expected_cate
     $inserted = $wpdb->insert(
         baykat_finance_get_table_name(),
         array(
-            'user_id'     => (int) $parcel->user_id,
+            'user_id'     => $parcel ? (int) $parcel->user_id : baykat_farm_get_owner_id_for_farm( $farm_id ),
             'type'        => $type,
             'category'    => $category,
             'amount'      => $amount,
+            'operation_date' => $operation_date,
             'description' => $description,
             'item_name'   => $item_name,
             'quantity'    => $quantity,
             'unit'        => $unit,
             'expense_category' => $expense_category,
             'farm_id'     => $farm_id,
-            'parcel_id'   => $parcel_id,
+            'parcel_id'   => $parcel_id ? $parcel_id : null,
             'activity_id' => $activity_id,
             'crop_id'     => $crop_id,
+            'campaign_id' => $campaign_id ? $campaign_id : null,
         ),
-        array( '%d', '%s', '%s', '%f', '%s', '%s', '%f', '%s', '%s', '%d', '%d', '%d', '%d' )
+        array( '%d', '%s', '%s', '%f', '%s', '%s', '%s', '%f', '%s', '%s', '%d', '%d', '%d', '%d', '%d' )
     );
 
     if ( false === $inserted ) {
@@ -490,6 +572,7 @@ function baykat_finance_get_user_transactions( $user_id, $category = null ) {
     $farms_table = baykat_farm_table_name( 'farms' );
     $activities_table = baykat_farm_table_name( 'activities' );
     $crops_table = baykat_farm_table_name( 'crops' );
+    $campaigns_table = baykat_farm_campaign_table_name();
     $visible_farms = baykat_farm_get_user_farms( $user_id );
     $visible_farm_ids = array_map( 'intval', wp_list_pluck( $visible_farms, 'id' ) );
     $farm_scope_sql = $visible_farm_ids
@@ -507,7 +590,7 @@ function baykat_finance_get_user_transactions( $user_id, $category = null ) {
         );
         $transactions_sql = $wpdb->prepare(
             "SELECT transactions.*, parcels.name AS parcel_name, farms.name AS farm_name,
-                    activities.title AS activity_title, crops.name AS crop_name
+                    activities.title AS activity_title, crops.name AS crop_name, campaigns.crop_name AS campaign_crop_name
              FROM $table_name AS transactions
              LEFT JOIN $parcels_table AS parcels
                 ON parcels.id = transactions.parcel_id AND parcels.user_id = transactions.user_id
@@ -517,6 +600,8 @@ function baykat_finance_get_user_transactions( $user_id, $category = null ) {
                 ON activities.id = transactions.activity_id AND activities.user_id = transactions.user_id
              LEFT JOIN $crops_table AS crops
                 ON crops.id = transactions.crop_id AND crops.user_id = transactions.user_id
+             LEFT JOIN $campaigns_table AS campaigns
+                ON campaigns.id = transactions.campaign_id AND campaigns.campaign_type = 'real'
              WHERE transactions.user_id = %d$farm_scope_sql
              ORDER BY transactions.created_at DESC",
             $user_id
@@ -533,7 +618,7 @@ function baykat_finance_get_user_transactions( $user_id, $category = null ) {
         );
         $transactions_sql = $wpdb->prepare(
             "SELECT transactions.*, parcels.name AS parcel_name, farms.name AS farm_name,
-                    activities.title AS activity_title, crops.name AS crop_name
+                    activities.title AS activity_title, crops.name AS crop_name, campaigns.crop_name AS campaign_crop_name
              FROM $table_name AS transactions
              LEFT JOIN $parcels_table AS parcels
                 ON parcels.id = transactions.parcel_id AND parcels.user_id = transactions.user_id
@@ -543,6 +628,8 @@ function baykat_finance_get_user_transactions( $user_id, $category = null ) {
                 ON activities.id = transactions.activity_id AND activities.user_id = transactions.user_id
              LEFT JOIN $crops_table AS crops
                 ON crops.id = transactions.crop_id AND crops.user_id = transactions.user_id
+             LEFT JOIN $campaigns_table AS campaigns
+                ON campaigns.id = transactions.campaign_id AND campaigns.campaign_type = 'real'
              WHERE (transactions.user_id = %d$farm_scope_sql) AND transactions.category = %s
              ORDER BY transactions.created_at DESC",
             $user_id,

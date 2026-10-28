@@ -214,7 +214,7 @@ function baykat_farm_process_stock_movement( $user_id ) {
         : '';
     $quantity = is_numeric( $quantity_value ) ? (float) $quantity_value : 0;
     $unit = isset( $_POST['unit'] ) && is_string( $_POST['unit'] )
-        ? sanitize_text_field( wp_unslash( $_POST['unit'] ) )
+        ? baykat_farm_normalize_unit( wp_unslash( $_POST['unit'] ) )
         : '';
     $notes = isset( $_POST['movement_notes'] ) && is_string( $_POST['movement_notes'] )
         ? sanitize_textarea_field( wp_unslash( $_POST['movement_notes'] ) )
@@ -257,6 +257,8 @@ function baykat_farm_process_stock_movement( $user_id ) {
 
     $crop_id = baykat_farm_request_id( 'crop_id' );
     $activity_id = baykat_farm_request_id( 'activity_id' );
+    $crop_campaign_id = 0;
+    $activity_campaign_id = 0;
     if ( $crop_id ) {
         global $wpdb;
         $crop = $wpdb->get_row(
@@ -265,23 +267,40 @@ function baykat_farm_process_stock_movement( $user_id ) {
                 $crop_id
             )
         );
+        if ( '' !== $wpdb->last_error ) {
+            return array( 'type' => 'error', 'message' => 'Impossible de vérifier la culture choisie.' );
+        }
         $crop_parcel = $crop ? baykat_farm_get_user_parcel( (int) $crop->parcel_id, $user_id ) : null;
         if ( ! $crop_parcel || (int) $crop_parcel->farm_id !== $farm_id || ( $parcel_id && (int) $crop->parcel_id !== $parcel_id ) ) {
             return array( 'type' => 'error', 'message' => 'La culture choisie n’appartient pas à cet emplacement.' );
         }
+        $crop_campaigns = $wpdb->get_col(
+            $wpdb->prepare(
+                "SELECT id FROM " . baykat_farm_campaign_table_name() . " WHERE crop_id = %d AND campaign_type = 'real' AND archived_at IS NULL ORDER BY id ASC",
+                $crop_id
+            )
+        );
+        if ( '' !== $wpdb->last_error ) {
+            return array( 'type' => 'error', 'message' => 'Impossible de vérifier la campagne de cette culture.' );
+        }
+        $crop_campaign_id = 1 === count( $crop_campaigns ) ? (int) $crop_campaigns[0] : 0;
     }
     if ( $activity_id ) {
         global $wpdb;
         $activity = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT id, parcel_id FROM " . baykat_farm_table_name( 'activities' ) . " WHERE id = %d",
+                "SELECT id, parcel_id, campaign_id FROM " . baykat_farm_table_name( 'activities' ) . " WHERE id = %d",
                 $activity_id
             )
         );
+        if ( '' !== $wpdb->last_error ) {
+            return array( 'type' => 'error', 'message' => 'Impossible de vérifier l’activité choisie.' );
+        }
         $activity_parcel = $activity ? baykat_farm_get_user_parcel( (int) $activity->parcel_id, $user_id ) : null;
         if ( ! $activity_parcel || (int) $activity_parcel->farm_id !== $farm_id || ( $parcel_id && (int) $activity->parcel_id !== $parcel_id ) ) {
             return array( 'type' => 'error', 'message' => 'L’activité choisie n’appartient pas à cet emplacement.' );
         }
+        $activity_campaign_id = (int) $activity->campaign_id;
     }
 
     if ( 'return' === $type && $activity_id ) {
@@ -314,6 +333,17 @@ function baykat_farm_process_stock_movement( $user_id ) {
 
     global $wpdb;
     if ( 'entry' === $type ) {
+        if ( $activity_campaign_id && $crop_campaign_id && $activity_campaign_id !== $crop_campaign_id ) {
+            return array( 'type' => 'error', 'message' => 'La culture et l’activité sélectionnées appartiennent à des campagnes différentes.' );
+        }
+        $campaign_id = $activity_campaign_id ? $activity_campaign_id : $crop_campaign_id;
+        if ( $campaign_id ) {
+            $validated_campaign_id = baykat_farm_campaign_validate_link( $campaign_id, $parcel_id, $user_id, $crop_id );
+            if ( is_wp_error( $validated_campaign_id ) ) {
+                return array( 'type' => 'error', 'message' => $validated_campaign_id->get_error_message() );
+            }
+            $campaign_id = $validated_campaign_id;
+        }
         $amount_value = isset( $_POST['amount'] ) && is_scalar( $_POST['amount'] )
             ? trim( (string) wp_unslash( $_POST['amount'] ) )
             : '';
@@ -329,6 +359,7 @@ function baykat_farm_process_stock_movement( $user_id ) {
                 'type'        => 'expense',
                 'category'    => 'input',
                 'amount'      => $amount,
+                'operation_date' => $date,
                 'description' => $notes,
                 'item_name'   => $item_name,
                 'quantity'    => $quantity,
@@ -338,9 +369,9 @@ function baykat_farm_process_stock_movement( $user_id ) {
                 'parcel_id'   => $parcel_id ? $parcel_id : null,
                 'activity_id' => $activity_id ? $activity_id : null,
                 'crop_id'     => $crop_id ? $crop_id : null,
-                'created_at'  => $date . ' 12:00:00',
+                'campaign_id' => $campaign_id ? $campaign_id : null,
             ),
-            array( '%d', '%s', '%s', '%f', '%s', '%s', '%f', '%s', '%s', '%d', '%d', '%d', '%d', '%s' )
+            array( '%d', '%s', '%s', '%f', '%s', '%s', '%s', '%f', '%s', '%s', '%d', '%d', '%d', '%d', '%d' )
         );
     } else {
         $inserted = $wpdb->insert(

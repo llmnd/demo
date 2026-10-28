@@ -25,22 +25,15 @@ function baykat_farm_get_access_role( $farm_id, $user_id ) {
         return 'owner';
     }
 
-    $members_table = baykat_farm_members_table_name();
-    return (string) $wpdb->get_var(
-        $wpdb->prepare(
-            "SELECT role FROM $members_table WHERE farm_id = %d AND member_user_id = %d",
-            $farm_id,
-            $user_id
-        )
-    );
+    return '';
 }
 
 function baykat_farm_user_can_view_farm( $farm_id, $user_id ) {
-    return in_array( baykat_farm_get_access_role( $farm_id, $user_id ), array( 'owner', 'manager', 'reader' ), true );
+    return 'owner' === baykat_farm_get_access_role( $farm_id, $user_id );
 }
 
 function baykat_farm_user_can_edit_farm( $farm_id, $user_id ) {
-    return in_array( baykat_farm_get_access_role( $farm_id, $user_id ), array( 'owner', 'manager' ), true );
+    return 'owner' === baykat_farm_get_access_role( $farm_id, $user_id );
 }
 
 function baykat_farm_filter_editable_records( $records ) {
@@ -64,6 +57,10 @@ function baykat_farm_get_owner_id_for_farm( $farm_id ) {
 }
 
 function baykat_farm_process_sharing_submission( $user_id ) {
+    if ( ! BAYKAT_FARM_V1_SHOW_SHARING ) {
+        return null;
+    }
+
     global $wpdb;
 
     $members_table = baykat_farm_members_table_name();

@@ -47,13 +47,13 @@ function baykat_farm_export_report_csv() {
         wp_die( esc_html__( 'Impossible de générer le fichier CSV.', 'baykat-finance' ), '', array( 'response' => 500 ) );
     }
     fwrite( $output, "\xEF\xBB\xBF" );
-    fputcsv( $output, array( 'Enregistrement', 'Date', 'État', 'Ferme', 'Parcelle', 'Culture', 'Détail', 'Quantité', 'Unité', 'Revenus FCFA', 'Dépenses FCFA', 'Marge FCFA' ), ';' );
+    fputcsv( $output, array( 'Enregistrement', 'Date d’opération', 'Date de saisie', 'État', 'Ferme', 'Parcelle', 'Culture', 'Détail', 'Quantité', 'Unité', 'Revenus FCFA', 'Dépenses FCFA', 'Marge FCFA' ), ';' );
 
     $last_id = 0;
     do {
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT transactions.id, transactions.created_at, transactions.type, transactions.category,
+                "SELECT transactions.id, transactions.operation_date, transactions.created_at, transactions.type, transactions.category,
                         transactions.description, transactions.item_name, transactions.quantity, transactions.unit,
                         transactions.amount, transactions.cancelled_at, farms.name AS farm_name, parcels.name AS parcel_name, crops.name AS crop_name
                  FROM $transactions_table AS transactions
@@ -76,6 +76,7 @@ function baykat_farm_export_report_csv() {
                     'baykat_farm_report_csv_value',
                     array(
                         'Transaction ' . $row->category,
+                        $row->operation_date,
                         $row->created_at,
                         $is_cancelled ? 'Annulée le ' . $row->cancelled_at : 'Active',
                         $row->farm_name,
